@@ -21,7 +21,7 @@ export default function Navbar() {
       } else if (error.code === 'auth/cancelled-by-user') {
         toast.error('Login was cancelled.');
       } else {
-        toast.error('Login failed. Please check your internet connection.');
+        toast.error(`Login failed: ${error.message || 'Network error'}`);
         console.error('Login failed', error);
       }
     }
