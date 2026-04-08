@@ -4,6 +4,7 @@ import { Upload, Video as VideoIcon, Image as ImageIcon, X, Loader2 } from 'luci
 import { VideoType } from '../types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { supabase } from '../lib/supabase';
 
 export default function Studio() {
   const { user } = useAuth();
@@ -23,9 +24,14 @@ export default function Studio() {
     if (!user) return;
     const fetchVideos = async () => {
       try {
-        const res = await fetch(`/api/videos?authorId=${user.uid}`);
-        const data = await res.json();
-        setVideos(data);
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('authorId', user.uid)
+          .order('createdAt', { ascending: false });
+        
+        if (error) throw error;
+        setVideos(data || []);
       } catch (error) {
         console.error("Error fetching videos:", error);
       } finally {
@@ -35,24 +41,24 @@ export default function Studio() {
     fetchVideos();
   }, [user]);
 
-  const uploadFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
+  const uploadFile = async (file: File, bucket: string) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${user?.uid}/${fileName}`;
 
-    const token = localStorage.getItem('token');
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Upload failed');
+    if (uploadError) {
+      throw uploadError;
     }
 
-    const data = await response.json();
-    return data.url;
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
+    return publicUrl;
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -63,35 +69,35 @@ export default function Studio() {
     setUploadProgress(10);
     try {
       // Upload video
-      const videoUrl = await uploadFile(videoFile);
+      const videoUrl = await uploadFile(videoFile, 'videos');
       setUploadProgress(50);
 
       // Upload thumbnail
-      const thumbnailUrl = await uploadFile(thumbnailFile);
+      const thumbnailUrl = await uploadFile(thumbnailFile, 'thumbnails');
       setUploadProgress(80);
 
       // Create video record
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/videos', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          category,
-          videoUrl,
-          thumbnailUrl,
-          duration: '10:00'
-        })
-      });
+      const { data, error } = await supabase
+        .from('videos')
+        .insert([
+          {
+            title,
+            description,
+            category,
+            videoUrl,
+            thumbnailUrl,
+            authorId: user.uid,
+            authorName: user.displayName,
+            authorPhotoUrl: user.photoURL,
+            duration: '10:00',
+          }
+        ])
+        .select()
+        .single();
 
-      if (!res.ok) throw new Error('Failed to create video');
-      const newVideo = await res.json();
+      if (error) throw error;
 
-      setVideos([newVideo, ...videos]);
+      setVideos([data, ...videos]);
       
       // Reset form
       setTitle('');

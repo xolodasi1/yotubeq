@@ -3,9 +3,10 @@ import { useAuth } from '../App';
 import { Link, useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '../lib/supabase';
 
 export default function Navbar() {
-  const { user, login, logout } = useAuth();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
@@ -17,28 +18,34 @@ export default function Navbar() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const body = isLogin ? { email, password } : { email, password, displayName };
-      
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Authentication failed');
-      
-      login(data.token, data.user);
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        toast.success('Welcome back to the frost!');
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              displayName,
+            }
+          }
+        });
+        if (error) throw error;
+        toast.success('Account created successfully! Check your email to verify.');
+      }
       setShowAuthModal(false);
-      toast.success(isLogin ? 'Welcome back to the frost!' : 'Account created successfully!');
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     toast.info('Stay cool! See you soon.');
     navigate('/');
   };

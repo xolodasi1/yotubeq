@@ -5,6 +5,7 @@ import { VideoType } from '../types';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import VideoCard from '../components/VideoCard';
+import { supabase } from '../lib/supabase';
 
 export default function VideoPlayer() {
   const { id } = useParams<{ id: string }>();
@@ -21,15 +22,31 @@ export default function VideoPlayer() {
     const fetchVideo = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/videos/${id}`);
-        if (!res.ok) throw new Error('Video not found');
-        const data = await res.json();
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('id', id)
+          .single();
+          
+        if (error) throw error;
         setVideo(data);
 
+        // Increment views (optional, might need a rpc or just an update)
+        if (data) {
+          await supabase
+            .from('videos')
+            .update({ views: data.views + 1 })
+            .eq('id', id);
+        }
+
         // Fetch related videos
-        const relatedRes = await fetch('/api/videos');
-        const relatedData = await relatedRes.json();
-        setRelatedVideos(relatedData.filter((v: any) => v.id !== id).slice(0, 10));
+        const { data: relatedData } = await supabase
+          .from('videos')
+          .select('*')
+          .neq('id', id)
+          .limit(10);
+          
+        setRelatedVideos(relatedData || []);
       } catch (error) {
         console.error("Error fetching video:", error);
       } finally {
@@ -124,7 +141,7 @@ export default function VideoPlayer() {
           <div className="flex items-center gap-4 text-sm font-medium mb-2">
             <span>{video.views.toLocaleString()} views</span>
             <span>{formattedDate}</span>
-            <span className="text-ice-accent">#{video.category.replace(/\\s+/g, '')}</span>
+            <span className="text-ice-accent">#{video.category.replace(/\s+/g, '')}</span>
           </div>
           <p className="text-sm whitespace-pre-wrap">{video.description}</p>
         </div>
