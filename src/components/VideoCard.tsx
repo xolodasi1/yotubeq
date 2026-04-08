@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Video } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { Play, Eye, Clock } from 'lucide-react';
+import { getProxiedUrl } from '../lib/proxy';
 
 export default function VideoCard({ video }: { video: Video, key?: string }) {
   const formattedDate = video.createdAt?.toDate 
@@ -13,7 +14,7 @@ export default function VideoCard({ video }: { video: Video, key?: string }) {
     <Link to={`/video/${video.id}`} className="group flex flex-col gap-3">
       <div className="relative aspect-video rounded-2xl overflow-hidden border border-ice-border group-hover:border-ice-accent transition-all duration-300 shadow-lg group-hover:shadow-[0_0_20px_rgba(0,242,255,0.2)]">
         <img
-          src={video.thumbnailUrl}
+          src={getProxiedUrl(video.thumbnailUrl)}
           alt={video.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           referrerPolicy="no-referrer"

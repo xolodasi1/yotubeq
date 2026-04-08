@@ -9,6 +9,8 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, A
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
+import { getProxiedUrl } from '../lib/proxy';
+
 export default function Studio() {
   const { user, profile } = useAuth();
   const [videos, setVideos] = useState<VideoType[]>([]);
@@ -42,6 +44,26 @@ export default function Studio() {
     fetchVideos();
   }, [user]);
 
+  const uploadFile = async (file: File, folder: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', user!.uid);
+    formData.append('folder', folder);
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Upload failed');
+    }
+
+    const data = await response.json();
+    return data.url;
+  };
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !videoFile || !thumbnailFile || uploading) return;
@@ -50,15 +72,11 @@ export default function Studio() {
     setUploadProgress(10);
     try {
       // Upload video
-      const videoRef = ref(storage, `videos/${user.uid}/${Date.now()}_${videoFile.name}`);
-      await uploadBytes(videoRef, videoFile);
-      const videoUrl = await getDownloadURL(videoRef);
+      const videoUrl = await uploadFile(videoFile, 'videos');
       setUploadProgress(50);
 
       // Upload thumbnail
-      const thumbRef = ref(storage, `thumbnails/${user.uid}/${Date.now()}_${thumbnailFile.name}`);
-      await uploadBytes(thumbRef, thumbnailFile);
-      const thumbnailUrl = await getDownloadURL(thumbRef);
+      const thumbnailUrl = await uploadFile(thumbnailFile, 'thumbnails');
       setUploadProgress(80);
 
       // Create firestore doc
@@ -89,11 +107,7 @@ export default function Studio() {
       setTimeout(() => setUploadProgress(0), 2000);
     } catch (error: any) {
       console.error("Upload error:", error);
-      if (error?.message?.includes('storage/retry-limit-exceeded') || error?.message?.includes('storage/unauthorized')) {
-        toast.error('Storage Error: Please ensure Firebase Storage is enabled in your Firebase Console and the security rules allow uploads.');
-      } else {
-        handleFirestoreError(error, OperationType.CREATE, 'videos');
-      }
+      toast.error(error.message || 'Error uploading video');
     } finally {
       setUploading(false);
     }
@@ -190,7 +204,7 @@ export default function Studio() {
               {videos.map((v) => (
                 <div key={v.id} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-colors group">
                   <div className="w-32 aspect-video rounded-lg overflow-hidden shrink-0 border border-ice-border">
-                    <img src={v.thumbnailUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={getProxiedUrl(v.thumbnailUrl)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold truncate group-hover:text-ice-accent transition-colors">{v.title}</h4>

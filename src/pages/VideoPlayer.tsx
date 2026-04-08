@@ -7,6 +7,7 @@ import { useAuth } from '../App';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import VideoCard from '../components/VideoCard';
+import { getProxiedUrl } from '../lib/proxy';
 
 export default function VideoPlayer() {
   const { id } = useParams<{ id: string }>();
@@ -100,7 +101,7 @@ export default function VideoPlayer() {
         <div className="aspect-video rounded-3xl overflow-hidden glass border border-ice-border shadow-2xl relative group">
           <video
             ref={videoRef}
-            src={video.videoUrl}
+            src={getProxiedUrl(video.videoUrl)}
             controls
             autoPlay
             className="w-full h-full object-contain"
