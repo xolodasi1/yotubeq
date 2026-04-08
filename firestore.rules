@@ -1,0 +1,142 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (required)
+    //   - email: string (required, email format)
+    //   - photoURL: string (optional)
+    //   - subscribers: number (required)
+    //   - bio: string (optional)
+    //   - joinedAt: timestamp (required)
+    //
+    // Collection: videos
+    // Document ID: {videoId} (Random ID)
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, max 100 chars)
+    //   - description: string (optional, max 5000 chars)
+    //   - thumbnailUrl: string (required)
+    //   - videoUrl: string (required)
+    //   - authorId: string (required, matches owner)
+    //   - authorName: string (required)
+    //   - authorPhotoUrl: string (optional)
+    //   - views: number (required)
+    //   - likes: number (required)
+    //   - createdAt: timestamp (required)
+    //   - category: string (optional)
+    //   - duration: string (optional)
+    //
+    // Collection: comments
+    // Document ID: {commentId} (Random ID)
+    // Fields:
+    //   - id: string (required)
+    //   - videoId: string (required)
+    //   - authorId: string (required, matches owner)
+    //   - authorName: string (required)
+    //   - authorPhotoUrl: string (optional)
+    //   - text: string (required, max 1000 chars)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "xolodtop889@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'subscribers', 'joinedAt']) &&
+             data.uid == request.auth.uid &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.subscribers is number &&
+             data.joinedAt is timestamp;
+    }
+
+    function isValidVideo(data) {
+      return data.keys().hasAll(['title', 'thumbnailUrl', 'videoUrl', 'authorId', 'authorName', 'views', 'likes', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             isValidUrl(data.thumbnailUrl) &&
+             isValidUrl(data.videoUrl) &&
+             data.authorId == request.auth.uid &&
+             data.authorName is string &&
+             data.views is number &&
+             data.likes is number &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['videoId', 'authorId', 'authorName', 'text', 'createdAt']) &&
+             data.videoId is string &&
+             data.authorId == request.auth.uid &&
+             data.authorName is string &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 1000 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if true; // Allow public viewing of profiles (needed for channel pages)
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.joinedAt == resource.data.joinedAt;
+    }
+
+    match /videos/{videoId} {
+      allow read: if true; // Publicly readable
+      allow create: if isAuthenticated() && isValidVideo(request.resource.data);
+      allow update: if (isDocOwner() && isValidVideo(request.resource.data)) || 
+                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likes']));
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /comments/{commentId} {
+      allow read: if true; // Publicly readable
+      allow create: if isAuthenticated() && isValidComment(request.resource.data);
+      allow update, delete: if isDocOwner() || isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

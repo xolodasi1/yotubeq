@@ -1,0 +1,5 @@
+{
+  "name": "IceTube",
+  "description": "A cold-themed YouTube clone with studio analytics and video sharing.",
+  "requestFramePermissions": ["camera", "microphone"]
+}

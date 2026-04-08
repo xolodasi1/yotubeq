@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  --ice-bg: #050b14;
+  --ice-card: rgba(15, 25, 40, 0.7);
+  --ice-accent: #00f2ff;
+  --ice-text: #e0f7ff;
+  --ice-muted: #8ba8b8;
+  --ice-border: rgba(0, 242, 255, 0.2);
+  --ice-glow: 0 0 20px rgba(0, 242, 255, 0.15);
+}
+
+body {
+  background-color: var(--ice-bg);
+  color: var(--ice-text);
+  font-family: var(--font-sans);
+  margin: 0;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: var(--ice-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--ice-border);
+  box-shadow: var(--ice-glow);
+}
+
+.ice-gradient {
+  background: linear-gradient(135deg, #050b14 0%, #0a1f35 100%);
+}
+
+.ice-text-glow {
+  text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ice-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ice-border);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ice-accent);
+}
