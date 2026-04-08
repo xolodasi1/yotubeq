@@ -1,232 +1,210 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc, updateDoc, increment, collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { Video, Comment } from '../types';
 import { useAuth } from '../App';
+import { VideoType } from '../types';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import VideoCard from '../components/VideoCard';
-import { getProxiedUrl } from '../lib/proxy';
 
 export default function VideoPlayer() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const [video, setVideo] = useState<Video | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
+  const [video, setVideo] = useState<VideoType | null>(null);
+  const [relatedVideos, setRelatedVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [commentText, setCommentText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!id) return;
-
-    const fetchData = async () => {
-      console.log('Fetching video data for id:', id);
-      setLoading(true);
+    
+    const fetchVideo = async () => {
       try {
-        const videoDoc = await getDoc(doc(db, 'videos', id));
-        if (videoDoc.exists()) {
-          console.log('Video found');
-          const videoData = { id: videoDoc.id, ...videoDoc.data() } as Video;
-          setVideo(videoData);
-          
-          // Increment views
-          await updateDoc(doc(db, 'videos', id), { views: increment(1) });
+        setLoading(true);
+        const res = await fetch(`/api/videos/${id}`);
+        if (!res.ok) throw new Error('Video not found');
+        const data = await res.json();
+        setVideo(data);
 
-          // Fetch comments
-          const commentsQuery = query(collection(db, 'comments'), where('videoId', '==', id), orderBy('createdAt', 'desc'));
-          const commentsSnap = await getDocs(commentsQuery);
-          setComments(commentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment)));
-
-          // Fetch related
-          const relatedQuery = query(collection(db, 'videos'), where('category', '==', videoData.category || 'All'), orderBy('createdAt', 'desc'));
-          const relatedSnap = await getDocs(relatedQuery);
-          setRelatedVideos(relatedSnap.docs.filter(d => d.id !== id).map(doc => ({ id: doc.id, ...doc.data() } as Video)));
-        } else {
-          console.log('Video not found');
-        }
+        // Fetch related videos
+        const relatedRes = await fetch('/api/videos');
+        const relatedData = await relatedRes.json();
+        setRelatedVideos(relatedData.filter((v: any) => v.id !== id).slice(0, 10));
       } catch (error) {
-        console.error('Error in fetchData:', error);
-        handleFirestoreError(error, OperationType.GET, `videos/${id}`);
+        console.error("Error fetching video:", error);
       } finally {
-        console.log('Fetch complete, setting loading to false');
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchVideo();
+    window.scrollTo(0, 0);
   }, [id]);
-
-  const handleComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !id || !commentText.trim() || isSubmitting) return;
-
-    setIsSubmitting(true);
-    try {
-      const newComment = {
-        videoId: id,
-        authorId: user.uid,
-        authorName: user.displayName || 'IceUser',
-        authorPhotoUrl: user.photoURL || '',
-        text: commentText,
-        createdAt: serverTimestamp(),
-      };
-      const docRef = await addDoc(collection(db, 'comments'), newComment);
-      setComments([{ id: docRef.id, ...newComment, createdAt: { toDate: () => new Date() } } as any, ...comments]);
-      setCommentText('');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'comments');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-12 h-12 text-ice-accent animate-spin" />
-        <p className="text-ice-muted font-medium">Chilling the stream...</p>
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <Loader2 className="w-8 h-8 animate-spin text-ice-accent" />
       </div>
     );
   }
 
-  if (!video) return <div className="text-center py-20 text-ice-muted">Video not found in the frost.</div>;
+  if (!video) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-ice-muted">
+        <Snowflake className="w-16 h-16 mb-4 opacity-20" />
+        <h2 className="text-2xl font-bold">Video frozen or not found</h2>
+      </div>
+    );
+  }
+
+  const formattedDate = video.createdAt 
+    ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true }) 
+    : 'recently';
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto">
-      <div className="flex-1 flex flex-col gap-4">
+    <div className="max-w-[1800px] mx-auto p-4 md:p-6 flex flex-col xl:flex-row gap-6">
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
         <div className="aspect-video rounded-3xl overflow-hidden glass border border-ice-border shadow-2xl relative group">
           <video
             ref={videoRef}
-            src={getProxiedUrl(video.videoUrl)}
+            src={video.videoUrl}
             controls
             autoPlay
             className="w-full h-full object-contain"
           />
         </div>
 
-        <div className="flex flex-col gap-4">
-          <h1 className="text-xl md:text-2xl font-bold ice-text-glow leading-tight">{video.title}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mt-6 mb-4 ice-text-glow">{video.title}</h1>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <Link to={`/channel/${video.authorId}`} className="flex items-center gap-3 group">
+              <img
+                src={video.authorPhotoUrl || ''}
+                alt={video.authorName}
+                className="w-12 h-12 rounded-full border-2 border-ice-accent shadow-[0_0_10px_rgba(0,242,255,0.3)] group-hover:scale-105 transition-transform"
+              />
+              <div>
+                <h3 className="font-bold text-lg group-hover:text-ice-accent transition-colors">{video.authorName}</h3>
+                <p className="text-sm text-ice-muted">1.2M subscribers</p>
+              </div>
+            </Link>
+            <button className="bg-ice-text text-ice-bg px-6 py-2 rounded-full font-bold hover:bg-white/90 transition-colors ml-2">
+              Subscribe
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
+            <div className="flex items-center bg-white/5 rounded-full border border-ice-border">
+              <button 
+                onClick={() => setIsLiked(!isLiked)}
+                className={`flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-l-full transition-colors ${isLiked ? 'text-ice-accent' : ''}`}
+              >
+                <ThumbsUp className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                <span className="font-medium">{video.likes + (isLiked ? 1 : 0)}</span>
+              </button>
+              <div className="w-px h-6 bg-ice-border"></div>
+              <button className="px-4 py-2 hover:bg-white/10 rounded-r-full transition-colors">
+                <ThumbsDown className="w-5 h-5" />
+              </button>
+            </div>
+            <button className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-4 py-2 rounded-full transition-colors font-medium">
+              <Share2 className="w-5 h-5" />
+              <span className="hidden sm:inline">Share</span>
+            </button>
+            <button className="p-2 bg-white/5 hover:bg-white/10 border border-ice-border rounded-full transition-colors">
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="glass rounded-2xl p-4 border border-ice-border hover:bg-white/5 transition-colors cursor-pointer">
+          <div className="flex items-center gap-4 text-sm font-medium mb-2">
+            <span>{video.views.toLocaleString()} views</span>
+            <span>{formattedDate}</span>
+            <span className="text-ice-accent">#{video.category.replace(/\\s+/g, '')}</span>
+          </div>
+          <p className="text-sm whitespace-pre-wrap">{video.description}</p>
+        </div>
+
+        {/* Comments Section */}
+        <div className="mt-8">
+          <h3 className="text-xl font-bold mb-6">124 Comments</h3>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link to={`/channel/${video.authorId}`} className="shrink-0">
-                <img
-                  src={video.authorPhotoUrl}
-                  alt={video.authorName}
-                  className="w-12 h-12 rounded-full border-2 border-ice-accent shadow-[0_0_10px_rgba(0,242,255,0.3)]"
-                  referrerPolicy="no-referrer"
-                />
-              </Link>
-              <div className="flex flex-col">
-                <Link to={`/channel/${video.authorId}`} className="font-bold text-ice-text hover:text-ice-accent transition-colors">
-                  {video.authorName}
-                </Link>
-                <span className="text-xs text-ice-muted">1.2M subscribers</span>
+          <div className="flex gap-4 mb-8">
+            <img
+              src={user?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest'}
+              alt="Current user"
+              className="w-10 h-10 rounded-full border border-ice-accent"
+            />
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Add a cool comment..."
+                className="w-full bg-transparent border-b border-ice-border pb-2 focus:outline-none focus:border-ice-accent transition-colors peer"
+              />
+              <div className="absolute right-0 bottom-2 opacity-0 peer-focus:opacity-100 transition-opacity flex gap-2">
+                <button className="text-sm font-medium hover:text-ice-accent transition-colors">Cancel</button>
+                <button className="bg-ice-accent text-ice-bg px-4 py-1 rounded-full text-sm font-bold hover:bg-ice-accent/90 transition-colors">Comment</button>
               </div>
-              <button className="ml-4 bg-ice-text text-ice-bg px-6 py-2 rounded-full font-bold hover:bg-ice-accent transition-all">
-                Subscribe
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center glass rounded-full overflow-hidden border border-ice-border">
-                <button className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 transition-colors border-r border-ice-border">
-                  <ThumbsUp className="w-5 h-5" />
-                  <span className="text-sm font-bold">{video.likes.toLocaleString()}</span>
-                </button>
-                <button className="px-4 py-2 hover:bg-white/10 transition-colors">
-                  <ThumbsDown className="w-5 h-5" />
-                </button>
-              </div>
-              <button className="flex items-center gap-2 glass px-4 py-2 rounded-full hover:bg-white/10 border border-ice-border transition-colors">
-                <Share2 className="w-5 h-5" />
-                <span className="text-sm font-bold">Share</span>
-              </button>
-              <button className="p-2 glass rounded-full hover:bg-white/10 border border-ice-border transition-colors">
-                <MoreHorizontal className="w-5 h-5" />
-              </button>
             </div>
           </div>
 
-          <div className="glass p-4 rounded-2xl border border-ice-border bg-white/5">
-            <div className="flex gap-3 text-sm font-bold mb-1">
-              <span>{video.views.toLocaleString()} views</span>
-              <span>{video.createdAt?.toDate ? formatDistanceToNow(video.createdAt.toDate(), { addSuffix: true }) : 'recently'}</span>
-            </div>
-            <p className="text-sm text-ice-text/90 whitespace-pre-wrap leading-relaxed">
-              {video.description || 'No description provided.'}
-            </p>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-6">
-            <h3 className="text-xl font-bold">{comments.length} Comments</h3>
-            
-            {user ? (
-              <form onSubmit={handleComment} className="flex gap-4">
-                <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border border-ice-border" referrerPolicy="no-referrer" />
-                <div className="flex-1 flex flex-col gap-2">
-                  <input
-                    type="text"
-                    placeholder="Add a comment..."
-                    className="bg-transparent border-b border-ice-border py-2 focus:outline-none focus:border-ice-accent transition-colors text-sm"
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button type="button" onClick={() => setCommentText('')} className="px-4 py-1.5 rounded-full text-sm font-bold hover:bg-white/5">Cancel</button>
-                    <button
-                      disabled={!commentText.trim() || isSubmitting}
-                      className="bg-ice-accent text-ice-bg px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_15px_rgba(0,242,255,0.5)] transition-all"
-                    >
-                      {isSubmitting ? 'Posting...' : 'Comment'}
-                    </button>
-                  </div>
+          {/* Mock Comments */}
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex gap-4 mb-6">
+              <img
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`}
+                alt="User"
+                className="w-10 h-10 rounded-full"
+              />
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-bold text-sm">@cooluser{i}</span>
+                  <span className="text-xs text-ice-muted">2 days ago</span>
                 </div>
-              </form>
-            ) : (
-              <div className="p-4 glass rounded-xl border border-ice-border text-center text-ice-muted text-sm italic">
-                Login to join the conversation.
-              </div>
-            )}
-
-            <div className="flex flex-col gap-6">
-              {comments.map((comment) => (
-                <div key={comment.id} className="flex gap-4">
-                  <img src={comment.authorPhotoUrl} className="w-10 h-10 rounded-full border border-ice-border" referrerPolicy="no-referrer" />
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold">@{comment.authorName.replace(/\s+/g, '').toLowerCase()}</span>
-                      <span className="text-xs text-ice-muted">
-                        {comment.createdAt?.toDate ? formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true }) : 'just now'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-ice-text/90">{comment.text}</p>
-                    <div className="flex items-center gap-4 mt-1">
-                      <button className="flex items-center gap-1 text-xs text-ice-muted hover:text-ice-accent"><ThumbsUp className="w-3 h-3" /> 0</button>
-                      <button className="text-xs text-ice-muted hover:text-ice-accent">Reply</button>
-                    </div>
-                  </div>
+                <p className="text-sm mb-2">This video is absolutely freezing! 🥶 Keep up the great work.</p>
+                <div className="flex items-center gap-4">
+                  <button className="flex items-center gap-1 text-ice-muted hover:text-ice-text transition-colors">
+                    <ThumbsUp className="w-4 h-4" />
+                    <span className="text-xs">24</span>
+                  </button>
+                  <button className="text-ice-muted hover:text-ice-text transition-colors">
+                    <ThumbsDown className="w-4 h-4" />
+                  </button>
+                  <button className="text-xs font-medium text-ice-muted hover:text-ice-text transition-colors">
+                    Reply
+                  </button>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      <div className="lg:w-[400px] flex flex-col gap-4">
-        <h3 className="text-lg font-bold ice-text-glow flex items-center gap-2">
-          <Snowflake className="w-5 h-5 text-ice-accent" />
-          More to watch
-        </h3>
+      {/* Related Videos */}
+      <div className="xl:w-[400px] shrink-0">
+        <h3 className="text-lg font-bold mb-4">Related Videos</h3>
         <div className="flex flex-col gap-4">
           {relatedVideos.map((v) => (
-            <VideoCard key={v.id} video={v} />
+            <Link key={v.id} to={`/video/${v.id}`} className="flex gap-3 group">
+              <div className="w-40 aspect-video rounded-xl overflow-hidden shrink-0 border border-ice-border relative">
+                <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                  {v.duration}
+                </div>
+              </div>
+              <div className="flex flex-col py-1">
+                <h4 className="font-bold text-sm line-clamp-2 group-hover:text-ice-accent transition-colors leading-tight mb-1">
+                  {v.title}
+                </h4>
+                <span className="text-xs text-ice-muted">{v.authorName}</span>
+                <span className="text-xs text-ice-muted">{v.views} views • {v.createdAt ? formatDistanceToNow(new Date(v.createdAt)) : 'recently'}</span>
+              </div>
+            </Link>
           ))}
-          {relatedVideos.length === 0 && <p className="text-ice-muted text-sm italic">No other videos in this drift.</p>}
         </div>
       </div>
     </div>

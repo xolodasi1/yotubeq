@@ -1,88 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, limit, where } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { Video } from '../types';
-import VideoCard from '../components/VideoCard';
 import { useSearchParams } from 'react-router-dom';
-import { Loader2, Snowflake } from 'lucide-react';
+import VideoCard from '../components/VideoCard';
+import { VideoType } from '../types';
+import { Loader2 } from 'lucide-react';
+
+const CATEGORIES = ['All', 'Gaming', 'Music', 'Education', 'Entertainment', 'Tech', 'Winter Sports', 'Arctic Tech', 'Chill'];
 
 export default function Home() {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
-  const queryParam = searchParams.get('q');
+  const searchQuery = searchParams.get('q') || '';
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [videos, setVideos] = useState<VideoType[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchVideos = async () => {
-      console.log('Fetching videos...', queryParam);
-      setLoading(true);
       try {
-        let q = query(collection(db, 'videos'), orderBy('createdAt', 'desc'), limit(24));
-        
-        const querySnapshot = await getDocs(q);
-        console.log('Fetched videos count:', querySnapshot.size);
-        const fetchedVideos = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Video));
-        
-        if (queryParam) {
-          const filtered = fetchedVideos.filter(v => 
-            v.title.toLowerCase().includes(queryParam.toLowerCase()) || 
-            v.description.toLowerCase().includes(queryParam.toLowerCase())
-          );
-          setVideos(filtered);
-        } else {
-          setVideos(fetchedVideos);
-        }
+        const res = await fetch('/api/videos');
+        const data = await res.json();
+        setVideos(data);
       } catch (error) {
-        console.error('Error in fetchVideos:', error);
-        handleFirestoreError(error, OperationType.LIST, 'videos');
+        console.error("Error fetching videos:", error);
       } finally {
-        console.log('Fetch complete, setting loading to false');
         setLoading(false);
       }
     };
-
     fetchVideos();
-  }, [queryParam]);
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4">
-        <div className="relative">
-          <Loader2 className="w-12 h-12 text-ice-accent animate-spin" />
-          <Snowflake className="w-6 h-6 text-ice-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
-        </div>
-        <p className="text-ice-muted font-medium animate-pulse">Freezing the feed...</p>
-      </div>
-    );
-  }
+  const filteredVideos = videos.filter(video => {
+    const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         video.authorName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = activeCategory === 'All' || video.category === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-        {['All', 'Music', 'Gaming', 'Live', 'Ice Sculpting', 'Arctic Tech', 'Winter Sports', 'Coding', 'Chill'].map((cat) => (
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
+      {/* Categories */}
+      <div className="flex gap-3 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+        {CATEGORIES.map((category) => (
           <button
-            key={cat}
-            className="px-4 py-1.5 rounded-full glass border border-ice-border hover:border-ice-accent hover:text-ice-accent transition-all text-sm font-medium whitespace-nowrap"
+            key={category}
+            onClick={() => setActiveCategory(category)}
+            className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-all duration-300 ${
+              activeCategory === category
+                ? 'bg-ice-accent text-ice-bg font-medium shadow-[0_0_15px_rgba(0,242,255,0.4)]'
+                : 'bg-white/5 hover:bg-white/10 text-ice-text border border-ice-border'
+            }`}
           >
-            {cat}
+            {category}
           </button>
         ))}
       </div>
 
-      {videos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <div className="w-20 h-20 bg-ice-accent/10 rounded-full flex items-center justify-center border border-ice-accent/30">
-            <Snowflake className="w-10 h-10 text-ice-accent" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold ice-text-glow">The tundra is empty</h2>
-            <p className="text-ice-muted mt-2">No videos found. Be the first to break the ice!</p>
-          </div>
+      {searchQuery && (
+        <h2 className="text-xl font-bold mb-6">
+          Search results for: <span className="text-ice-accent">"{searchQuery}"</span>
+        </h2>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-ice-accent" />
+        </div>
+      ) : filteredVideos.length === 0 ? (
+        <div className="text-center py-20 text-ice-muted">
+          <p className="text-xl">No videos found in the frost.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8">
-          {videos.map((video) => (
-            <VideoCard key={video.id} video={video} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+          {filteredVideos.map((video) => (
+            <VideoCard key={video.id} video={video as any} />
           ))}
         </div>
       )}

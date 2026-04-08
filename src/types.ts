@@ -14,6 +14,8 @@ export interface Video {
   duration: string;
 }
 
+export type VideoType = Video;
+
 export interface UserProfile {
   uid: string;
   displayName: string;
