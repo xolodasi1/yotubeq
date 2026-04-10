@@ -8,6 +8,7 @@ import VideoPlayer from './pages/VideoPlayer';
 import Channel from './pages/Channel';
 import Studio from './pages/Studio';
 import Shorts from './pages/Shorts';
+import TopChannels from './pages/TopChannels';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -56,6 +57,7 @@ export default function App() {
               email: userData.email,
               displayName: userData.displayName,
               photoURL: userData.photoURL,
+              subscribers: 0,
               createdAt: new Date()
             });
           }
@@ -90,6 +92,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/shorts" element={<Shorts />} />
+                <Route path="/top-channels" element={<TopChannels />} />
                 <Route path="/video/:id" element={<VideoPlayer />} />
                 <Route path="/channel/:id" element={<Channel />} />
                 <Route path="/studio" element={<Studio />} />

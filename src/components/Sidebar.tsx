@@ -1,11 +1,12 @@
 import React from 'react';
-import { Home, Compass, PlaySquare, Clock, ThumbsUp, History, User, Settings, HelpCircle, Smartphone } from 'lucide-react';
+import { Home, Compass, PlaySquare, Clock, ThumbsUp, History, User, Settings, HelpCircle, Smartphone, Trophy } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 
 const menuItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Smartphone, label: 'Shorts', path: '/shorts' },
+  { icon: Trophy, label: 'Top Channels', path: '/top-channels' },
   { icon: Compass, label: 'Explore', path: '/explore' },
   { icon: PlaySquare, label: 'Subscriptions', path: '/subs' },
 ];

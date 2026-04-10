@@ -5,7 +5,7 @@ import { VideoType, Comment, SubscriptionType, VideoLikeType } from '../types';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 export default function VideoPlayer() {
@@ -22,6 +22,11 @@ export default function VideoPlayer() {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
+  const [replyingCommentId, setReplyingCommentId] = useState<string | null>(null);
+  const [replyCommentText, setReplyCommentText] = useState('');
+
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -137,10 +142,12 @@ export default function VideoPlayer() {
 
     const subId = `${user.uid}_${video.authorId}`;
     const subRef = doc(db, 'subscriptions', subId);
+    const channelRef = doc(db, 'users', video.authorId);
 
     try {
       if (isSubscribed) {
         await deleteDoc(subRef);
+        await updateDoc(channelRef, { subscribers: increment(-1) }).catch(() => {});
         setIsSubscribed(false);
         toast.success('Unsubscribed');
       } else {
@@ -150,6 +157,7 @@ export default function VideoPlayer() {
           channelId: video.authorId,
           createdAt: new Date()
         });
+        await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
         setIsSubscribed(true);
         toast.success('Subscribed!');
       }
@@ -185,7 +193,9 @@ export default function VideoPlayer() {
         authorName: authorName,
         authorPhotoUrl: authorPhotoUrl,
         text: newComment.trim(),
-        createdAt: new Date()
+        createdAt: new Date(),
+        likes: 0,
+        dislikes: 0
       };
 
       await setDoc(doc(db, 'comments', commentId), commentData);
@@ -198,6 +208,89 @@ export default function VideoPlayer() {
       toast.error('Failed to post comment');
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editCommentText.trim()) return;
+    try {
+      await updateDoc(doc(db, 'comments', commentId), {
+        text: editCommentText.trim(),
+        isEdited: true
+      });
+      setComments(comments.map(c => c.id === commentId ? { ...c, text: editCommentText.trim(), isEdited: true } : c));
+      setEditingCommentId(null);
+      setEditCommentText('');
+      toast.success('Comment updated');
+    } catch (error) {
+      toast.error('Failed to update comment');
+    }
+  };
+
+  const handleReplyComment = async (parentId: string) => {
+    if (!replyCommentText.trim() || !video) return;
+    try {
+      let authorName = 'Аноним';
+      let authorPhotoUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`;
+      let authorId = 'anonymous';
+
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        authorName = userDoc.exists() && userDoc.data().displayName ? userDoc.data().displayName : (user.displayName || 'User');
+        authorPhotoUrl = userDoc.exists() && userDoc.data().photoURL ? userDoc.data().photoURL : (user.photoURL || '');
+        authorId = user.uid;
+      }
+
+      const commentId = crypto.randomUUID();
+      const commentData = {
+        id: commentId,
+        videoId: video.id,
+        authorId: authorId,
+        authorName: authorName,
+        authorPhotoUrl: authorPhotoUrl,
+        text: replyCommentText.trim(),
+        createdAt: new Date(),
+        parentId: parentId,
+        likes: 0,
+        dislikes: 0
+      };
+
+      await setDoc(doc(db, 'comments', commentId), commentData);
+      setComments([{ ...commentData, createdAt: commentData.createdAt.toISOString() } as any, ...comments]);
+      setReplyingCommentId(null);
+      setReplyCommentText('');
+      toast.success('Reply posted');
+    } catch (error) {
+      toast.error('Failed to post reply');
+    }
+  };
+
+  const handleCommentAction = async (commentId: string, action: 'like' | 'dislike' | 'heart') => {
+    if (!user && action !== 'heart') {
+      toast.error('Please login to interact with comments');
+      return;
+    }
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    try {
+      const commentRef = doc(db, 'comments', commentId);
+      if (action === 'like') {
+        const newLikes = (comment.likes || 0) + 1;
+        await updateDoc(commentRef, { likes: newLikes });
+        setComments(comments.map(c => c.id === commentId ? { ...c, likes: newLikes } : c));
+      } else if (action === 'dislike') {
+        const newDislikes = (comment.dislikes || 0) + 1;
+        await updateDoc(commentRef, { dislikes: newDislikes });
+        setComments(comments.map(c => c.id === commentId ? { ...c, dislikes: newDislikes } : c));
+      } else if (action === 'heart') {
+        if (user?.uid !== video?.authorId) return;
+        const newHearted = !comment.authorHearted;
+        await updateDoc(commentRef, { authorHearted: newHearted });
+        setComments(comments.map(c => c.id === commentId ? { ...c, authorHearted: newHearted } : c));
+      }
+    } catch (error) {
+      toast.error('Failed to update comment');
     }
   };
 
@@ -325,32 +418,102 @@ export default function VideoPlayer() {
           {comments.length === 0 ? (
             <p className="text-ice-muted text-center py-8">No comments yet. Be the first to break the ice!</p>
           ) : (
-            comments.map((comment) => (
-              <div key={comment.id} className="flex gap-4 mb-6">
-                <img
-                  src={comment.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.authorId}`}
-                  alt={comment.authorName}
-                  className="w-10 h-10 rounded-full"
-                />
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-sm">@{comment.authorName.replace(/\s+/g, '').toLowerCase()}</span>
-                    <span className="text-xs text-ice-muted">
-                      {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true }) : 'just now'}
-                    </span>
-                  </div>
-                  <p className="text-sm mb-2">{comment.text}</p>
-                  <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-1 text-ice-muted hover:text-ice-text transition-colors">
-                      <ThumbsUp className="w-4 h-4" />
-                    </button>
-                    <button className="text-ice-muted hover:text-ice-text transition-colors">
-                      <ThumbsDown className="w-4 h-4" />
-                    </button>
+            comments.filter(c => !c.parentId).map((comment) => {
+              const renderComment = (c: Comment, isReply = false) => (
+                <div key={c.id} className={`flex gap-4 mb-6 ${isReply ? 'ml-12 mt-4' : ''}`}>
+                  <img
+                    src={c.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.authorId}`}
+                    alt={c.authorName}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-sm">@{c.authorName.replace(/\s+/g, '').toLowerCase()}</span>
+                      <span className="text-xs text-ice-muted">
+                        {c.createdAt ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: true }) : 'just now'}
+                      </span>
+                      {c.isEdited && <span className="text-xs text-ice-muted">(edited)</span>}
+                    </div>
+                    
+                    {editingCommentId === c.id ? (
+                      <div className="mb-2">
+                        <input
+                          type="text"
+                          value={editCommentText}
+                          onChange={(e) => setEditCommentText(e.target.value)}
+                          className="w-full bg-transparent border-b border-ice-border pb-1 focus:outline-none focus:border-ice-accent text-sm"
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => setEditingCommentId(null)} className="text-xs hover:text-ice-accent">Cancel</button>
+                          <button onClick={() => handleEditComment(c.id)} className="text-xs bg-ice-accent text-ice-bg px-2 py-1 rounded">Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm mb-2">{c.text}</p>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <button onClick={() => handleCommentAction(c.id, 'like')} className="flex items-center gap-1 text-ice-muted hover:text-ice-text transition-colors">
+                        <ThumbsUp className="w-4 h-4" />
+                        <span className="text-xs">{c.likes || 0}</span>
+                      </button>
+                      <button onClick={() => handleCommentAction(c.id, 'dislike')} className="flex items-center gap-1 text-ice-muted hover:text-ice-text transition-colors">
+                        <ThumbsDown className="w-4 h-4" />
+                        <span className="text-xs">{c.dislikes || 0}</span>
+                      </button>
+                      
+                      {!isReply && (
+                        <button onClick={() => { setReplyingCommentId(c.id); setReplyCommentText(''); }} className="text-xs text-ice-muted hover:text-ice-text font-medium">
+                          Reply
+                        </button>
+                      )}
+
+                      {user?.uid === c.authorId && (
+                        <button onClick={() => { setEditingCommentId(c.id); setEditCommentText(c.text); }} className="text-xs text-ice-muted hover:text-ice-text font-medium">
+                          Edit
+                        </button>
+                      )}
+
+                      {c.authorHearted && (
+                        <div className="flex items-center gap-1 text-ice-accent" title="Hearted by creator">
+                          <Snowflake className="w-4 h-4" />
+                          <img src={video?.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video?.authorId}`} className="w-4 h-4 rounded-full border border-ice-accent" alt="Author" />
+                        </div>
+                      )}
+
+                      {user?.uid === video?.authorId && !c.authorHearted && (
+                        <button onClick={() => handleCommentAction(c.id, 'heart')} className="text-xs text-ice-muted hover:text-ice-accent" title="Heart this comment">
+                          <Snowflake className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {replyingCommentId === c.id && (
+                      <div className="mt-4 flex gap-3">
+                        <img src={user?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous'} className="w-8 h-8 rounded-full" alt="User" />
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={replyCommentText}
+                            onChange={(e) => setReplyCommentText(e.target.value)}
+                            placeholder="Add a reply..."
+                            className="w-full bg-transparent border-b border-ice-border pb-1 focus:outline-none focus:border-ice-accent text-sm"
+                          />
+                          <div className="flex gap-2 mt-2 justify-end">
+                            <button onClick={() => setReplyingCommentId(null)} className="text-xs hover:text-ice-accent">Cancel</button>
+                            <button onClick={() => handleReplyComment(c.id)} className="text-xs bg-ice-accent text-ice-bg px-3 py-1 rounded-full font-bold">Reply</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!isReply && comments.filter(reply => reply.parentId === c.id).reverse().map(reply => renderComment(reply, true))}
                   </div>
                 </div>
-              </div>
-            ))
+              );
+
+              return renderComment(comment);
+            })
           )}
         </div>
       </div>

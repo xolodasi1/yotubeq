@@ -36,6 +36,11 @@ export interface Comment {
   authorPhotoUrl: string;
   text: string;
   createdAt: any;
+  parentId?: string;
+  likes?: number;
+  dislikes?: number;
+  isEdited?: boolean;
+  authorHearted?: boolean;
 }
 
 export interface SubscriptionType {

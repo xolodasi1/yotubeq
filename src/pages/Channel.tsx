@@ -6,7 +6,7 @@ import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
 import { Loader2, Snowflake, Smartphone } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 export default function Channel() {
@@ -100,10 +100,12 @@ export default function Channel() {
 
     const subId = `${user.uid}_${id}`;
     const subRef = doc(db, 'subscriptions', subId);
+    const channelRef = doc(db, 'users', id);
 
     try {
       if (isSubscribed) {
         await deleteDoc(subRef);
+        await updateDoc(channelRef, { subscribers: increment(-1) }).catch(() => {});
         setIsSubscribed(false);
         setSubCount(Math.max(0, subCount - 1));
         toast.success('Unsubscribed');
@@ -114,6 +116,7 @@ export default function Channel() {
           channelId: id,
           createdAt: new Date()
         });
+        await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
         setIsSubscribed(true);
         setSubCount(subCount + 1);
         toast.success('Subscribed!');
