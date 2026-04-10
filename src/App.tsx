@@ -6,7 +6,10 @@ import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
 import VideoPlayer from './pages/VideoPlayer';
 import Channel from './pages/Channel';
-import Studio from './pages/Studio';
+import StudioDashboard from './pages/StudioDashboard';
+import StudioContent from './pages/StudioContent';
+import StudioAnalytics from './pages/StudioAnalytics';
+import StudioComments from './pages/StudioComments';
 import Shorts from './pages/Shorts';
 import TopChannels from './pages/TopChannels';
 import History from './pages/History';
@@ -16,6 +19,7 @@ import Subscriptions from './pages/Subscriptions';
 import Playlists from './pages/Playlists';
 import PlaylistDetail from './pages/PlaylistDetail';
 import Settings from './pages/Settings';
+import Studio from './pages/Studio';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -82,8 +86,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-ice-bg flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-ice-accent border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,242,255,0.5)]"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -91,7 +95,7 @@ export default function App() {
   return (
     <AuthContext.Provider value={{ user, loading }}>
       <Router>
-        <div className="min-h-screen bg-ice-bg text-ice-text flex flex-col">
+        <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
           <Navbar />
           <div className="flex flex-1 overflow-hidden">
             <Sidebar />
@@ -102,7 +106,11 @@ export default function App() {
                 <Route path="/top-channels" element={<TopChannels />} />
                 <Route path="/video/:id" element={<VideoPlayer />} />
                 <Route path="/channel/:id" element={<Channel />} />
-                <Route path="/studio" element={<Studio />} />
+                <Route path="/studio" element={<StudioDashboard />} />
+                <Route path="/studio/content" element={<StudioContent />} />
+                <Route path="/studio/analytics" element={<StudioAnalytics />} />
+                <Route path="/studio/comments" element={<StudioComments />} />
+                <Route path="/studio/upload" element={<Studio />} />
                 <Route path="/history" element={<History />} />
                 <Route path="/watch-later" element={<WatchLater />} />
                 <Route path="/favorites" element={<Favorites />} />
@@ -114,7 +122,7 @@ export default function App() {
             </main>
           </div>
         </div>
-        <Toaster theme="dark" position="bottom-right" />
+        <Toaster theme="light" position="bottom-right" />
       </Router>
     </AuthContext.Provider>
   );

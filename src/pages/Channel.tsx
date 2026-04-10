@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType, CommunityPost, Playlist } from '../types';
-import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare } from 'lucide-react';
+import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -50,7 +50,7 @@ export default function Channel() {
         const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map(doc => ({
           ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate()?.toISOString()
+          createdAt: doc.data().createdAt
         })) as VideoType[];
         
         setVideos(data || []);
@@ -117,7 +117,7 @@ export default function Channel() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const posts = snapshot.docs.map(doc => ({
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate()?.toISOString()
+        createdAt: doc.data().createdAt
       })) as CommunityPost[];
       setCommunityPosts(posts);
     });
@@ -247,8 +247,8 @@ export default function Channel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <Loader2 className="w-8 h-8 animate-spin text-ice-accent" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-10 h-10 animate-spin text-red-600" />
       </div>
     );
   }
@@ -258,316 +258,335 @@ export default function Channel() {
   const canPostCommunity = subCount >= 10;
 
   return (
-    <div className="pb-24 md:pb-8">
+    <div className="pb-24 md:pb-12 bg-gray-50 min-h-screen">
       {/* Channel Banner */}
-      <div className="h-32 md:h-64 bg-gradient-to-r from-ice-bg via-ice-accent/20 to-ice-bg relative overflow-hidden border-b border-ice-border">
+      <div className="h-40 md:h-80 bg-gray-200 relative overflow-hidden">
         {authorInfo?.bannerUrl ? (
           <img src={authorInfo.bannerUrl} alt="Баннер канала" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <>
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Snowflake className="w-20 md:w-32 h-20 md:h-32 text-ice-accent opacity-10 animate-spin-slow" />
-            </div>
-          </>
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            <Snowflake className="w-24 h-24 text-gray-300 opacity-20 animate-pulse" />
+          </div>
         )}
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-3 md:px-6 lg:px-8">
-        {/* Channel Info */}
-        <div className="flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-6 -mt-10 md:-mt-16 mb-6 md:mb-8 relative z-10">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12">
+        {/* Channel Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-10 -mt-12 md:-mt-20 mb-10 relative z-10">
           <img
             src={authorInfo?.photoUrl}
             alt="Аватар канала"
-            className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-ice-bg shadow-[0_0_20px_rgba(0,242,255,0.3)] bg-ice-bg object-cover"
+            className="w-28 h-28 md:w-44 md:h-44 rounded-full border-4 border-white shadow-xl bg-white object-cover"
           />
-          <div className="flex-1 text-center md:text-left mb-1 md:mb-2">
-            <h1 className="text-2xl md:text-3xl font-bold ice-text-glow mb-1">{authorInfo?.name}</h1>
-            <p className="text-xs md:text-sm text-ice-muted mb-2">@user-{id?.substring(0, 8)} • {subCount} подписчиков • {videos.length} видео</p>
+          <div className="flex-1 space-y-3">
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{authorInfo?.name}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-gray-500 uppercase tracking-widest">
+              <span>@user-{id?.substring(0, 8)}</span>
+              <span className="w-1 h-1 bg-gray-300 rounded-full" />
+              <span>{subCount} подписчиков</span>
+              <span className="w-1 h-1 bg-gray-300 rounded-full" />
+              <span>{videos.length} видео</span>
+            </div>
             {authorInfo?.bio && (
-              <p className="text-xs md:text-sm text-ice-text/80 max-w-2xl whitespace-pre-wrap line-clamp-3 md:line-clamp-none">{authorInfo.bio}</p>
+              <p className="text-sm text-gray-600 max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
             )}
-          </div>
-          <div className="mb-1 md:mb-2 w-full md:w-auto px-4 md:px-0">
-            {user?.uid === id ? (
-              <Link to="/studio" className="w-full md:w-auto text-center bg-white/10 hover:bg-white/20 border border-ice-border px-6 py-2 rounded-full font-bold transition-colors inline-block text-sm md:text-base">
-                Настроить канал
-              </Link>
-            ) : (
-              <button 
-                onClick={handleSubscribe}
-                className={`w-full md:w-auto px-8 py-2 rounded-full font-bold transition-colors shadow-[0_0_15px_rgba(255,255,255,0.2)] text-sm md:text-base ${
-                  isSubscribed 
-                    ? 'bg-white/10 text-ice-text hover:bg-white/20' 
-                    : 'bg-ice-text text-ice-bg hover:bg-white/90'
-                }`}
-              >
-                {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
-              </button>
-            )}
+            <div className="pt-2 flex flex-wrap gap-3">
+              {user?.uid === id ? (
+                <Link to="/studio" className="bg-gray-900 text-white px-8 py-2.5 rounded-full font-bold text-sm transition-all hover:bg-gray-800 shadow-lg shadow-gray-200">
+                  Настроить канал
+                </Link>
+              ) : (
+                <button 
+                  onClick={handleSubscribe}
+                  className={`px-10 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
+                    isSubscribed 
+                      ? 'bg-gray-100 text-gray-900 hover:bg-gray-200 shadow-gray-100' 
+                      : 'bg-red-600 text-white hover:bg-red-700 shadow-red-100'
+                  }`}
+                >
+                  {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="flex gap-4 md:gap-8 border-b border-ice-border mb-6 md:mb-8 overflow-x-auto scrollbar-hide">
-          <button 
-            onClick={() => setActiveTab('videos')}
-            className={`pb-3 md:pb-4 border-b-2 font-medium transition-colors whitespace-nowrap text-sm md:text-base ${activeTab === 'videos' ? 'border-ice-accent text-ice-accent' : 'border-transparent text-ice-muted hover:text-ice-text'}`}
-          >
-            Видео
-          </button>
-          <button 
-            onClick={() => setActiveTab('playlists')}
-            className={`pb-3 md:pb-4 border-b-2 font-medium transition-colors whitespace-nowrap text-sm md:text-base ${activeTab === 'playlists' ? 'border-ice-accent text-ice-accent' : 'border-transparent text-ice-muted hover:text-ice-text'}`}
-          >
-            Плейлисты
-          </button>
-          <button 
-            onClick={() => setActiveTab('community')}
-            className={`pb-3 md:pb-4 border-b-2 font-medium transition-colors whitespace-nowrap text-sm md:text-base ${activeTab === 'community' ? 'border-ice-accent text-ice-accent' : 'border-transparent text-ice-muted hover:text-ice-text'}`}
-          >
-            Сообщество
-          </button>
-          <button 
-            onClick={() => setActiveTab('about')}
-            className={`pb-3 md:pb-4 border-b-2 font-medium transition-colors whitespace-nowrap text-sm md:text-base ${activeTab === 'about' ? 'border-ice-accent text-ice-accent' : 'border-transparent text-ice-muted hover:text-ice-text'}`}
-          >
-            О канале
-          </button>
+        {/* Navigation Tabs */}
+        <div className="flex gap-8 border-b border-gray-200 mb-10 overflow-x-auto scrollbar-hide bg-white/50 backdrop-blur-sm sticky top-14 z-20 px-4 -mx-4 md:px-0 md:mx-0">
+          {(['videos', 'playlists', 'community', 'about'] as TabType[]).map((tab) => (
+            <button 
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-4 border-b-2 font-bold text-sm uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === tab 
+                  ? 'border-red-600 text-red-600' 
+                  : 'border-transparent text-gray-400 hover:text-gray-900'
+              }`}
+            >
+              {tab === 'videos' ? 'Видео' : 
+               tab === 'playlists' ? 'Плейлисты' : 
+               tab === 'community' ? 'Сообщество' : 'О канале'}
+            </button>
+          ))}
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'videos' && (
-          videos.length === 0 ? (
-            <div className="text-center py-20 text-ice-muted">
-              <p className="text-lg md:text-xl">Этот канал еще не загрузил ни одного видео.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-8 md:gap-10">
-              {shortsVideos.length > 0 && (
-                <div>
-                  <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 flex items-center gap-2">
-                    <Smartphone className="w-5 h-5 md:w-6 md:h-6 text-ice-accent" />
-                    Shorts
-                  </h2>
-                  <div className="flex gap-3 md:gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x">
-                    {shortsVideos.map((video) => (
-                      <div key={video.id} className="snap-start">
-                        <ShortCard video={video as any} />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="w-full h-px bg-ice-border mt-2 md:mt-4"></div>
-                </div>
-              )}
-              {regularVideos.length > 0 && (
-                <div>
-                  <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Видео</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-10">
-                    {regularVideos.map((video) => (
-                      <VideoCard key={video.id} video={video as any} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        )}
-
-        {activeTab === 'playlists' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {playlists.length === 0 ? (
-              <div className="col-span-full text-center py-20 text-ice-muted">
-                <p className="text-lg md:text-xl">Плейлисты не найдены.</p>
+        <div className="min-h-[40vh]">
+          {activeTab === 'videos' && (
+            videos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-32 text-gray-400">
+                <PlaySquare className="w-16 h-16 mb-4 opacity-10" />
+                <p className="text-lg font-bold">На канале пока нет видео</p>
               </div>
             ) : (
-              playlists.map(playlist => (
-                <div key={playlist.id} className="glass rounded-2xl overflow-hidden border border-ice-border group cursor-pointer">
-                  <div className="aspect-video bg-ice-accent/10 flex items-center justify-center relative">
-                    <PlaySquare className="w-12 h-12 text-ice-accent opacity-50" />
-                    <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs">
-                      {playlist.videoIds.length} видео
+              <div className="space-y-16">
+                {shortsVideos.length > 0 && (
+                  <section>
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-red-100">
+                        <Smartphone className="w-5 h-5" />
+                      </div>
+                      <h2 className="text-xl font-bold text-gray-900">Shorts</h2>
                     </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold group-hover:text-ice-accent transition-colors">{playlist.title}</h3>
-                    <p className="text-xs text-ice-muted mt-1">Обновлено недавно</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {activeTab === 'community' && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            {!canPostCommunity && (
-              <div className="glass p-6 rounded-2xl border border-ice-border text-center text-ice-muted">
-                <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p>Вкладка "Сообщество" доступна авторам с 10+ подписчиками.</p>
-              </div>
-            )}
-
-            {canPostCommunity && user?.uid === id && (
-              <div className="glass p-6 rounded-2xl border border-ice-border">
-                <form onSubmit={handleCreatePost}>
-                  <textarea
-                    value={newPostText}
-                    onChange={(e) => setNewPostText(e.target.value)}
-                    placeholder="Поделитесь чем-нибудь с вашим сообществом..."
-                    className="w-full bg-transparent border-b border-ice-border pb-2 focus:outline-none focus:border-ice-accent transition-colors resize-none h-24"
-                  />
-                  
-                  {postType === 'poll' && (
-                    <div className="mt-4 space-y-2">
-                      {pollOptions.map((opt, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <input
-                            type="text"
-                            value={opt}
-                            onChange={(e) => {
-                              const newOpts = [...pollOptions];
-                              newOpts[idx] = e.target.value;
-                              setPollOptions(newOpts);
-                            }}
-                            placeholder={`Вариант ${idx + 1}`}
-                            className="flex-1 bg-white/5 border border-ice-border rounded-lg px-3 py-2 focus:outline-none focus:border-ice-accent"
-                          />
+                    <div className="flex gap-5 overflow-x-auto pb-8 scrollbar-hide snap-x">
+                      {shortsVideos.map((video) => (
+                        <div key={video.id} className="snap-start shrink-0">
+                          <ShortCard video={video as any} />
                         </div>
                       ))}
-                      <button 
-                        type="button" 
-                        onClick={() => setPollOptions([...pollOptions, ''])}
-                        className="text-xs text-ice-accent hover:underline flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" /> Добавить вариант
-                      </button>
                     </div>
-                  )}
-
-                  <div className="flex justify-between items-center mt-4">
-                    <div className="flex gap-2">
-                      <button 
-                        type="button" 
-                        onClick={() => setPostType('text')}
-                        className={`p-2 rounded-lg transition-colors ${postType === 'text' ? 'bg-ice-accent/20 text-ice-accent' : 'hover:bg-white/5 text-ice-muted'}`}
-                      >
-                        <MessageSquare className="w-5 h-5" />
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={() => setPostType('poll')}
-                        className={`p-2 rounded-lg transition-colors ${postType === 'poll' ? 'bg-ice-accent/20 text-ice-accent' : 'hover:bg-white/5 text-ice-muted'}`}
-                      >
-                        <BarChart2 className="w-5 h-5" />
-                      </button>
+                  </section>
+                )}
+                {regularVideos.length > 0 && (
+                  <section>
+                    <h2 className="text-xl font-bold text-gray-900 mb-8">Все видео</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
+                      {regularVideos.map((video) => (
+                        <VideoCard key={video.id} video={video as any} />
+                      ))}
                     </div>
-                    <button 
-                      type="submit"
-                      disabled={!newPostText.trim() || isPosting}
-                      className="bg-ice-accent text-ice-bg px-6 py-2 rounded-full font-bold hover:bg-ice-accent/90 transition-colors disabled:opacity-50"
-                    >
-                      Опубликовать
-                    </button>
-                  </div>
-                </form>
+                  </section>
+                )}
               </div>
-            )}
+            )
+          )}
 
-            <div className="space-y-4">
-              {communityPosts.map(post => (
-                <div key={post.id} className="glass p-6 rounded-2xl border border-ice-border">
-                  <div className="flex items-center gap-3 mb-4">
-                    <img src={post.authorPhotoUrl} className="w-10 h-10 rounded-full border border-ice-accent" alt={post.authorName} />
-                    <div>
-                      <h4 className="font-bold">{post.authorName}</h4>
-                      <p className="text-xs text-ice-muted">
-                        {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
-                      </p>
+          {activeTab === 'playlists' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+              {playlists.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-32 text-gray-400">
+                  <PlaySquare className="w-16 h-16 mb-4 opacity-10" />
+                  <p className="text-lg font-bold">Плейлисты не созданы</p>
+                </div>
+              ) : (
+                playlists.map(playlist => (
+                  <div key={playlist.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 group cursor-pointer shadow-sm hover:shadow-md transition-all">
+                    <div className="aspect-video bg-gray-100 flex items-center justify-center relative">
+                      <PlaySquare className="w-12 h-12 text-gray-300 group-hover:text-red-600 transition-colors" />
+                      <div className="absolute bottom-3 right-3 bg-black/80 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-wider">
+                        {playlist.videoIds.length} видео
+                      </div>
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-1">{playlist.title}</h3>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Обновлено недавно</p>
                     </div>
                   </div>
-                  <p className="whitespace-pre-wrap mb-4">{post.text}</p>
-                  
-                  {post.type === 'poll' && post.pollOptions && (
-                    <div className="space-y-3 mb-4">
-                      {post.pollOptions.map((opt, idx) => {
-                        const totalVotes = post.pollOptions?.reduce((acc, o) => acc + o.votes, 0) || 1;
-                        const percentage = Math.round((opt.votes / totalVotes) * 100);
-                        const hasVoted = post.pollOptions?.some(o => o.voters.includes(user?.uid || ''));
-                        
-                        return (
-                          <button 
-                            key={idx}
-                            onClick={() => handleVote(post.id, idx)}
-                            disabled={!user || hasVoted}
-                            className="w-full relative h-10 rounded-lg border border-ice-border overflow-hidden text-left group"
-                          >
-                            <div 
-                              className="absolute inset-0 bg-ice-accent/20 transition-all duration-500" 
-                              style={{ width: hasVoted ? `${percentage}%` : '0%' }}
+                ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'community' && (
+            <div className="max-w-3xl mx-auto space-y-8">
+              {!canPostCommunity && (
+                <div className="bg-white p-10 rounded-2xl border border-gray-200 text-center shadow-sm">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <MessageSquare className="w-8 h-8 text-gray-300" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Сообщество пока недоступно</h3>
+                  <p className="text-sm text-gray-500">Вкладка "Сообщество" открывается авторам, набравшим более 10 подписчиков.</p>
+                </div>
+              )}
+
+              {canPostCommunity && user?.uid === id && (
+                <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+                  <form onSubmit={handleCreatePost} className="space-y-6">
+                    <div className="flex gap-4">
+                      <img src={user.photoURL || ''} className="w-10 h-10 rounded-full shrink-0" alt="" />
+                      <textarea
+                        value={newPostText}
+                        onChange={(e) => setNewPostText(e.target.value)}
+                        placeholder="Поделитесь новостью с вашими подписчиками..."
+                        className="w-full bg-transparent border-b border-gray-100 pb-4 focus:outline-none focus:border-red-600 transition-all resize-none h-28 text-sm font-medium"
+                      />
+                    </div>
+                    
+                    {postType === 'poll' && (
+                      <div className="ml-14 space-y-3">
+                        {pollOptions.map((opt, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <input
+                              type="text"
+                              value={opt}
+                              onChange={(e) => {
+                                const newOpts = [...pollOptions];
+                                newOpts[idx] = e.target.value;
+                                setPollOptions(newOpts);
+                              }}
+                              placeholder={`Вариант ${idx + 1}`}
+                              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                             />
-                            <div className="absolute inset-0 flex items-center justify-between px-4">
-                              <span className="font-medium text-sm">{opt.text}</span>
-                              {hasVoted && <span className="text-xs font-bold">{percentage}%</span>}
-                            </div>
-                          </button>
-                        );
-                      })}
-                      <p className="text-xs text-ice-muted">
-                        {post.pollOptions.reduce((acc, o) => acc + o.votes, 0)} голосов
-                      </p>
-                    </div>
-                  )}
+                          </div>
+                        ))}
+                        <button 
+                          type="button" 
+                          onClick={() => setPollOptions([...pollOptions, ''])}
+                          className="text-[10px] font-bold text-red-600 uppercase tracking-widest hover:underline flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3 h-3" /> Добавить вариант
+                        </button>
+                      </div>
+                    )}
 
-                  <div className="flex items-center gap-4 text-ice-muted">
-                    <button className="flex items-center gap-1 hover:text-ice-accent transition-colors">
-                      <ThumbsUp className="w-4 h-4" />
-                      <span className="text-xs">{post.likes}</span>
-                    </button>
-                    <button className="flex items-center gap-1 hover:text-ice-accent transition-colors">
-                      <MessageSquare className="w-4 h-4" />
-                      <span className="text-xs">0</span>
-                    </button>
+                    <div className="flex justify-between items-center ml-14">
+                      <div className="flex gap-2">
+                        <button 
+                          type="button" 
+                          onClick={() => setPostType('text')}
+                          className={`p-2.5 rounded-xl transition-all ${postType === 'text' ? 'bg-red-50 text-red-600' : 'hover:bg-gray-50 text-gray-400'}`}
+                        >
+                          <MessageSquare className="w-5 h-5" />
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setPostType('poll')}
+                          className={`p-2.5 rounded-xl transition-all ${postType === 'poll' ? 'bg-red-50 text-red-600' : 'hover:bg-gray-50 text-gray-400'}`}
+                        >
+                          <BarChart2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <button 
+                        type="submit"
+                        disabled={!newPostText.trim() || isPosting}
+                        className="bg-gray-900 text-white px-8 py-2 rounded-full font-bold text-sm hover:bg-gray-800 transition-all disabled:opacity-50 shadow-lg shadow-gray-100"
+                      >
+                        Опубликовать
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              <div className="space-y-6">
+                {communityPosts.map(post => (
+                  <div key={post.id} className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center gap-4 mb-6">
+                      <img src={post.authorPhotoUrl} className="w-10 h-10 rounded-full border border-gray-100" alt={post.authorName} />
+                      <div>
+                        <h4 className="font-bold text-gray-900 text-sm">{post.authorName}</h4>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                          {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="whitespace-pre-wrap mb-6 text-gray-800 leading-relaxed text-sm font-medium">{post.text}</p>
+                    
+                    {post.type === 'poll' && post.pollOptions && (
+                      <div className="space-y-3 mb-8">
+                        {post.pollOptions.map((opt, idx) => {
+                          const totalVotes = post.pollOptions?.reduce((acc, o) => acc + o.votes, 0) || 1;
+                          const percentage = Math.round((opt.votes / totalVotes) * 100);
+                          const hasVoted = post.pollOptions?.some(o => o.voters.includes(user?.uid || ''));
+                          
+                          return (
+                            <button 
+                              key={idx}
+                              onClick={() => handleVote(post.id, idx)}
+                              disabled={!user || hasVoted}
+                              className="w-full relative h-12 rounded-xl border border-gray-100 overflow-hidden text-left group transition-all hover:border-red-200"
+                            >
+                              <div 
+                                className="absolute inset-0 bg-red-50 transition-all duration-700" 
+                                style={{ width: hasVoted ? `${percentage}%` : '0%' }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-between px-5">
+                                <span className="font-bold text-sm text-gray-700">{opt.text}</span>
+                                {hasVoted && <span className="text-xs font-black text-red-600">{percentage}%</span>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">
+                          {post.pollOptions.reduce((acc, o) => acc + o.votes, 0)} голосов
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-6 text-gray-400 border-t border-gray-50 pt-6">
+                      <button className="flex items-center gap-2 hover:text-red-600 transition-colors group">
+                        <ThumbsUp className="w-4 h-4 group-hover:fill-red-600" />
+                        <span className="text-xs font-bold">{post.likes}</span>
+                      </button>
+                      <button className="flex items-center gap-2 hover:text-blue-600 transition-colors group">
+                        <MessageSquare className="w-4 h-4 group-hover:fill-blue-600" />
+                        <span className="text-xs font-bold">0</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'about' && (
+            <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
+              <div className="lg:col-span-2 space-y-10">
+                <section>
+                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <Info className="w-5 h-5 text-red-600" />
+                    Описание
+                  </h3>
+                  <p className="text-gray-600 whitespace-pre-wrap leading-relaxed font-medium">
+                    {authorInfo?.bio || 'Описание канала отсутствует.'}
+                  </p>
+                </section>
+                <div className="h-px bg-gray-200" />
+                <section>
+                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-blue-600" />
+                    Контакты
+                  </h3>
+                  <div className="flex items-center gap-3 text-sm font-bold text-gray-500 uppercase tracking-widest">
+                    <Globe className="w-4 h-4" />
+                    <span>Для коммерческих запросов: {authorInfo?.email || 'не указано'}</span>
+                  </div>
+                </section>
+              </div>
+              <aside className="space-y-8">
+                <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase tracking-widest text-xs">Статистика</h3>
+                  <div className="space-y-5">
+                    <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <Calendar className="w-4 h-4" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Регистрация</span>
+                      </div>
+                      <span className="text-sm font-bold text-gray-700">{authorInfo?.joinedAt ? new Date(authorInfo.joinedAt).toLocaleDateString('ru-RU') : '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <BarChart2 className="w-4 h-4" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Просмотры</span>
+                      </div>
+                      <span className="text-sm font-bold text-gray-700">{videos.reduce((acc, v) => acc + v.views, 0).toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
-              ))}
+              </aside>
             </div>
-          </div>
-        )}
-
-        {activeTab === 'about' && (
-          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
-              <div>
-                <h3 className="text-xl font-bold mb-4">Описание</h3>
-                <p className="text-ice-text/80 whitespace-pre-wrap">
-                  {authorInfo?.bio || 'Описание канала отсутствует.'}
-                </p>
-              </div>
-              <div className="h-px bg-ice-border" />
-              <div>
-                <h3 className="text-xl font-bold mb-4">Подробности</h3>
-                <div className="flex items-center gap-2 text-ice-muted">
-                  <MessageSquare className="w-5 h-5" />
-                  <span>Для коммерческих запросов: {authorInfo?.email || 'не указано'}</span>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold mb-4">Статистика</h3>
-              <div className="space-y-4 text-sm">
-                <div className="flex justify-between border-b border-ice-border pb-2">
-                  <span className="text-ice-muted">Дата регистрации:</span>
-                  <span>{authorInfo?.joinedAt ? new Date(authorInfo.joinedAt).toLocaleDateString('ru-RU') : '-'}</span>
-                </div>
-                <div className="flex justify-between border-b border-ice-border pb-2">
-                  <span className="text-ice-muted">Просмотры:</span>
-                  <span>{videos.reduce((acc, v) => acc + v.views, 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
