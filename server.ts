@@ -103,7 +103,7 @@ async function startServer() {
 
       const hashedPassword = await bcrypt.hash(password, 10);
       const id = crypto.randomUUID();
-      const photoURL = \`https://api.dicebear.com/7.x/avataaars/svg?seed=\${id}\`;
+      const photoURL = `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`;
 
       await db.run(
         'INSERT INTO users (id, email, password, displayName, photoURL) VALUES (?, ?, ?, ?, ?)',
@@ -147,7 +147,7 @@ async function startServer() {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    const url = \`/uploads/\${req.file.filename}\`;
+    const url = `/uploads/${req.file.filename}`;
     res.json({ url });
   });
 
@@ -158,8 +158,8 @@ async function startServer() {
       const id = crypto.randomUUID();
       
       await db.run(
-        \`INSERT INTO videos (id, title, description, category, videoUrl, thumbnailUrl, authorId, authorName, authorPhotoUrl, duration) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`,
+        `INSERT INTO videos (id, title, description, category, videoUrl, thumbnailUrl, authorId, authorName, authorPhotoUrl, duration) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [id, title, description, category, videoUrl, thumbnailUrl, req.user.id, req.user.displayName, req.user.photoURL, duration || '10:00']
       );
 
@@ -216,7 +216,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(\`Server running on http://localhost:\${PORT}\`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
