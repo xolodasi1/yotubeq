@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import VideoPlayer from './pages/VideoPlayer';
 import Channel from './pages/Channel';
 import Studio from './pages/Studio';
+import Shorts from './pages/Shorts';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -88,6 +89,7 @@ export default function App() {
             <main className="flex-1 overflow-y-auto">
               <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/shorts" element={<Shorts />} />
                 <Route path="/video/:id" element={<VideoPlayer />} />
                 <Route path="/channel/:id" element={<Channel />} />
                 <Route path="/studio" element={<Studio />} />

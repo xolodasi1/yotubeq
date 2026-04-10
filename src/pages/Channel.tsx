@@ -44,10 +44,14 @@ export default function Channel() {
         const userDoc = await getDoc(doc(db, 'users', id));
         let channelName = 'Ice Creator';
         let channelPhoto = `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`;
+        let channelBanner = null;
+        let channelBio = '';
 
         if (userDoc.exists()) {
           channelName = userDoc.data().displayName || channelName;
           channelPhoto = userDoc.data().photoURL || channelPhoto;
+          channelBanner = userDoc.data().bannerUrl || null;
+          channelBio = userDoc.data().bio || '';
         } else if (data && data.length > 0) {
           channelName = data[0].authorName;
           channelPhoto = data[0].authorPhotoUrl;
@@ -55,7 +59,9 @@ export default function Channel() {
 
         setAuthorInfo({
           name: channelName,
-          photoUrl: channelPhoto
+          photoUrl: channelPhoto,
+          bannerUrl: channelBanner,
+          bio: channelBio
         });
 
         // Fetch sub count
@@ -133,10 +139,16 @@ export default function Channel() {
     <div className="pb-24 md:pb-8">
       {/* Channel Banner */}
       <div className="h-48 md:h-64 bg-gradient-to-r from-ice-bg via-ice-accent/20 to-ice-bg relative overflow-hidden border-b border-ice-border">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Snowflake className="w-32 h-32 text-ice-accent opacity-10 animate-spin-slow" />
-        </div>
+        {authorInfo?.bannerUrl ? (
+          <img src={authorInfo.bannerUrl} alt="Channel Banner" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Snowflake className="w-32 h-32 text-ice-accent opacity-10 animate-spin-slow" />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 lg:px-8">
@@ -149,7 +161,10 @@ export default function Channel() {
           />
           <div className="flex-1 text-center md:text-left mb-2">
             <h1 className="text-3xl font-bold ice-text-glow mb-1">{authorInfo?.name}</h1>
-            <p className="text-ice-muted">@user-{id?.substring(0, 8)} • {subCount} subscribers • {videos.length} videos</p>
+            <p className="text-ice-muted mb-2">@user-{id?.substring(0, 8)} • {subCount} subscribers • {videos.length} videos</p>
+            {authorInfo?.bio && (
+              <p className="text-sm text-ice-text/80 max-w-2xl whitespace-pre-wrap">{authorInfo.bio}</p>
+            )}
           </div>
           <div className="mb-2">
             {user?.uid === id ? (

@@ -22,6 +22,7 @@ export interface UserProfile {
   displayName: string;
   email: string;
   photoURL: string;
+  bannerUrl?: string;
   subscribers: number;
   bio: string;
   joinedAt: any;

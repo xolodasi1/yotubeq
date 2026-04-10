@@ -4,8 +4,9 @@ import { Upload, Video as VideoIcon, Image as ImageIcon, X, Loader2, BarChart3, 
 import { VideoType } from '../types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, setDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { collection, query, where, orderBy, getDocs, setDoc, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 
 const MAX_VIDEO_SIZE_MB = 50; // 50MB limit for test
 const CLOUDINARY_CLOUD_NAME = 'du6zw4m8g';
@@ -30,11 +31,29 @@ export default function Studio() {
 
   // Channel Customization
   const [channelName, setChannelName] = useState('');
+  const [bio, setBio] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [bannerPreview, setBannerPreview] = useState('');
   const [savingChannel, setSavingChannel] = useState(false);
 
   useEffect(() => {
     if (user) {
       setChannelName(user.displayName || '');
+      setAvatarPreview(user.photoURL || '');
+      
+      // Fetch extra user details (bio, banner)
+      const fetchUserDetails = async () => {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setBio(data.bio || '');
+          if (data.bannerUrl) setBannerPreview(data.bannerUrl);
+          if (data.photoURL) setAvatarPreview(data.photoURL);
+        }
+      };
+      fetchUserDetails();
     }
   }, [user]);
 
@@ -91,7 +110,7 @@ export default function Studio() {
     setVideoFile(file);
   };
 
-  const uploadFile = (file: File, folder: string, onProgress: (progress: number) => void): Promise<string> => {
+  const uploadFile = (file: File, folder: string, onProgress?: (progress: number) => void): Promise<string> => {
     return new Promise((resolve, reject) => {
       const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
       const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
@@ -105,7 +124,7 @@ export default function Studio() {
       xhr.open('POST', url, true);
 
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
+        if (e.lengthComputable && onProgress) {
           const progress = (e.loaded / e.total) * 100;
           onProgress(progress);
         }
@@ -129,7 +148,7 @@ export default function Studio() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !videoFile || !thumbnailFile || uploading) return;
+    if (!user || !videoFile || uploading) return;
 
     setUploading(true);
     setUploadProgress(0);
@@ -138,9 +157,12 @@ export default function Studio() {
         setUploadProgress(Math.round(progress * 0.8));
       });
 
-      const thumbnailUrl = await uploadFile(thumbnailFile, 'thumbnails', (progress) => {
-        setUploadProgress(80 + Math.round(progress * 0.1));
-      });
+      let thumbnailUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
+      if (thumbnailFile) {
+        thumbnailUrl = await uploadFile(thumbnailFile, 'thumbnails', (progress) => {
+          setUploadProgress(80 + Math.round(progress * 0.1));
+        });
+      }
 
       setUploadProgress(95);
 
@@ -148,7 +170,7 @@ export default function Studio() {
       const newVideoData = {
         id: videoId,
         title,
-        description,
+        description: description || '',
         category,
         videoUrl,
         thumbnailUrl,
@@ -186,13 +208,7 @@ export default function Studio() {
     if (!window.confirm('Are you sure you want to delete this video? This action cannot be undone.')) return;
 
     try {
-      // Delete from Firestore
       await deleteDoc(doc(db, 'videos', videoId));
-
-      // Note: Deleting from Cloudinary requires a secure backend (Admin API). 
-      // For this frontend-only implementation, we just remove the database record.
-      // The file will remain in Cloudinary, which is fine for a free tier prototype.
-
       setVideos(videos.filter(v => v.id !== videoId));
       toast.success('Video deleted');
     } catch (error) {
@@ -205,10 +221,35 @@ export default function Studio() {
     if (!user || !channelName.trim()) return;
     setSavingChannel(true);
     try {
+      let newAvatarUrl = avatarPreview;
+      let newBannerUrl = bannerPreview;
+
+      if (avatarFile) {
+        newAvatarUrl = await uploadFile(avatarFile, 'avatars');
+      }
+      if (bannerFile) {
+        newBannerUrl = await uploadFile(bannerFile, 'banners');
+      }
+
+      // Update Firestore user document
       await updateDoc(doc(db, 'users', user.uid), {
-        displayName: channelName
+        displayName: channelName,
+        bio: bio,
+        photoURL: newAvatarUrl,
+        bannerUrl: newBannerUrl
       });
+
+      // Update Auth Profile
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: channelName,
+          photoURL: newAvatarUrl
+        });
+      }
+
       toast.success('Channel updated! (Refresh to see changes globally)');
+      setAvatarFile(null);
+      setBannerFile(null);
     } catch (error: any) {
       toast.error('Failed to update channel');
     } finally {
@@ -300,14 +341,13 @@ export default function Studio() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-ice-muted mb-1">Thumbnail</label>
+                    <label className="block text-sm font-medium text-ice-muted mb-1">Thumbnail (Optional)</label>
                     <div className="relative border-2 border-dashed border-ice-border rounded-xl p-4 hover:border-ice-accent transition-colors text-center cursor-pointer bg-black/20">
                       <input
                         type="file"
                         accept="image/*"
                         onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        required
                       />
                       {thumbnailFile ? (
                         <div className="flex items-center justify-center gap-2 text-ice-accent">
@@ -350,12 +390,11 @@ export default function Studio() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-ice-muted mb-1">Description</label>
+                    <label className="block text-sm font-medium text-ice-muted mb-1">Description (Optional)</label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       className="w-full bg-black/40 border border-ice-border rounded-lg py-2 px-4 focus:outline-none focus:border-ice-accent text-ice-text h-24 resize-none"
-                      required
                       placeholder="Tell viewers about your video..."
                     />
                   </div>
@@ -377,7 +416,7 @@ export default function Studio() {
 
                   <button
                     type="submit"
-                    disabled={uploading || !videoFile || !thumbnailFile || !title}
+                    disabled={uploading || !videoFile || !title}
                     className="w-full bg-ice-accent text-ice-bg font-bold py-3 rounded-xl hover:bg-ice-accent/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,242,255,0.3)]"
                   >
                     {uploading ? (
@@ -475,6 +514,57 @@ export default function Studio() {
           <div className="glass p-6 rounded-2xl border border-ice-border max-w-2xl">
             <h2 className="text-xl font-bold mb-6">Channel Customization</h2>
             <div className="space-y-6">
+              
+              {/* Avatar Upload */}
+              <div>
+                <label className="block text-sm font-medium text-ice-muted mb-2">Profile Picture</label>
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={avatarPreview || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`} 
+                    alt="Avatar Preview" 
+                    className="w-20 h-20 rounded-full border-2 border-ice-accent object-cover"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setAvatarFile(file);
+                          setAvatarPreview(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="block w-full text-sm text-ice-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-ice-accent/10 file:text-ice-accent hover:file:bg-ice-accent/20 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Banner Upload */}
+              <div>
+                <label className="block text-sm font-medium text-ice-muted mb-2">Channel Banner</label>
+                <div className="space-y-3">
+                  {bannerPreview && (
+                    <div className="w-full h-32 rounded-xl overflow-hidden border border-ice-border relative">
+                      <img src={bannerPreview} alt="Banner Preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setBannerFile(file);
+                        setBannerPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="block w-full text-sm text-ice-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-ice-accent/10 file:text-ice-accent hover:file:bg-ice-accent/20 transition-colors"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-ice-muted mb-2">Channel Name</label>
                 <input
@@ -485,9 +575,20 @@ export default function Studio() {
                 />
                 <p className="text-xs text-ice-muted mt-2">Choose a name that represents you and your content.</p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ice-muted mb-2">Description (Bio)</label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="w-full bg-black/40 border border-ice-border rounded-lg py-3 px-4 focus:outline-none focus:border-ice-accent text-ice-text h-24 resize-none"
+                  placeholder="Tell viewers about your channel..."
+                />
+              </div>
+
               <button
                 onClick={handleSaveChannel}
-                disabled={savingChannel || !channelName.trim() || channelName === user.displayName}
+                disabled={savingChannel || !channelName.trim()}
                 className="bg-ice-accent text-ice-bg font-bold py-2 px-6 rounded-xl hover:bg-ice-accent/90 transition-all disabled:opacity-50"
               >
                 {savingChannel ? 'Saving...' : 'Publish Changes'}
