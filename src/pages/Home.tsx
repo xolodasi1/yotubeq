@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2 } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
 const CATEGORIES = ['All', 'Gaming', 'Music', 'Education', 'Entertainment', 'Tech', 'Winter Sports', 'Arctic Tech', 'Chill'];
 
@@ -16,8 +18,12 @@ export default function Home() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const res = await fetch('/api/videos');
-        const data = await res.json();
+        const q = query(collection(db, 'videos'), orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(doc => ({
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()?.toISOString()
+        })) as VideoType[];
         setVideos(data);
       } catch (error) {
         console.error("Error fetching videos:", error);

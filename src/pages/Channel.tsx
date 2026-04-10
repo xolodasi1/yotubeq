@@ -4,6 +4,8 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, Snowflake } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 
 export default function Channel() {
   const { id } = useParams<{ id: string }>();
@@ -17,8 +19,16 @@ export default function Channel() {
     
     const fetchVideos = async () => {
       try {
-        const res = await fetch(`/api/videos?authorId=${id}`);
-        const data = await res.json();
+        const q = query(
+          collection(db, 'videos'),
+          where('authorId', '==', id),
+          orderBy('createdAt', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(doc => ({
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()?.toISOString()
+        })) as VideoType[];
         
         setVideos(data || []);
         if (data && data.length > 0) {

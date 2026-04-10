@@ -7,6 +7,9 @@ import Home from './pages/Home';
 import VideoPlayer from './pages/VideoPlayer';
 import Channel from './pages/Channel';
 import Studio from './pages/Studio';
+import { auth, db } from './lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface User {
   uid: string;
@@ -18,15 +21,11 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (token: string, user: User) => void;
-  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  login: () => {},
-  logout: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -36,35 +35,40 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.user) {
-          setUser(data.user);
-        } else {
-          localStorage.removeItem('token');
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userData: User = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
+        };
+        setUser(userData);
+
+        // Ensure user exists in Firestore
+        try {
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              uid: userData.uid,
+              email: userData.email,
+              displayName: userData.displayName,
+              photoURL: userData.photoURL,
+              createdAt: new Date()
+            });
+          }
+        } catch (error) {
+          console.error("Error saving user to Firestore:", error);
         }
-      })
-      .catch(() => localStorage.removeItem('token'))
-      .finally(() => setLoading(false));
-    } else {
+      } else {
+        setUser(null);
+      }
       setLoading(false);
-    }
+    });
+
+    return () => unsubscribe();
   }, []);
-
-  const login = (token: string, userData: User) => {
-    localStorage.setItem('token', token);
-    setUser(userData);
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-  };
 
   if (loading) {
     return (
@@ -75,7 +79,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading }}>
       <Router>
         <div className="min-h-screen bg-ice-bg text-ice-text flex flex-col">
           <Navbar />

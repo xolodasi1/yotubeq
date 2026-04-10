@@ -5,6 +5,8 @@ import { VideoType } from '../types';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import VideoCard from '../components/VideoCard';
+import { db } from '../lib/firebase';
+import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 
 export default function VideoPlayer() {
   const { id } = useParams<{ id: string }>();
@@ -21,15 +23,36 @@ export default function VideoPlayer() {
     const fetchVideo = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/videos/${id}`);
-        if (!res.ok) throw new Error('Video not found');
-        const data = await res.json();
+        const videoRef = doc(db, 'videos', id);
+        const videoSnap = await getDoc(videoRef);
+        
+        if (!videoSnap.exists()) {
+          throw new Error('Video not found');
+        }
+        
+        const data = {
+          ...videoSnap.data(),
+          createdAt: videoSnap.data().createdAt?.toDate()?.toISOString()
+        } as VideoType;
+        
         setVideo(data);
 
+        // Increment views
+        await updateDoc(videoRef, {
+          views: data.views + 1
+        });
+
         // Fetch related videos
-        const relatedRes = await fetch('/api/videos');
-        const relatedData = await relatedRes.json();
-        setRelatedVideos(relatedData.filter((v: any) => v.id !== id).slice(0, 10));
+        const relatedQ = query(collection(db, 'videos'), limit(10));
+        const relatedSnap = await getDocs(relatedQ);
+        const relatedData = relatedSnap.docs
+          .map(doc => ({
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate()?.toISOString()
+          }))
+          .filter((v: any) => v.id !== id) as VideoType[];
+          
+        setRelatedVideos(relatedData);
       } catch (error) {
         console.error("Error fetching video:", error);
       } finally {

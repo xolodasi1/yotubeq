@@ -4,6 +4,9 @@ import { Upload, Video as VideoIcon, Image as ImageIcon, X, Loader2 } from 'luci
 import { VideoType } from '../types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { db, storage } from '../lib/firebase';
+import { collection, query, where, orderBy, getDocs, setDoc, doc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export default function Studio() {
   const { user } = useAuth();
@@ -23,8 +26,16 @@ export default function Studio() {
     if (!user) return;
     const fetchVideos = async () => {
       try {
-        const res = await fetch(`/api/videos?authorId=${user.uid}`);
-        const data = await res.json();
+        const q = query(
+          collection(db, 'videos'),
+          where('authorId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(doc => ({
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()?.toISOString()
+        })) as VideoType[];
         setVideos(data);
       } catch (error) {
         console.error("Error fetching videos:", error);
@@ -35,52 +46,29 @@ export default function Studio() {
     fetchVideos();
   }, [user]);
 
-  const uploadFile = (file: File, onProgress: (progress: number) => void): Promise<string> => {
+  const uploadFile = (file: File, folder: string, onProgress: (progress: number) => void): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const formData = new FormData();
-      formData.append('file', file);
+      if (!user) return reject(new Error('Not authenticated'));
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const storageRef = ref(storage, `${folder}/${user.uid}/${fileName}`);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file);
 
-      const token = localStorage.getItem('token');
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           onProgress(progress);
+        }, 
+        (error) => {
+          reject(error);
+        }, 
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
         }
-      });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve(response.url);
-          } catch (e) {
-            reject(new Error('Invalid response from server'));
-          }
-        } else {
-          try {
-            const errorData = JSON.parse(xhr.responseText);
-            reject(new Error(errorData.error || 'Upload failed'));
-          } catch (e) {
-            if (xhr.status === 413) {
-              reject(new Error('File is too large! Please try a smaller video.'));
-            } else {
-              reject(new Error(`Upload failed (Status ${xhr.status}). The file might be too large.`));
-            }
-          }
-        }
-      });
-
-      xhr.addEventListener('error', () => {
-        reject(new Error('Network error during upload. The file might be too large.'));
-      });
-
-      xhr.open('POST', '/api/upload');
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      }
-      xhr.send(formData);
+      );
     });
   };
 
@@ -92,39 +80,38 @@ export default function Studio() {
     setUploadProgress(0);
     try {
       // Upload video (takes up 0-80% of the progress bar)
-      const videoUrl = await uploadFile(videoFile, (progress) => {
+      const videoUrl = await uploadFile(videoFile, 'videos', (progress) => {
         setUploadProgress(Math.round(progress * 0.8));
       });
 
       // Upload thumbnail (takes up 80-90% of the progress bar)
-      const thumbnailUrl = await uploadFile(thumbnailFile, (progress) => {
+      const thumbnailUrl = await uploadFile(thumbnailFile, 'thumbnails', (progress) => {
         setUploadProgress(80 + Math.round(progress * 0.1));
       });
 
       setUploadProgress(95);
 
       // Create video record
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/videos', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          category,
-          videoUrl,
-          thumbnailUrl,
-          duration: '10:00'
-        })
-      });
+      const videoId = crypto.randomUUID();
+      const newVideoData = {
+        id: videoId,
+        title,
+        description,
+        category,
+        videoUrl,
+        thumbnailUrl,
+        authorId: user.uid,
+        authorName: user.displayName,
+        authorPhotoUrl: user.photoURL,
+        views: 0,
+        likes: 0,
+        createdAt: new Date(),
+        duration: '10:00'
+      };
 
-      if (!res.ok) throw new Error('Failed to create video record');
-      const newVideo = await res.json();
+      await setDoc(doc(db, 'videos', videoId), newVideoData);
 
-      setVideos([newVideo, ...videos]);
+      setVideos([{...newVideoData, createdAt: newVideoData.createdAt.toISOString()} as any, ...videos]);
       
       // Reset form
       setTitle('');
