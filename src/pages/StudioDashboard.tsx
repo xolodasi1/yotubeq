@@ -31,7 +31,14 @@ export default function StudioDashboard() {
           limit(5)
         );
         const vSnapshot = await getDocs(vq);
-        const vData = vSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoType));
+        const vData = vSnapshot.docs.map(doc => {
+          const videoData = doc.data();
+          return {
+            id: doc.id,
+            ...videoData,
+            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
+          } as VideoType;
+        });
         setVideos(vData);
 
         const allVq = query(collection(db, 'videos'), where('authorId', '==', user.uid));

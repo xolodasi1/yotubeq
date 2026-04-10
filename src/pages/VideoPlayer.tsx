@@ -102,7 +102,7 @@ export default function VideoPlayer() {
         
         const data = {
           ...videoSnap.data(),
-          createdAt: videoSnap.data().createdAt?.toDate()?.toISOString()
+          createdAt: videoSnap.data().createdAt?.toDate?.()?.toISOString() || videoSnap.data().createdAt
         } as VideoType;
         
         setVideo(data);
@@ -127,10 +127,13 @@ export default function VideoPlayer() {
         const relatedQ = query(collection(db, 'videos'), limit(10));
         const relatedSnap = await getDocs(relatedQ);
         const relatedData = relatedSnap.docs
-          .map(d => ({
-            ...d.data(),
-            createdAt: d.data().createdAt?.toDate()?.toISOString()
-          }))
+          .map(d => {
+            const vData = d.data();
+            return {
+              ...vData,
+              createdAt: vData.createdAt?.toDate?.()?.toISOString() || vData.createdAt
+            };
+          })
           .filter((v: any) => v.id !== id) as VideoType[];
           
         setRelatedVideos(relatedData);
@@ -138,10 +141,13 @@ export default function VideoPlayer() {
         // Fetch comments
         const commentsQ = query(collection(db, 'comments'), where('videoId', '==', id), orderBy('createdAt', 'desc'));
         const commentsSnap = await getDocs(commentsQ);
-        setComments(commentsSnap.docs.map(d => ({
-          ...d.data(),
-          createdAt: d.data().createdAt?.toDate()?.toISOString()
-        })) as Comment[]);
+        setComments(commentsSnap.docs.map(d => {
+          const cData = d.data();
+          return {
+            ...cData,
+            createdAt: cData.createdAt?.toDate?.()?.toISOString() || cData.createdAt
+          };
+        }) as Comment[]);
 
         // Fetch user interactions if logged in
         if (user) {

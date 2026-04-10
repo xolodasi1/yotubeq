@@ -21,11 +21,14 @@ export default function Home() {
       try {
         const q = query(collection(db, 'videos'), orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id,
-          createdAt: doc.data().createdAt
-        })) as VideoType[];
+        const data = querySnapshot.docs.map(doc => {
+          const videoData = doc.data();
+          return {
+            ...videoData,
+            id: doc.id,
+            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
+          };
+        }) as VideoType[];
         setVideos(data);
       } catch (error) {
         console.error("Error fetching videos:", error);

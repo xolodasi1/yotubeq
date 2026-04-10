@@ -48,10 +48,13 @@ export default function Channel() {
           orderBy('createdAt', 'desc')
         );
         const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          createdAt: doc.data().createdAt
-        })) as VideoType[];
+        const data = querySnapshot.docs.map(doc => {
+          const videoData = doc.data();
+          return {
+            ...videoData,
+            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
+          };
+        }) as VideoType[];
         
         setVideos(data || []);
 
@@ -115,10 +118,13 @@ export default function Channel() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const posts = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        createdAt: doc.data().createdAt
-      })) as CommunityPost[];
+      const posts = snapshot.docs.map(doc => {
+        const postData = doc.data();
+        return {
+          ...postData,
+          createdAt: postData.createdAt?.toDate?.()?.toISOString() || postData.createdAt
+        };
+      }) as CommunityPost[];
       setCommunityPosts(posts);
     });
 

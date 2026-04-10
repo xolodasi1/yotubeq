@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Eye, ThumbsUp } from 'lucide-react';
 
-export default function VideoCard({ video }: { video: Video }) {
+export default function VideoCard({ video }: { video: Video; key?: string }) {
   const navigate = useNavigate();
   const formattedDate = video.createdAt 
     ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru }) 

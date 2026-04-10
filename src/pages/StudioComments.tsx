@@ -45,11 +45,15 @@ export default function StudioComments() {
           limit(50)
         );
         const cSnapshot = await getDocs(cq);
-        const cData = cSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          videoTitle: videoTitlesMap[doc.data().videoId]
-        } as CommentWithVideo));
+        const cData = cSnapshot.docs.map(doc => {
+          const commentData = doc.data();
+          return {
+            id: doc.id,
+            ...commentData,
+            createdAt: commentData.createdAt?.toDate?.()?.toISOString() || commentData.createdAt,
+            videoTitle: videoTitlesMap[commentData.videoId]
+          } as CommentWithVideo;
+        });
 
         setComments(cData);
       } catch (error) {

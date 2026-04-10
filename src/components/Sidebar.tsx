@@ -17,26 +17,25 @@ const mainItems = [
   { icon: ListMusic, label: 'Плейлисты', path: '/playlists' },
 ];
 
+const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: any, label: string, path: string, isActive: boolean, key?: string }) => {
+  return (
+    <Link
+      to={path}
+      className={`flex items-center gap-4 px-6 py-3 transition-all ${
+        isActive 
+          ? 'bg-gray-100 text-red-600 border-r-4 border-red-600' 
+          : 'hover:bg-gray-50 text-gray-600 hover:text-black'
+      }`}
+    >
+      <Icon className={`w-5 h-5 ${isActive ? 'text-red-600' : ''}`} />
+      <span className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
+    </Link>
+  );
+};
+
 export default function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
-
-  const SidebarItem = ({ icon: Icon, label, path }: { icon: any, label: string, path: string }) => {
-    const isActive = location.pathname === path;
-    return (
-      <Link
-        to={path}
-        className={`flex items-center gap-4 px-6 py-3 transition-all ${
-          isActive 
-            ? 'bg-gray-100 text-red-600 border-r-4 border-red-600' 
-            : 'hover:bg-gray-50 text-gray-600 hover:text-black'
-        }`}
-      >
-        <Icon className={`w-5 h-5 ${isActive ? 'text-red-600' : ''}`} />
-        <span className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
-      </Link>
-    );
-  };
 
   return (
     <>
@@ -61,20 +60,20 @@ export default function Sidebar() {
         <div className="flex flex-col">
           <div className="px-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Студия</div>
           {studioItems.map((item) => (
-            <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} />
+            <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} isActive={location.pathname === item.path} />
           ))}
         </div>
 
         <div className="mt-8 flex flex-col border-t border-gray-100 pt-6">
           <div className="px-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Навигация</div>
           {mainItems.map((item) => (
-            <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} />
+            <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} isActive={location.pathname === item.path} />
           ))}
         </div>
 
         <div className="mt-auto flex flex-col border-t border-gray-100 pt-4">
-          <SidebarItem icon={Settings} label="Настройки" path="/settings" />
-          <SidebarItem icon={HelpCircle} label="Справка" path="/help" />
+          <SidebarItem icon={Settings} label="Настройки" path="/settings" isActive={location.pathname === '/settings'} />
+          <SidebarItem icon={HelpCircle} label="Справка" path="/help" isActive={location.pathname === '/help'} />
         </div>
       </aside>
 

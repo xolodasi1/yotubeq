@@ -27,7 +27,14 @@ export default function StudioContent() {
           orderBy('createdAt', 'desc')
         );
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoType));
+        const data = snapshot.docs.map(doc => {
+          const videoData = doc.data();
+          return {
+            id: doc.id,
+            ...videoData,
+            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
+          } as VideoType;
+        });
         setVideos(data);
       } catch (error) {
         console.error("Error fetching studio content:", error);
