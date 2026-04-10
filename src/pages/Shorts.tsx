@@ -64,10 +64,10 @@ export default function Shorts() {
 
   if (shorts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-ice-muted">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-ice-muted px-4 text-center">
         <Smartphone className="w-16 h-16 mb-4 opacity-20" />
-        <h2 className="text-2xl font-bold">No Shorts Found</h2>
-        <p className="mt-2">Upload some vertical videos to see them here!</p>
+        <h2 className="text-2xl font-bold">Shorts не найдены</h2>
+        <p className="mt-2">Загрузите вертикальные видео, чтобы увидеть их здесь!</p>
       </div>
     );
   }
@@ -101,38 +101,38 @@ export default function Shorts() {
             <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 md:pb-6 flex items-end justify-between pointer-events-none">
               <div className="flex-1 pr-12 pointer-events-auto">
                 <Link to={`/channel/${short.authorId}`} className="flex items-center gap-2 mb-3 group w-fit">
-                  <img src={short.authorPhotoUrl} alt={short.authorName} className="w-10 h-10 rounded-full border border-ice-accent" />
-                  <span className="font-bold text-white group-hover:text-ice-accent transition-colors">{short.authorName}</span>
-                  <button className="ml-2 bg-white text-black px-3 py-1 rounded-full text-xs font-bold hover:bg-gray-200">Subscribe</button>
+                  <img src={short.authorPhotoUrl} alt={short.authorName} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-ice-accent" />
+                  <span className="font-bold text-white text-sm md:text-base group-hover:text-ice-accent transition-colors">{short.authorName}</span>
+                  <button className="ml-2 bg-white text-black px-3 py-1 rounded-full text-[10px] md:text-xs font-bold hover:bg-gray-200">Подписаться</button>
                 </Link>
-                <h3 className="text-white font-medium mb-1 line-clamp-2">{short.title}</h3>
-                {short.description && <p className="text-white/80 text-sm line-clamp-2">{short.description}</p>}
+                <h3 className="text-white font-medium mb-1 line-clamp-2 text-sm md:text-base">{short.title}</h3>
+                {short.description && <p className="text-white/80 text-xs md:text-sm line-clamp-2">{short.description}</p>}
               </div>
 
-              <div className="flex flex-col items-center gap-6 pointer-events-auto">
+              <div className="flex flex-col items-center gap-4 md:gap-6 pointer-events-auto">
                 <button className="flex flex-col items-center gap-1 group">
-                  <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                    <ThumbsUp className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <ThumbsUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
-                  <span className="text-white text-xs font-medium">{short.likes}</span>
+                  <span className="text-white text-[10px] md:text-xs font-medium">{short.likes}</span>
                 </button>
                 <button className="flex flex-col items-center gap-1 group">
-                  <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                    <ThumbsDown className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <ThumbsDown className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
-                  <span className="text-white text-xs font-medium">Dislike</span>
+                  <span className="text-white text-[10px] md:text-xs font-medium">Дизлайк</span>
                 </button>
                 <Link to={`/video/${short.id}`} className="flex flex-col items-center gap-1 group">
-                  <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                    <MessageSquare className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <MessageSquare className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
-                  <span className="text-white text-xs font-medium">Comments</span>
+                  <span className="text-white text-[10px] md:text-xs font-medium">Комменты</span>
                 </Link>
                 <button className="flex flex-col items-center gap-1 group">
-                  <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                    <Share2 className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <Share2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
-                  <span className="text-white text-xs font-medium">Share</span>
+                  <span className="text-white text-[10px] md:text-xs font-medium">Поделиться</span>
                 </button>
               </div>
             </div>

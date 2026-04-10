@@ -90,11 +90,11 @@ export default function Channel() {
 
   const handleSubscribe = async () => {
     if (!user || !id) {
-      toast.error('Please login to subscribe');
+      toast.error('Пожалуйста, войдите, чтобы подписаться');
       return;
     }
     if (user.uid === id) {
-      toast.error("You can't subscribe to yourself");
+      toast.error("Вы не можете подписаться на самого себя");
       return;
     }
 
@@ -108,7 +108,7 @@ export default function Channel() {
         await updateDoc(channelRef, { subscribers: increment(-1) }).catch(() => {});
         setIsSubscribed(false);
         setSubCount(Math.max(0, subCount - 1));
-        toast.success('Unsubscribed');
+        toast.success('Вы отписались');
       } else {
         await setDoc(subRef, {
           id: subId,
@@ -119,11 +119,11 @@ export default function Channel() {
         await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
         setIsSubscribed(true);
         setSubCount(subCount + 1);
-        toast.success('Subscribed!');
+        toast.success('Вы подписались!');
       }
     } catch (error) {
       console.error("Error toggling subscription:", error);
-      toast.error('Failed to update subscription');
+      toast.error('Не удалось обновить подписку');
     }
   };
 
@@ -141,92 +141,92 @@ export default function Channel() {
   return (
     <div className="pb-24 md:pb-8">
       {/* Channel Banner */}
-      <div className="h-48 md:h-64 bg-gradient-to-r from-ice-bg via-ice-accent/20 to-ice-bg relative overflow-hidden border-b border-ice-border">
+      <div className="h-32 md:h-64 bg-gradient-to-r from-ice-bg via-ice-accent/20 to-ice-bg relative overflow-hidden border-b border-ice-border">
         {authorInfo?.bannerUrl ? (
-          <img src={authorInfo.bannerUrl} alt="Channel Banner" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={authorInfo.bannerUrl} alt="Баннер канала" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <>
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <Snowflake className="w-32 h-32 text-ice-accent opacity-10 animate-spin-slow" />
+              <Snowflake className="w-20 md:w-32 h-20 md:h-32 text-ice-accent opacity-10 animate-spin-slow" />
             </div>
           </>
         )}
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-4 md:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-3 md:px-6 lg:px-8">
         {/* Channel Info */}
-        <div className="flex flex-col md:flex-row items-center md:items-end gap-6 -mt-12 md:-mt-16 mb-8 relative z-10">
+        <div className="flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-6 -mt-10 md:-mt-16 mb-6 md:mb-8 relative z-10">
           <img
             src={authorInfo?.photoUrl}
-            alt="Channel avatar"
-            className="w-32 h-32 rounded-full border-4 border-ice-bg shadow-[0_0_20px_rgba(0,242,255,0.3)] bg-ice-bg object-cover"
+            alt="Аватар канала"
+            className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-ice-bg shadow-[0_0_20px_rgba(0,242,255,0.3)] bg-ice-bg object-cover"
           />
-          <div className="flex-1 text-center md:text-left mb-2">
-            <h1 className="text-3xl font-bold ice-text-glow mb-1">{authorInfo?.name}</h1>
-            <p className="text-ice-muted mb-2">@user-{id?.substring(0, 8)} • {subCount} subscribers • {videos.length} videos</p>
+          <div className="flex-1 text-center md:text-left mb-1 md:mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold ice-text-glow mb-1">{authorInfo?.name}</h1>
+            <p className="text-xs md:text-sm text-ice-muted mb-2">@user-{id?.substring(0, 8)} • {subCount} подписчиков • {videos.length} видео</p>
             {authorInfo?.bio && (
-              <p className="text-sm text-ice-text/80 max-w-2xl whitespace-pre-wrap">{authorInfo.bio}</p>
+              <p className="text-xs md:text-sm text-ice-text/80 max-w-2xl whitespace-pre-wrap line-clamp-3 md:line-clamp-none">{authorInfo.bio}</p>
             )}
           </div>
-          <div className="mb-2">
+          <div className="mb-1 md:mb-2 w-full md:w-auto px-4 md:px-0">
             {user?.uid === id ? (
-              <Link to="/studio" className="bg-white/10 hover:bg-white/20 border border-ice-border px-6 py-2 rounded-full font-bold transition-colors inline-block">
-                Customize Channel
+              <Link to="/studio" className="w-full md:w-auto text-center bg-white/10 hover:bg-white/20 border border-ice-border px-6 py-2 rounded-full font-bold transition-colors inline-block text-sm md:text-base">
+                Настроить канал
               </Link>
             ) : (
               <button 
                 onClick={handleSubscribe}
-                className={`px-8 py-2 rounded-full font-bold transition-colors shadow-[0_0_15px_rgba(255,255,255,0.2)] ${
+                className={`w-full md:w-auto px-8 py-2 rounded-full font-bold transition-colors shadow-[0_0_15px_rgba(255,255,255,0.2)] text-sm md:text-base ${
                   isSubscribed 
                     ? 'bg-white/10 text-ice-text hover:bg-white/20' 
                     : 'bg-ice-text text-ice-bg hover:bg-white/90'
                 }`}
               >
-                {isSubscribed ? 'Subscribed' : 'Subscribe'}
+                {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
               </button>
             )}
           </div>
         </div>
 
         {/* Navigation */}
-        <div className="flex gap-8 border-b border-ice-border mb-8">
-          <button className="pb-4 border-b-2 border-ice-accent font-medium text-ice-accent">Videos</button>
-          <button className="pb-4 font-medium text-ice-muted hover:text-ice-text transition-colors">Playlists</button>
-          <button className="pb-4 font-medium text-ice-muted hover:text-ice-text transition-colors">Community</button>
-          <button className="pb-4 font-medium text-ice-muted hover:text-ice-text transition-colors">About</button>
+        <div className="flex gap-4 md:gap-8 border-b border-ice-border mb-6 md:mb-8 overflow-x-auto scrollbar-hide">
+          <button className="pb-3 md:pb-4 border-b-2 border-ice-accent font-medium text-ice-accent whitespace-nowrap text-sm md:text-base">Видео</button>
+          <button className="pb-3 md:pb-4 font-medium text-ice-muted hover:text-ice-text transition-colors whitespace-nowrap text-sm md:text-base">Плейлисты</button>
+          <button className="pb-3 md:pb-4 font-medium text-ice-muted hover:text-ice-text transition-colors whitespace-nowrap text-sm md:text-base">Сообщество</button>
+          <button className="pb-3 md:pb-4 font-medium text-ice-muted hover:text-ice-text transition-colors whitespace-nowrap text-sm md:text-base">О канале</button>
         </div>
 
         {/* Videos Grid */}
         {videos.length === 0 ? (
           <div className="text-center py-20 text-ice-muted">
-            <p className="text-xl">This channel hasn't uploaded any videos yet.</p>
+            <p className="text-lg md:text-xl">Этот канал еще не загрузил ни одного видео.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-10">
+          <div className="flex flex-col gap-8 md:gap-10">
             {/* Shorts Section */}
             {shortsVideos.length > 0 && (
               <div>
-                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                  <Smartphone className="w-6 h-6 text-ice-accent" />
+                <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 md:w-6 md:h-6 text-ice-accent" />
                   Shorts
                 </h2>
-                <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x">
+                <div className="flex gap-3 md:gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x">
                   {shortsVideos.map((video) => (
                     <div key={video.id} className="snap-start">
                       <ShortCard video={video as any} />
                     </div>
                   ))}
                 </div>
-                <div className="w-full h-px bg-ice-border mt-4"></div>
+                <div className="w-full h-px bg-ice-border mt-2 md:mt-4"></div>
               </div>
             )}
 
             {/* Regular Videos Section */}
             {regularVideos.length > 0 && (
               <div>
-                <h2 className="text-2xl font-bold mb-6">Videos</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+                <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Видео</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-10">
                   {regularVideos.map((video) => (
                     <VideoCard key={video.id} video={video as any} />
                   ))}

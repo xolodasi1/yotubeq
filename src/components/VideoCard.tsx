@@ -8,7 +8,7 @@ export default function VideoCard({ video }: { video: Video, key?: string }) {
   const navigate = useNavigate();
   const formattedDate = video.createdAt 
     ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true }) 
-    : 'recently';
+    : 'недавно';
 
   return (
     <div className="group flex flex-col gap-3 cursor-pointer" onClick={() => navigate(`/video/${video.id}`)}>

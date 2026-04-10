@@ -23,7 +23,7 @@ export default function ShortCard({ video }: { video: Video, key?: string }) {
           <h3 className="font-bold text-ice-text line-clamp-2 leading-tight text-sm">
             {video.title}
           </h3>
-          <span className="text-xs text-ice-muted mt-1 block">{video.views?.toLocaleString() || 0} views</span>
+          <span className="text-xs text-ice-muted mt-1 block">{video.views?.toLocaleString() || 0} просмотров</span>
         </div>
       </div>
     </div>
