@@ -35,3 +35,17 @@ export interface Comment {
   text: string;
   createdAt: any;
 }
+
+export interface SubscriptionType {
+  id: string; // subscriberId_channelId
+  subscriberId: string;
+  channelId: string;
+  createdAt: any;
+}
+
+export interface VideoLikeType {
+  id: string; // userId_videoId
+  userId: string;
+  videoId: string;
+  type: 'like' | 'dislike';
+}

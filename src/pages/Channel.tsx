@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, Snowflake } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 export default function Channel() {
   const { id } = useParams<{ id: string }>();
@@ -13,12 +14,18 @@ export default function Channel() {
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [authorInfo, setAuthorInfo] = useState<any>(null);
+  
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subCount, setSubCount] = useState(0);
 
   useEffect(() => {
     if (!id) return;
     
-    const fetchVideos = async () => {
+    const fetchChannelData = async () => {
       try {
+        setLoading(true);
+
+        // Fetch videos
         const q = query(
           collection(db, 'videos'),
           where('authorId', '==', id),
@@ -31,26 +38,84 @@ export default function Channel() {
         })) as VideoType[];
         
         setVideos(data || []);
-        if (data && data.length > 0) {
-          setAuthorInfo({
-            name: data[0].authorName,
-            photoUrl: data[0].authorPhotoUrl
-          });
-        } else if (user && user.uid === id) {
-          setAuthorInfo({
-            name: user.displayName,
-            photoUrl: user.photoURL
-          });
+
+        // Fetch user info from users collection to get updated name
+        const userDoc = await getDoc(doc(db, 'users', id));
+        let channelName = 'Ice Creator';
+        let channelPhoto = `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`;
+
+        if (userDoc.exists()) {
+          channelName = userDoc.data().displayName || channelName;
+          channelPhoto = userDoc.data().photoURL || channelPhoto;
+        } else if (data && data.length > 0) {
+          channelName = data[0].authorName;
+          channelPhoto = data[0].authorPhotoUrl;
         }
+
+        setAuthorInfo({
+          name: channelName,
+          photoUrl: channelPhoto
+        });
+
+        // Fetch sub count
+        const subsQ = query(collection(db, 'subscriptions'), where('channelId', '==', id));
+        const subsSnap = await getDocs(subsQ);
+        setSubCount(subsSnap.size);
+
+        // Check if current user is subscribed
+        if (user) {
+          const subId = `${user.uid}_${id}`;
+          const subSnap = await getDoc(doc(db, 'subscriptions', subId));
+          if (subSnap.exists()) {
+            setIsSubscribed(true);
+          }
+        }
+
       } catch (error) {
-        console.error("Error fetching channel videos:", error);
+        console.error("Error fetching channel data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchVideos();
+    fetchChannelData();
   }, [id, user]);
+
+  const handleSubscribe = async () => {
+    if (!user || !id) {
+      toast.error('Please login to subscribe');
+      return;
+    }
+    if (user.uid === id) {
+      toast.error("You can't subscribe to yourself");
+      return;
+    }
+
+    const subId = `${user.uid}_${id}`;
+    const subRef = doc(db, 'subscriptions', subId);
+
+    try {
+      if (isSubscribed) {
+        await deleteDoc(subRef);
+        setIsSubscribed(false);
+        setSubCount(Math.max(0, subCount - 1));
+        toast.success('Unsubscribed');
+      } else {
+        await setDoc(subRef, {
+          id: subId,
+          subscriberId: user.uid,
+          channelId: id,
+          createdAt: new Date()
+        });
+        setIsSubscribed(true);
+        setSubCount(subCount + 1);
+        toast.success('Subscribed!');
+      }
+    } catch (error) {
+      console.error("Error toggling subscription:", error);
+      toast.error('Failed to update subscription');
+    }
+  };
 
   if (loading) {
     return (
@@ -74,22 +139,29 @@ export default function Channel() {
         {/* Channel Info */}
         <div className="flex flex-col md:flex-row items-center md:items-end gap-6 -mt-12 md:-mt-16 mb-8 relative z-10">
           <img
-            src={authorInfo?.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`}
+            src={authorInfo?.photoUrl}
             alt="Channel avatar"
-            className="w-32 h-32 rounded-full border-4 border-ice-bg shadow-[0_0_20px_rgba(0,242,255,0.3)] bg-ice-bg"
+            className="w-32 h-32 rounded-full border-4 border-ice-bg shadow-[0_0_20px_rgba(0,242,255,0.3)] bg-ice-bg object-cover"
           />
           <div className="flex-1 text-center md:text-left mb-2">
-            <h1 className="text-3xl font-bold ice-text-glow mb-1">{authorInfo?.name || 'Ice Creator'}</h1>
-            <p className="text-ice-muted">@user-{id?.substring(0, 8)} • 1.2M subscribers • {videos.length} videos</p>
+            <h1 className="text-3xl font-bold ice-text-glow mb-1">{authorInfo?.name}</h1>
+            <p className="text-ice-muted">@user-{id?.substring(0, 8)} • {subCount} subscribers • {videos.length} videos</p>
           </div>
           <div className="mb-2">
             {user?.uid === id ? (
-              <button className="bg-white/10 hover:bg-white/20 border border-ice-border px-6 py-2 rounded-full font-bold transition-colors">
+              <Link to="/studio" className="bg-white/10 hover:bg-white/20 border border-ice-border px-6 py-2 rounded-full font-bold transition-colors inline-block">
                 Customize Channel
-              </button>
+              </Link>
             ) : (
-              <button className="bg-ice-text text-ice-bg px-8 py-2 rounded-full font-bold hover:bg-white/90 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                Subscribe
+              <button 
+                onClick={handleSubscribe}
+                className={`px-8 py-2 rounded-full font-bold transition-colors shadow-[0_0_15px_rgba(255,255,255,0.2)] ${
+                  isSubscribed 
+                    ? 'bg-white/10 text-ice-text hover:bg-white/20' 
+                    : 'bg-ice-text text-ice-bg hover:bg-white/90'
+                }`}
+              >
+                {isSubscribed ? 'Subscribed' : 'Subscribe'}
               </button>
             )}
           </div>
