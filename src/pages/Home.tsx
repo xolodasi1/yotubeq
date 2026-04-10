@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 const CATEGORIES = ['All', 'Gaming', 'Music', 'Education', 'Entertainment', 'Tech', 'Winter Sports', 'Arctic Tech', 'Chill'];
 
@@ -17,13 +16,9 @@ export default function Home() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const { data, error } = await supabase
-          .from('videos')
-          .select('*')
-          .order('createdAt', { ascending: false });
-        
-        if (error) throw error;
-        setVideos(data || []);
+        const res = await fetch('/api/videos');
+        const data = await res.json();
+        setVideos(data);
       } catch (error) {
         console.error("Error fetching videos:", error);
       } finally {

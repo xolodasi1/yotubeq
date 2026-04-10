@@ -4,7 +4,6 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, Snowflake } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 export default function Channel() {
   const { id } = useParams<{ id: string }>();
@@ -18,13 +17,8 @@ export default function Channel() {
     
     const fetchVideos = async () => {
       try {
-        const { data, error } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('authorId', id)
-          .order('createdAt', { ascending: false });
-        
-        if (error) throw error;
+        const res = await fetch(`/api/videos?authorId=${id}`);
+        const data = await res.json();
         
         setVideos(data || []);
         if (data && data.length > 0) {
