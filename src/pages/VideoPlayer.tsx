@@ -161,20 +161,27 @@ export default function VideoPlayer() {
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !video || !newComment.trim()) return;
+    if (!video || !newComment.trim()) return;
 
     setSubmittingComment(true);
     try {
-      // Fetch current user data to get the latest display name
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const authorName = userDoc.exists() && userDoc.data().displayName ? userDoc.data().displayName : (user.displayName || 'User');
-      const authorPhotoUrl = userDoc.exists() && userDoc.data().photoURL ? userDoc.data().photoURL : (user.photoURL || '');
+      let authorName = 'Аноним';
+      let authorPhotoUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`;
+      let authorId = 'anonymous';
+
+      if (user) {
+        // Fetch current user data to get the latest display name
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        authorName = userDoc.exists() && userDoc.data().displayName ? userDoc.data().displayName : (user.displayName || 'User');
+        authorPhotoUrl = userDoc.exists() && userDoc.data().photoURL ? userDoc.data().photoURL : (user.photoURL || '');
+        authorId = user.uid;
+      }
 
       const commentId = crypto.randomUUID();
       const commentData = {
         id: commentId,
         videoId: video.id,
-        authorId: user.uid,
+        authorId: authorId,
         authorName: authorName,
         authorPhotoUrl: authorPhotoUrl,
         text: newComment.trim(),
@@ -292,7 +299,7 @@ export default function VideoPlayer() {
           
           <div className="flex gap-4 mb-8">
             <img
-              src={user?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest'}
+              src={user?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous'}
               alt="Current user"
               className="w-10 h-10 rounded-full border border-ice-accent"
             />
@@ -301,18 +308,16 @@ export default function VideoPlayer() {
                 type="text"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder={user ? "Add a cool comment..." : "Login to comment..."}
-                disabled={!user || submittingComment}
+                placeholder={user ? "Add a cool comment..." : "Add a comment (will be posted as Аноним)..."}
+                disabled={submittingComment}
                 className="w-full bg-transparent border-b border-ice-border pb-2 focus:outline-none focus:border-ice-accent transition-colors peer disabled:opacity-50"
               />
-              {user && (
-                <div className="absolute right-0 bottom-2 opacity-0 peer-focus:opacity-100 transition-opacity flex gap-2">
-                  <button type="button" onClick={() => setNewComment('')} className="text-sm font-medium hover:text-ice-accent transition-colors">Cancel</button>
-                  <button type="submit" disabled={!newComment.trim() || submittingComment} className="bg-ice-accent text-ice-bg px-4 py-1 rounded-full text-sm font-bold hover:bg-ice-accent/90 transition-colors disabled:opacity-50">
-                    {submittingComment ? 'Posting...' : 'Comment'}
-                  </button>
-                </div>
-              )}
+              <div className="absolute right-0 bottom-2 opacity-0 peer-focus:opacity-100 transition-opacity flex gap-2">
+                <button type="button" onClick={() => setNewComment('')} className="text-sm font-medium hover:text-ice-accent transition-colors">Cancel</button>
+                <button type="submit" disabled={!newComment.trim() || submittingComment} className="bg-ice-accent text-ice-bg px-4 py-1 rounded-full text-sm font-bold hover:bg-ice-accent/90 transition-colors disabled:opacity-50">
+                  {submittingComment ? 'Posting...' : 'Comment'}
+                </button>
+              </div>
             </form>
           </div>
 
