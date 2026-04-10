@@ -223,16 +223,16 @@ export default function VideoPlayer() {
     : 'recently';
 
   return (
-    <div className="max-w-[1800px] mx-auto p-4 md:p-6 flex flex-col xl:flex-row gap-6">
+    <div className="max-w-[1800px] mx-auto p-4 md:p-6 pb-24 md:pb-6 flex flex-col xl:flex-row gap-6">
       {/* Main Content */}
       <div className="flex-1 min-w-0">
-        <div className="aspect-video rounded-3xl overflow-hidden glass border border-ice-border shadow-2xl relative group">
+        <div className={`rounded-3xl overflow-hidden glass border border-ice-border shadow-2xl relative group ${video.isShort ? 'aspect-[9/16] max-w-[400px] mx-auto' : 'aspect-video'}`}>
           <video
             ref={videoRef}
             src={video.videoUrl}
             controls
             autoPlay
-            className="w-full h-full object-contain"
+            className="w-full h-full object-contain bg-black"
           />
         </div>
 

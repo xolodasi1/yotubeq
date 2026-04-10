@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
+import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Smartphone } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
@@ -41,8 +42,11 @@ export default function Home() {
     return matchesSearch && matchesCategory;
   });
 
+  const regularVideos = filteredVideos.filter(v => !v.isShort);
+  const shortsVideos = filteredVideos.filter(v => v.isShort);
+
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 md:pb-8">
       {/* Categories */}
       <div className="flex gap-3 overflow-x-auto pb-4 mb-6 scrollbar-hide">
         {CATEGORIES.map((category) => (
@@ -75,10 +79,33 @@ export default function Home() {
           <p className="text-xl">No videos found in the frost.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
-          {filteredVideos.map((video) => (
-            <VideoCard key={video.id} video={video as any} />
-          ))}
+        <div className="flex flex-col gap-10">
+          {/* Shorts Section */}
+          {shortsVideos.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                <Smartphone className="w-6 h-6 text-ice-accent" />
+                Shorts
+              </h2>
+              <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x">
+                {shortsVideos.map((video) => (
+                  <div key={video.id} className="snap-start">
+                    <ShortCard video={video as any} />
+                  </div>
+                ))}
+              </div>
+              <div className="w-full h-px bg-ice-border mt-4"></div>
+            </div>
+          )}
+
+          {/* Regular Videos Section */}
+          {regularVideos.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+              {regularVideos.map((video) => (
+                <VideoCard key={video.id} video={video as any} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

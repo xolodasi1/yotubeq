@@ -1,16 +1,17 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Video } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { Play, Eye, Clock } from 'lucide-react';
 
 export default function VideoCard({ video }: { video: Video, key?: string }) {
+  const navigate = useNavigate();
   const formattedDate = video.createdAt 
     ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true }) 
     : 'recently';
 
   return (
-    <Link to={`/video/${video.id}`} className="group flex flex-col gap-3">
+    <div className="group flex flex-col gap-3 cursor-pointer" onClick={() => navigate(`/video/${video.id}`)}>
       <div className="relative aspect-video rounded-2xl overflow-hidden border border-ice-border group-hover:border-ice-accent transition-all duration-300 shadow-lg group-hover:shadow-[0_0_20px_rgba(0,242,255,0.2)]">
         <img
           src={video.thumbnailUrl}
@@ -42,7 +43,7 @@ export default function VideoCard({ video }: { video: Video, key?: string }) {
           </h3>
           <Link 
             to={`/channel/${video.authorId}`}
-            className="text-sm text-ice-muted hover:text-ice-text transition-colors mt-1 truncate"
+            className="text-sm text-ice-muted hover:text-ice-text transition-colors mt-1 truncate inline-block"
             onClick={(e) => e.stopPropagation()}
           >
             {video.authorName}
@@ -57,6 +58,6 @@ export default function VideoCard({ video }: { video: Video, key?: string }) {
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
+import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
-import { Loader2, Snowflake } from 'lucide-react';
+import { Loader2, Snowflake, Smartphone } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -125,8 +126,11 @@ export default function Channel() {
     );
   }
 
+  const regularVideos = videos.filter(v => !v.isShort);
+  const shortsVideos = videos.filter(v => v.isShort);
+
   return (
-    <div className="pb-8">
+    <div className="pb-24 md:pb-8">
       {/* Channel Banner */}
       <div className="h-48 md:h-64 bg-gradient-to-r from-ice-bg via-ice-accent/20 to-ice-bg relative overflow-hidden border-b border-ice-border">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
@@ -181,10 +185,36 @@ export default function Channel() {
             <p className="text-xl">This channel hasn't uploaded any videos yet.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
-            {videos.map((video) => (
-              <VideoCard key={video.id} video={video as any} />
-            ))}
+          <div className="flex flex-col gap-10">
+            {/* Shorts Section */}
+            {shortsVideos.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  <Smartphone className="w-6 h-6 text-ice-accent" />
+                  Shorts
+                </h2>
+                <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x">
+                  {shortsVideos.map((video) => (
+                    <div key={video.id} className="snap-start">
+                      <ShortCard video={video as any} />
+                    </div>
+                  ))}
+                </div>
+                <div className="w-full h-px bg-ice-border mt-4"></div>
+              </div>
+            )}
+
+            {/* Regular Videos Section */}
+            {regularVideos.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6">Videos</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+                  {regularVideos.map((video) => (
+                    <VideoCard key={video.id} video={video as any} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

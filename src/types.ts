@@ -12,6 +12,7 @@ export interface Video {
   createdAt: any; // Timestamp
   category: string;
   duration: string;
+  isShort?: boolean;
 }
 
 export type VideoType = Video;

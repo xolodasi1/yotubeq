@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { Upload, Video as VideoIcon, Image as ImageIcon, X, Loader2, BarChart3, Settings as SettingsIcon, Edit3, Trash2 } from 'lucide-react';
+import { Upload, Video as VideoIcon, Image as ImageIcon, X, Loader2, BarChart3, Settings as SettingsIcon, Edit3, Trash2, Smartphone } from 'lucide-react';
 import { VideoType } from '../types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ export default function Studio() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [videoDuration, setVideoDuration] = useState('00:00');
+  const [isShort, setIsShort] = useState(false);
 
   // Channel Customization
   const [channelName, setChannelName] = useState('');
@@ -79,6 +80,11 @@ export default function Studio() {
       const minutes = Math.floor(videoElement.duration / 60);
       const seconds = Math.floor(videoElement.duration % 60);
       setVideoDuration(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      
+      // Auto-detect short if duration < 60s and vertical aspect ratio
+      if (videoElement.duration <= 60 && videoElement.videoHeight > videoElement.videoWidth) {
+        setIsShort(true);
+      }
     };
     videoElement.src = URL.createObjectURL(file);
 
@@ -152,7 +158,8 @@ export default function Studio() {
         views: 0,
         likes: 0,
         createdAt: new Date(),
-        duration: videoDuration
+        duration: videoDuration,
+        isShort: isShort
       };
 
       await setDoc(doc(db, 'videos', videoId), newVideoData);
@@ -163,6 +170,7 @@ export default function Studio() {
       setDescription('');
       setVideoFile(null);
       setThumbnailFile(null);
+      setIsShort(false);
       setUploadProgress(100);
       setTimeout(() => setUploadProgress(0), 2000);
       toast.success('Video uploaded successfully!');
@@ -221,7 +229,7 @@ export default function Studio() {
   const totalLikes = videos.reduce((acc, v) => acc + v.likes, 0);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-black/50">
+    <div className="min-h-[calc(100vh-4rem)] bg-black/50 pb-20 md:pb-0">
       {/* Studio Header */}
       <div className="glass border-b border-ice-border px-4 md:px-8 py-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -315,6 +323,20 @@ export default function Studio() {
                     </div>
                   </div>
 
+                  <div className="flex items-center gap-3 p-3 bg-black/40 border border-ice-border rounded-xl">
+                    <div className={`p-2 rounded-lg ${isShort ? 'bg-ice-accent text-ice-bg' : 'bg-white/5 text-ice-muted'}`}>
+                      <Smartphone className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">Upload as Short</h4>
+                      <p className="text-xs text-ice-muted">Vertical video under 60s</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={isShort} onChange={(e) => setIsShort(e.target.checked)} />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-ice-accent"></div>
+                    </label>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-ice-muted mb-1">Title</label>
                     <input
@@ -393,9 +415,14 @@ export default function Studio() {
                   <div className="space-y-4">
                     {videos.map((v) => (
                       <div key={v.id} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-colors group">
-                        <div className="w-32 aspect-video rounded-lg overflow-hidden shrink-0 border border-ice-border relative">
+                        <div className={`aspect-video rounded-lg overflow-hidden shrink-0 border border-ice-border relative ${v.isShort ? 'w-20 aspect-[9/16]' : 'w-32'}`}>
                           <img src={v.thumbnailUrl} className="w-full h-full object-cover" />
                           <div className="absolute bottom-1 right-1 bg-black/80 px-1 rounded text-[10px]">{v.duration}</div>
+                          {v.isShort && (
+                            <div className="absolute top-1 left-1 bg-ice-accent text-ice-bg px-1 rounded text-[10px] font-bold">
+                              SHORT
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold truncate group-hover:text-ice-accent transition-colors">{v.title}</h4>
