@@ -7,14 +7,15 @@ const menuItems = [
   { icon: Home, label: 'Главная', path: '/' },
   { icon: Smartphone, label: 'Shorts', path: '/shorts' },
   { icon: Trophy, label: 'Топ каналов', path: '/top-channels' },
-  { icon: Compass, label: 'Навигатор', path: '/explore' },
-  { icon: PlaySquare, label: 'Подписки', path: '/subs' },
+  { icon: Compass, label: 'Навигатор', path: '/top-channels' }, // Redirecting navigator to top channels for now
+  { icon: PlaySquare, label: 'Подписки', path: '/subscriptions' },
 ];
 
 const libraryItems = [
   { icon: History, label: 'История', path: '/history' },
   { icon: Clock, label: 'Смотреть позже', path: '/watch-later' },
-  { icon: ThumbsUp, label: 'Понравившиеся', path: '/liked' },
+  { icon: ThumbsUp, label: 'Понравившиеся', path: '/favorites' },
+  { icon: PlaySquare, label: 'Плейлисты', path: '/playlists' },
 ];
 
 export default function Sidebar() {
@@ -93,12 +94,12 @@ export default function Sidebar() {
             );
           })}
           <Link
-            to="/subs"
+            to="/subscriptions"
             className={`flex flex-col items-center gap-1 p-2 min-w-[60px] rounded-lg transition-colors ${
-              location.pathname === '/subs' ? 'text-ice-accent' : 'text-ice-muted hover:text-ice-text'
+              location.pathname === '/subscriptions' ? 'text-ice-accent' : 'text-ice-muted hover:text-ice-text'
             }`}
           >
-            <PlaySquare className={`w-5 h-5 ${location.pathname === '/subs' ? 'drop-shadow-[0_0_8px_rgba(0,242,255,0.8)]' : ''}`} />
+            <PlaySquare className={`w-5 h-5 ${location.pathname === '/subscriptions' ? 'drop-shadow-[0_0_8px_rgba(0,242,255,0.8)]' : ''}`} />
             <span className="text-[9px] font-medium">Подписки</span>
           </Link>
           {user && (

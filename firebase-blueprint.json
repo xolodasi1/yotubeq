@@ -88,6 +88,82 @@
         }
       },
       "required": ["id", "title", "videoUrl", "thumbnailUrl", "authorId", "authorName"]
+    },
+    "Playlist": {
+      "title": "Playlist",
+      "description": "A collection of videos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "authorId": { "type": "string" },
+        "videoIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["id", "title", "authorId", "videoIds"]
+    },
+    "CommunityPost": {
+      "title": "CommunityPost",
+      "description": "A post in the community tab",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhotoUrl": { "type": "string" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "poll"] },
+        "pollOptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": { "type": "string" },
+              "votes": { "type": "number" },
+              "voters": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "createdAt": { "type": "timestamp" },
+        "likes": { "type": "number" }
+      },
+      "required": ["id", "authorId", "text", "type"]
+    },
+    "History": {
+      "title": "History",
+      "description": "User's watch history",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "watchedAt": { "type": "timestamp" }
+      },
+      "required": ["id", "userId", "videoId"]
+    },
+    "WatchLater": {
+      "title": "WatchLater",
+      "description": "Videos saved for later",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "addedAt": { "type": "timestamp" }
+      },
+      "required": ["id", "userId", "videoId"]
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "Videos marked as favorite",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "addedAt": { "type": "timestamp" }
+      },
+      "required": ["id", "userId", "videoId"]
     }
   },
   "firestore": {
@@ -98,6 +174,26 @@
     "/videos/{videoId}": {
       "schema": { "$ref": "#/entities/Video" },
       "description": "Uploaded videos"
+    },
+    "/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/Playlist" },
+      "description": "User playlists"
+    },
+    "/community_posts/{postId}": {
+      "schema": { "$ref": "#/entities/CommunityPost" },
+      "description": "Community posts"
+    },
+    "/history/{historyId}": {
+      "schema": { "$ref": "#/entities/History" },
+      "description": "Watch history"
+    },
+    "/watch_later/{id}": {
+      "schema": { "$ref": "#/entities/WatchLater" },
+      "description": "Watch later list"
+    },
+    "/favorites/{id}": {
+      "schema": { "$ref": "#/entities/Favorite" },
+      "description": "Favorite videos"
     }
   }
 }

@@ -28,6 +28,8 @@ export interface UserProfile {
   joinedAt: any;
 }
 
+export type UserType = UserProfile;
+
 export interface Comment {
   id: string;
   videoId: string;
@@ -55,4 +57,45 @@ export interface VideoLikeType {
   userId: string;
   videoId: string;
   type: 'like' | 'dislike';
+}
+
+export interface Playlist {
+  id: string;
+  title: string;
+  authorId: string;
+  videoIds: string[];
+  createdAt: any;
+}
+
+export interface CommunityPost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorPhotoUrl: string;
+  text: string;
+  type: 'text' | 'poll';
+  pollOptions?: { text: string; votes: number; voters: string[] }[];
+  createdAt: any;
+  likes: number;
+}
+
+export interface HistoryItem {
+  id: string; // userId_videoId
+  userId: string;
+  videoId: string;
+  watchedAt: any;
+}
+
+export interface WatchLaterItem {
+  id: string; // userId_videoId
+  userId: string;
+  videoId: string;
+  addedAt: any;
+}
+
+export interface FavoriteItem {
+  id: string; // userId_videoId
+  userId: string;
+  videoId: string;
+  addedAt: any;
 }

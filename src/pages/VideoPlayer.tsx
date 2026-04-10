@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
-import { VideoType, Comment, SubscriptionType, VideoLikeType } from '../types';
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake } from 'lucide-react';
+import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 enum OperationType {
@@ -68,6 +69,8 @@ export default function VideoPlayer() {
   
   // Real interactions state
   const [isLiked, setIsLiked] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isWatchLater, setIsWatchLater] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -77,6 +80,10 @@ export default function VideoPlayer() {
   const [editCommentText, setEditCommentText] = useState('');
   const [replyingCommentId, setReplyingCommentId] = useState<string | null>(null);
   const [replyCommentText, setReplyCommentText] = useState('');
+
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
+  const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -102,8 +109,19 @@ export default function VideoPlayer() {
 
         // Increment views
         await updateDoc(videoDocRef, {
-          views: data.views + 1
+          views: increment(1)
         });
+
+        // Add to History
+        if (user) {
+          const historyId = `${user.uid}_${id}`;
+          await setDoc(doc(db, 'history', historyId), {
+            id: historyId,
+            userId: user.uid,
+            videoId: id,
+            watchedAt: serverTimestamp()
+          });
+        }
 
         // Fetch related videos
         const relatedQ = query(collection(db, 'videos'), limit(10));
@@ -133,6 +151,14 @@ export default function VideoPlayer() {
           if (likeSnap.exists() && likeSnap.data().type === 'like') {
             setIsLiked(true);
           }
+
+          // Check favorite
+          const favSnap = await getDoc(doc(db, 'favorites', likeId));
+          setIsFavorited(favSnap.exists());
+
+          // Check watch later
+          const wlSnap = await getDoc(doc(db, 'watch_later', likeId));
+          setIsWatchLater(wlSnap.exists());
 
           // Check subscription
           const subId = `${user.uid}_${data.authorId}`;
@@ -179,6 +205,83 @@ export default function VideoPlayer() {
       console.error("Error toggling like:", error);
       toast.error('Не удалось обновить лайк');
     }
+  };
+
+  const toggleFavorite = async () => {
+    if (!user || !id) return toast.error('Войдите, чтобы добавить в избранное');
+    const favId = `${user.uid}_${id}`;
+    const favRef = doc(db, 'favorites', favId);
+    try {
+      if (isFavorited) {
+        await deleteDoc(favRef);
+        setIsFavorited(false);
+        toast.success('Удалено из избранного');
+      } else {
+        await setDoc(favRef, { id: favId, userId: user.uid, videoId: id, addedAt: serverTimestamp() });
+        setIsFavorited(true);
+        toast.success('Добавлено в избранное');
+      }
+    } catch (error) { toast.error('Ошибка'); }
+  };
+
+  const toggleWatchLater = async () => {
+    if (!user || !id) return toast.error('Войдите, чтобы посмотреть позже');
+    const wlId = `${user.uid}_${id}`;
+    const wlRef = doc(db, 'watch_later', wlId);
+    try {
+      if (isWatchLater) {
+        await deleteDoc(wlRef);
+        setIsWatchLater(false);
+        toast.success('Удалено из "Смотреть позже"');
+      } else {
+        await setDoc(wlRef, { id: wlId, userId: user.uid, videoId: id, addedAt: serverTimestamp() });
+        setIsWatchLater(true);
+        toast.success('Добавлено в "Смотреть позже"');
+      }
+    } catch (error) { toast.error('Ошибка'); }
+  };
+
+  const handleAddToPlaylist = async (playlistId: string) => {
+    if (!id) return;
+    const playlistRef = doc(db, 'playlists', playlistId);
+    try {
+      const snap = await getDoc(playlistRef);
+      if (snap.exists()) {
+        const videoIds = snap.data().videoIds || [];
+        if (videoIds.includes(id)) {
+          toast.info('Уже в плейлисте');
+          return;
+        }
+        await updateDoc(playlistRef, { videoIds: [...videoIds, id] });
+        toast.success('Добавлено в плейлист');
+        setShowPlaylistModal(false);
+      }
+    } catch (error) { toast.error('Ошибка'); }
+  };
+
+  const createPlaylist = async () => {
+    if (!user || !newPlaylistTitle.trim() || !id) return;
+    try {
+      const playlistId = crypto.randomUUID();
+      await setDoc(doc(db, 'playlists', playlistId), {
+        id: playlistId,
+        title: newPlaylistTitle,
+        authorId: user.uid,
+        videoIds: [id],
+        createdAt: serverTimestamp()
+      });
+      toast.success('Плейлист создан');
+      setNewPlaylistTitle('');
+      setShowPlaylistModal(false);
+    } catch (error) { toast.error('Ошибка'); }
+  };
+
+  const fetchUserPlaylists = async () => {
+    if (!user) return;
+    const q = query(collection(db, 'playlists'), where('authorId', '==', user.uid));
+    const snap = await getDocs(q);
+    setUserPlaylists(snap.docs.map(d => d.data() as Playlist));
+    setShowPlaylistModal(true);
   };
 
   const handleSubscribe = async () => {
@@ -423,12 +526,80 @@ export default function VideoPlayer() {
                 <ThumbsDown className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             </div>
+            
+            <button 
+              onClick={toggleFavorite}
+              className={`flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isFavorited ? 'text-red-400 border-red-400/50' : ''}`}
+            >
+              <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isFavorited ? 'fill-current' : ''}`} />
+              <span className="hidden sm:inline">Избранное</span>
+            </button>
+
+            <button 
+              onClick={toggleWatchLater}
+              className={`flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isWatchLater ? 'text-ice-accent border-ice-accent/50' : ''}`}
+            >
+              <Clock className={`w-4 h-4 md:w-5 md:h-5 ${isWatchLater ? 'fill-current' : ''}`} />
+              <span className="hidden sm:inline">Позже</span>
+            </button>
+
+            <button 
+              onClick={fetchUserPlaylists}
+              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base"
+            >
+              <ListPlus className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden sm:inline">Плейлист</span>
+            </button>
+
             <button className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base">
               <Share2 className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden sm:inline">Поделиться</span>
             </button>
           </div>
         </div>
+
+        {/* Playlist Modal */}
+        {showPlaylistModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="glass w-full max-w-md rounded-3xl border border-ice-border p-6 shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold">Добавить в плейлист</h3>
+                <button onClick={() => setShowPlaylistModal(false)} className="text-ice-muted hover:text-ice-text">✕</button>
+              </div>
+              
+              <div className="space-y-2 max-h-60 overflow-y-auto mb-6 pr-2 scrollbar-hide">
+                {userPlaylists.map(pl => (
+                  <button 
+                    key={pl.id} 
+                    onClick={() => handleAddToPlaylist(pl.id)}
+                    className="w-full text-left p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-ice-border transition-all flex items-center justify-between group"
+                  >
+                    <span className="font-medium">{pl.title}</span>
+                    <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 text-ice-accent" />
+                  </button>
+                ))}
+                {userPlaylists.length === 0 && <p className="text-center text-ice-muted py-4">У вас пока нет плейлистов</p>}
+              </div>
+
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={newPlaylistTitle}
+                  onChange={(e) => setNewPlaylistTitle(e.target.value)}
+                  placeholder="Название нового плейлиста"
+                  className="flex-1 bg-white/5 border border-ice-border rounded-xl px-4 py-2 focus:outline-none focus:border-ice-accent"
+                />
+                <button 
+                  onClick={createPlaylist}
+                  disabled={!newPlaylistTitle.trim()}
+                  className="bg-ice-accent text-ice-bg px-4 py-2 rounded-xl font-bold hover:bg-ice-accent/90 transition-colors disabled:opacity-50"
+                >
+                  Создать
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="glass rounded-xl md:rounded-2xl p-3 md:p-4 border border-ice-border hover:bg-white/5 transition-colors">
           <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm font-medium mb-2">

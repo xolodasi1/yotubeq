@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
-import { Loader2, Smartphone } from 'lucide-react';
+import { Loader2, Smartphone, TrendingUp, Clock, Sparkles } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
@@ -45,10 +45,15 @@ export default function Home() {
   const regularVideos = filteredVideos.filter(v => !v.isShort);
   const shortsVideos = filteredVideos.filter(v => v.isShort);
 
+  // Top by views (from all loaded videos)
+  const topVideos = [...regularVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
+  // New videos (already sorted by createdAt desc in fetch)
+  const newVideos = regularVideos.slice(0, 8);
+
   return (
     <div className="p-3 md:p-6 lg:p-8 max-w-[1600px] mx-auto pb-24 md:pb-8">
       {/* Categories */}
-      <div className="flex gap-2 md:gap-3 overflow-x-auto pb-4 mb-4 md:mb-6 scrollbar-hide">
+      <div className="flex gap-2 md:gap-3 overflow-x-auto pb-4 mb-4 md:mb-6 scrollbar-hide sticky top-0 bg-ice-bg/80 backdrop-blur-md z-20 py-2">
         {CATEGORIES.map((category) => (
           <button
             key={category}
@@ -79,10 +84,23 @@ export default function Home() {
           <p className="text-lg md:text-xl">Видео не найдены в морозном мире.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-8 md:gap-10">
+        <div className="flex flex-col gap-12 md:gap-16">
+          {/* Recommendations Section */}
+          <section>
+            <div className="flex items-center gap-2 mb-6">
+              <Sparkles className="w-5 h-5 text-ice-accent" />
+              <h2 className="text-xl md:text-2xl font-bold">Рекомендации</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-10">
+              {regularVideos.map((video) => (
+                <VideoCard key={video.id} video={video as any} />
+              ))}
+            </div>
+          </section>
+
           {/* Shorts Section */}
           {shortsVideos.length > 0 && (
-            <div>
+            <section>
               <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 flex items-center gap-2">
                 <Smartphone className="w-5 h-5 md:w-6 md:h-6 text-ice-accent" />
                 Shorts
@@ -95,16 +113,37 @@ export default function Home() {
                 ))}
               </div>
               <div className="w-full h-px bg-ice-border mt-2"></div>
-            </div>
+            </section>
           )}
 
-          {/* Regular Videos Section */}
-          {regularVideos.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-10">
-              {regularVideos.map((video) => (
-                <VideoCard key={video.id} video={video as any} />
-              ))}
-            </div>
+          {/* Top by Views Section */}
+          {topVideos.length > 0 && !searchQuery && activeCategory === 'Все' && (
+            <section>
+              <div className="flex items-center gap-2 mb-6">
+                <TrendingUp className="w-5 h-5 text-ice-accent" />
+                <h2 className="text-xl md:text-2xl font-bold">Топ по просмотрам</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-10">
+                {topVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* New Videos Section */}
+          {newVideos.length > 0 && !searchQuery && activeCategory === 'Все' && (
+            <section>
+              <div className="flex items-center gap-2 mb-6">
+                <Clock className="w-5 h-5 text-ice-accent" />
+                <h2 className="text-xl md:text-2xl font-bold">Новые видео</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-10">
+                {newVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            </section>
           )}
         </div>
       )}

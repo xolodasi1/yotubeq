@@ -9,6 +9,13 @@ import Channel from './pages/Channel';
 import Studio from './pages/Studio';
 import Shorts from './pages/Shorts';
 import TopChannels from './pages/TopChannels';
+import History from './pages/History';
+import WatchLater from './pages/WatchLater';
+import Favorites from './pages/Favorites';
+import Subscriptions from './pages/Subscriptions';
+import Playlists from './pages/Playlists';
+import PlaylistDetail from './pages/PlaylistDetail';
+import Settings from './pages/Settings';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -96,6 +103,13 @@ export default function App() {
                 <Route path="/video/:id" element={<VideoPlayer />} />
                 <Route path="/channel/:id" element={<Channel />} />
                 <Route path="/studio" element={<Studio />} />
+                <Route path="/history" element={<History />} />
+                <Route path="/watch-later" element={<WatchLater />} />
+                <Route path="/favorites" element={<Favorites />} />
+                <Route path="/subscriptions" element={<Subscriptions />} />
+                <Route path="/playlists" element={<Playlists />} />
+                <Route path="/playlist/:id" element={<PlaylistDetail />} />
+                <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>
           </div>
