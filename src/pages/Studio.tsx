@@ -35,24 +35,53 @@ export default function Studio() {
     fetchVideos();
   }, [user]);
 
-  const uploadFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
+  const uploadFile = (file: File, onProgress: (progress: number) => void): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    const token = localStorage.getItem('token');
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
+      const token = localStorage.getItem('token');
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response.url);
+          } catch (e) {
+            reject(new Error('Invalid response from server'));
+          }
+        } else {
+          try {
+            const errorData = JSON.parse(xhr.responseText);
+            reject(new Error(errorData.error || 'Upload failed'));
+          } catch (e) {
+            if (xhr.status === 413) {
+              reject(new Error('File is too large! Please try a smaller video.'));
+            } else {
+              reject(new Error(`Upload failed (Status ${xhr.status}). The file might be too large.`));
+            }
+          }
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Network error during upload. The file might be too large.'));
+      });
+
+      xhr.open('POST', '/api/upload');
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      xhr.send(formData);
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Upload failed');
-    }
-
-    const data = await response.json();
-    return data.url;
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -60,15 +89,19 @@ export default function Studio() {
     if (!user || !videoFile || !thumbnailFile || uploading) return;
 
     setUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(0);
     try {
-      // Upload video
-      const videoUrl = await uploadFile(videoFile);
-      setUploadProgress(50);
+      // Upload video (takes up 0-80% of the progress bar)
+      const videoUrl = await uploadFile(videoFile, (progress) => {
+        setUploadProgress(Math.round(progress * 0.8));
+      });
 
-      // Upload thumbnail
-      const thumbnailUrl = await uploadFile(thumbnailFile);
-      setUploadProgress(80);
+      // Upload thumbnail (takes up 80-90% of the progress bar)
+      const thumbnailUrl = await uploadFile(thumbnailFile, (progress) => {
+        setUploadProgress(80 + Math.round(progress * 0.1));
+      });
+
+      setUploadProgress(95);
 
       // Create video record
       const token = localStorage.getItem('token');
@@ -88,7 +121,7 @@ export default function Studio() {
         })
       });
 
-      if (!res.ok) throw new Error('Failed to create video');
+      if (!res.ok) throw new Error('Failed to create video record');
       const newVideo = await res.json();
 
       setVideos([newVideo, ...videos]);
