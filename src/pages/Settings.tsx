@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { Loader2, Settings as SettingsIcon, User, Camera, Save, Moon, Sun, Globe, Smartphone, MessageSquare, Instagram } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { Loader2, Settings as SettingsIcon, User, Camera, Save, Moon, Sun, Globe, Smartphone, MessageSquare, Instagram, Trash2, AlertTriangle, X } from 'lucide-react';
+import { db, auth as firebaseAuth } from '../lib/firebase';
+import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { deleteUser } from 'firebase/auth';
 
 export default function Settings() {
   const { user, theme, toggleTheme } = useAuth();
@@ -18,6 +20,9 @@ export default function Settings() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) return;
@@ -61,6 +66,45 @@ export default function Settings() {
       toast.error('Ошибка при сохранении');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteChannel = async () => {
+    if (!user) return;
+    setDeleting(true);
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Delete all user's videos/photos/music
+      const videosQuery = query(collection(db, 'videos'), where('authorId', '==', user.uid));
+      const videosSnap = await getDocs(videosQuery);
+      videosSnap.forEach((doc) => batch.delete(doc.ref));
+
+      // 2. Delete all user's community posts
+      const postsQuery = query(collection(db, 'community_posts'), where('authorId', '==', user.uid));
+      const postsSnap = await getDocs(postsQuery);
+      postsSnap.forEach((doc) => batch.delete(doc.ref));
+
+      // 3. Delete user document
+      batch.delete(doc(db, 'users', user.uid));
+
+      await batch.commit();
+
+      // 4. Delete auth user (optional, but good practice if possible)
+      // Note: deleteUser might fail if the session is old. We'll try but at least the data is gone.
+      if (firebaseAuth.currentUser) {
+        await deleteUser(firebaseAuth.currentUser).catch(err => console.error("Auth delete failed:", err));
+      }
+
+      toast.success('Канал полностью удален');
+      navigate('/');
+      window.location.reload();
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error('Ошибка при удалении канала');
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -223,7 +267,64 @@ export default function Settings() {
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           Сохранить изменения
         </button>
+
+        <div className="pt-12 border-t border-[var(--studio-border)]">
+          <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 rounded-2xl p-6">
+            <h3 className="text-red-600 dark:text-red-400 font-bold flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5" /> Опасная зона
+            </h3>
+            <p className="text-sm text-red-500 dark:text-red-400/70 mb-6">
+              Удаление канала приведет к безвозвратной потере всех ваших видео, фотографий, музыки и подписчиков. Это действие нельзя отменить.
+            </p>
+            <button 
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="w-full md:w-auto px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-5 h-5" /> Удалить канал полностью
+            </button>
+          </div>
+        </div>
       </form>
+
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start mb-6">
+              <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-2xl text-red-600">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <button onClick={() => setShowDeleteModal(false)} className="p-2 hover:bg-[var(--studio-hover)] rounded-full text-[var(--studio-muted)]">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-[var(--studio-text)] mb-2">Вы уверены?</h2>
+            <p className="text-[var(--studio-muted)] mb-8">
+              Это действие полностью удалит ваш канал IceTube. Все ваши данные будут стерты навсегда.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleDeleteChannel}
+                disabled={deleting}
+                className="w-full py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                Да, удалить мой канал
+              </button>
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="w-full py-4 bg-[var(--studio-hover)] text-[var(--studio-text)] font-bold rounded-2xl hover:bg-[var(--studio-border)] transition-all"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

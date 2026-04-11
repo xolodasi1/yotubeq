@@ -116,12 +116,12 @@ export default function StudioContent() {
   }
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6 pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Контент на канале</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)]">Контент на канале</h1>
       </div>
 
-      <div className="flex gap-6 border-b border-[var(--border)]">
+      <div className="flex gap-4 md:gap-6 border-b border-[var(--border)] overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('videos')}
           className={`pb-4 text-sm font-bold transition-colors relative ${
@@ -200,7 +200,7 @@ export default function StudioContent() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Table/Card List */}
         <div className="overflow-x-auto">
           {activeTab === 'playlists' ? (
             <div className="p-12 text-center text-[var(--text-secondary)]">
@@ -208,22 +208,91 @@ export default function StudioContent() {
               <p className="text-sm mt-2">Скоро вы сможете создавать и управлять плейлистами.</p>
             </div>
           ) : (
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-[var(--hover)] border-b border-[var(--border)] text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">
-              <tr>
-                <th className="px-6 py-4 font-bold">{activeTab === 'photos' ? 'Фото' : activeTab === 'music' ? 'Трек' : 'Видео'}</th>
-                <th className="px-6 py-4 font-bold">Дата</th>
-                <th className="px-6 py-4 font-bold">Просмотры</th>
-                <th className="px-6 py-4 font-bold">Лайки</th>
-                <th className="px-6 py-4 font-bold text-right">Действия</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filteredVideos.map((video) => (
-                <tr key={video.id} className="hover:bg-[var(--hover)] transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex gap-4 items-center min-w-[350px]">
-                      <div className={`relative ${activeTab === 'shorts' ? 'w-16 aspect-[9/16]' : activeTab === 'photos' ? 'w-24 aspect-square' : 'w-32 aspect-video'} rounded overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
+            <>
+              {/* Desktop Table */}
+              <table className="w-full text-left border-collapse hidden md:table">
+                <thead className="bg-[var(--hover)] border-b border-[var(--border)] text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">
+                  <tr>
+                    <th className="px-6 py-4 font-bold">{activeTab === 'photos' ? 'Фото' : activeTab === 'music' ? 'Трек' : 'Видео'}</th>
+                    <th className="px-6 py-4 font-bold">Дата</th>
+                    <th className="px-6 py-4 font-bold">Просмотры</th>
+                    <th className="px-6 py-4 font-bold">Лайки</th>
+                    <th className="px-6 py-4 font-bold text-right">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {filteredVideos.map((video) => (
+                    <tr key={video.id} className="hover:bg-[var(--hover)] transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex gap-4 items-center min-w-[350px]">
+                          <div className={`relative ${activeTab === 'shorts' ? 'w-16 aspect-[9/16]' : activeTab === 'photos' ? 'w-24 aspect-square' : 'w-32 aspect-video'} rounded overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
+                            <img src={video.thumbnailUrl} className="w-full h-full object-cover" alt="" />
+                            {activeTab !== 'photos' && (
+                              <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-bold">
+                                {video.duration}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(activeTab === 'photos' ? '/photos' : `/video/${video.id}`)}>
+                              {video.title}
+                            </h4>
+                            <p className="text-xs text-[var(--text-secondary)] line-clamp-1 mt-1">{video.description || 'Нет описания'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)] whitespace-nowrap">
+                        {video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
+                        {video.views?.toLocaleString() || 0}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
+                        {video.likes?.toLocaleString() || 0}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => navigate(`/video/${video.id}`)}
+                            className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
+                            title="Открыть"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleEditClick(video)}
+                            className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
+                            title="Редактировать"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => setAnalyticsVideo(video)}
+                            className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
+                            title="Аналитика"
+                          >
+                            <BarChart2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(video.id)}
+                            className="p-2 hover:bg-red-500/10 rounded-full text-red-500 transition-colors"
+                            title="Удалить"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile Card List */}
+              <div className="md:hidden divide-y divide-[var(--border)]">
+                {filteredVideos.map((video) => (
+                  <div key={video.id} className="p-4 space-y-4">
+                    <div className="flex gap-4">
+                      <div className={`relative ${activeTab === 'shorts' ? 'w-20 aspect-[9/16]' : activeTab === 'photos' ? 'w-24 aspect-square' : 'w-32 aspect-video'} rounded-lg overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
                         <img src={video.thumbnailUrl} className="w-full h-full object-cover" alt="" />
                         {activeTab !== 'photos' && (
                           <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-bold">
@@ -231,69 +300,64 @@ export default function StudioContent() {
                           </span>
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(activeTab === 'photos' ? '/photos' : `/video/${video.id}`)}>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-sm text-[var(--text-primary)] line-clamp-2">
                           {video.title}
                         </h4>
-                        <p className="text-xs text-[var(--text-secondary)] line-clamp-1 mt-1">{video.description || 'Нет описания'}</p>
+                        <p className="text-[10px] text-[var(--text-secondary)] mt-1">
+                          {video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-secondary)]">
+                            <Eye className="w-3 h-3" /> {video.views?.toLocaleString() || 0}
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-secondary)]">
+                            <ThumbsUp className="w-3 h-3" /> {video.likes?.toLocaleString() || 0}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-[var(--text-secondary)] whitespace-nowrap">
-                    {video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
-                    {video.views?.toLocaleString() || 0}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
-                    {video.likes?.toLocaleString() || 0}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => navigate(`/video/${video.id}`)}
-                        className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
-                        title="Открыть"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleEditClick(video)}
-                        className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
-                        title="Редактировать"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => setAnalyticsVideo(video)}
-                        className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
-                        title="Аналитика"
-                      >
-                        <BarChart2 className="w-4 h-4" />
-                      </button>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => navigate(activeTab === 'photos' ? '/photos' : `/video/${video.id}`)}
+                          className="p-2.5 bg-[var(--hover)] rounded-xl text-[var(--text-secondary)]"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleEditClick(video)}
+                          className="p-2.5 bg-[var(--hover)] rounded-xl text-[var(--text-secondary)]"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => setAnalyticsVideo(video)}
+                          className="p-2.5 bg-[var(--hover)] rounded-xl text-[var(--text-secondary)]"
+                        >
+                          <BarChart2 className="w-4 h-4" />
+                        </button>
+                      </div>
                       <button 
                         onClick={() => handleDelete(video.id)}
-                        className="p-2 hover:bg-red-500/10 rounded-full text-red-500 transition-colors"
-                        title="Удалить"
+                        className="p-2.5 bg-red-500/10 rounded-xl text-red-500"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
+                  </div>
+                ))}
+              </div>
+
               {filteredVideos.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-24 text-center">
-                    <div className="flex flex-col items-center justify-center text-[var(--text-secondary)]">
-                      <Search className="w-12 h-12 mb-4 opacity-10" />
-                      <p className="text-sm italic">Контент не найден</p>
-                    </div>
-                  </td>
-                </tr>
+                <div className="px-6 py-24 text-center">
+                  <div className="flex flex-col items-center justify-center text-[var(--text-secondary)]">
+                    <Search className="w-12 h-12 mb-4 opacity-10" />
+                    <p className="text-sm italic">Контент не найден</p>
+                  </div>
+                </div>
               )}
-            </tbody>
-          </table>
+            </>
           )}
         </div>
       </div>
