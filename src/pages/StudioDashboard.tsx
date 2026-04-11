@@ -51,13 +51,10 @@ export default function StudioDashboard() {
           likes += d.likes || 0;
         });
 
-        const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', user.uid)));
-        const userData = userDoc.docs[0]?.data();
-
         setStats({
           totalViews: views,
           totalLikes: likes,
-          subscribers: userData?.subscribers || 0
+          subscribers: user.subscribers || 0
         });
       } catch (error) {
         console.error("Error fetching studio data:", error);
@@ -104,7 +101,7 @@ export default function StudioDashboard() {
               </div>
               <div className="space-y-1">
                 <h3 className="font-bold text-sm line-clamp-2 hover:text-blue-600 cursor-pointer" onClick={() => navigate(`/video/${videos[0].id}`)}>{videos[0].title}</h3>
-                <p className="text-xs text-gray-500">Опубликовано: {formatDistanceToNow(new Date(videos[0].createdAt), { addSuffix: true, locale: ru })}</p>
+                <p className="text-xs text-gray-500">Опубликовано: {videos[0].createdAt ? formatDistanceToNow(new Date(videos[0].createdAt), { addSuffix: true, locale: ru }) : 'Неизвестно'}</p>
               </div>
               <div className="space-y-4 pt-4 border-t border-gray-50">
                 <div className="flex justify-between items-center text-sm">
@@ -188,7 +185,7 @@ export default function StudioDashboard() {
                   <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
                     <span>{video.views} просм.</span>
                     <span>•</span>
-                    <span>{formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru })}</span>
+                    <span>{video.createdAt ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru }) : 'Неизвестно'}</span>
                   </div>
                 </div>
               </div>

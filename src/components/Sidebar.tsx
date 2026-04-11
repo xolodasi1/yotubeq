@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera } from 'lucide-react';
+import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera, Lock } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 
