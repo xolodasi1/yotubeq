@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../App';
-import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic } from 'lucide-react';
+import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic, Music as MusicIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { setDoc, doc } from 'firebase/firestore';
@@ -91,26 +91,31 @@ export default function Studio() {
       return;
     }
 
-    const videoElement = document.createElement('video');
-    videoElement.preload = 'metadata';
-    videoElement.onloadedmetadata = () => {
-      window.URL.revokeObjectURL(videoElement.src);
-      const minutes = Math.floor(videoElement.duration / 60);
-      const seconds = Math.floor(videoElement.duration % 60);
+    const isAudio = file.type.startsWith('audio/');
+    const mediaElement = document.createElement(isAudio ? 'audio' : 'video');
+    mediaElement.preload = 'metadata';
+    mediaElement.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(mediaElement.src);
+      const minutes = Math.floor(mediaElement.duration / 60);
+      const seconds = Math.floor(mediaElement.duration % 60);
       setVideoDuration(`${minutes}:${seconds.toString().padStart(2, '0')}`);
       
-      if (videoElement.duration <= 60 && videoElement.videoHeight > videoElement.videoWidth) {
+      if (!isAudio && (mediaElement as HTMLVideoElement).duration <= 60 && (mediaElement as HTMLVideoElement).videoHeight > (mediaElement as HTMLVideoElement).videoWidth) {
         setContentType('short');
+      } else if (isAudio) {
+        setContentType('music');
       }
     };
-    videoElement.src = URL.createObjectURL(file);
+    mediaElement.src = URL.createObjectURL(file);
     setVideoFile(file);
     if (!title) setTitle(file.name.replace(/\.[^/.]+$/, ""));
   };
 
   const uploadFile = (file: File, folder: string, onProgress?: (progress: number) => void): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
+      const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+      const resourceType = (isVideo || isAudio) ? 'video' : 'image';
       const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
 
       const formData = new FormData();
@@ -225,7 +230,7 @@ export default function Studio() {
                 <div className="relative group border-2 border-dashed border-gray-200 rounded-xl p-10 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-center cursor-pointer bg-gray-50/50">
                   <input
                     type="file"
-                    accept="video/*"
+                    accept="video/*,audio/*"
                     onChange={handleVideoSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     required
@@ -233,7 +238,7 @@ export default function Studio() {
                   {videoFile ? (
                     <div className="flex flex-col items-center text-blue-600">
                       <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                        <VideoIcon className="w-8 h-8" />
+                        {videoFile.type.startsWith('audio/') ? <MusicIcon className="w-8 h-8" /> : <VideoIcon className="w-8 h-8" />}
                       </div>
                       <span className="text-sm font-bold truncate max-w-full text-gray-900">{videoFile.name}</span>
                       <span className="text-xs text-gray-500 mt-2 font-medium">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB • {videoDuration}</span>
@@ -244,7 +249,7 @@ export default function Studio() {
                         <Upload className="w-8 h-8" />
                       </div>
                       <span className="text-sm font-bold text-gray-600">Выберите файл для загрузки</span>
-                      <span className="text-xs mt-2 font-medium">MP4, WebM или MOV (макс. {MAX_VIDEO_SIZE_MB}MB)</span>
+                      <span className="text-xs mt-2 font-medium">MP4, WebM, MOV или MP3 (макс. {MAX_VIDEO_SIZE_MB}MB)</span>
                     </div>
                   )}
                 </div>

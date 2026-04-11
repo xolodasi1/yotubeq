@@ -593,13 +593,41 @@ export default function VideoPlayer() {
       {/* Main Content */}
       <div className="flex-1 min-w-0">
         <div className={`rounded-2xl md:rounded-3xl overflow-hidden glass border border-ice-border shadow-2xl relative group ${video.isShort ? 'aspect-[9/16] max-w-[400px] mx-auto' : 'aspect-video'}`}>
-          <video
-            ref={videoRef}
-            src={video.videoUrl}
-            controls
-            autoPlay
-            className="w-full h-full object-contain bg-black"
-          />
+          {video.isMusic ? (
+            <div className="w-full h-full relative flex items-center justify-center bg-gradient-to-br from-gray-900 to-black overflow-hidden">
+              <img 
+                src={video.thumbnailUrl} 
+                alt={video.title} 
+                className="absolute inset-0 w-full h-full object-cover opacity-30 blur-2xl scale-110"
+              />
+              <div className="relative z-10 flex flex-col items-center gap-6">
+                <div className="w-48 h-48 md:w-64 md:h-64 rounded-2xl shadow-2xl overflow-hidden border-4 border-white/10 animate-pulse-slow">
+                  <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                    <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">Сейчас играет</span>
+                  </div>
+                </div>
+              </div>
+              <video
+                ref={videoRef}
+                src={video.videoUrl}
+                controls
+                autoPlay
+                className="absolute bottom-0 left-0 w-full h-12 bg-black/60 backdrop-blur-md"
+              />
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              src={video.videoUrl}
+              controls
+              autoPlay
+              className="w-full h-full object-contain bg-black"
+            />
+          )}
           
           {/* Quality Selector Overlay */}
           <div className="absolute top-4 right-4 z-10">
