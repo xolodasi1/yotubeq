@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
-import { Loader2, Trophy, Users, Music, Play } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
+import { Loader2, Trophy, Users, Music, Play, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { VideoType } from '../types';
 
@@ -21,21 +21,21 @@ export default function TopChannels() {
   const [sortBy, setSortBy] = useState<'subscribers' | 'music'>('subscribers');
 
   useEffect(() => {
-    const fetchTopData = async () => {
+    // Listen to users for real-time subscriber updates
+    const usersQuery = query(
+      collection(db, 'users'),
+      orderBy('subscribers', 'desc')
+    );
+
+    const unsubscribeUsers = onSnapshot(usersQuery, async (usersSnapshot) => {
       try {
-        // 1. Fetch top users by subscribers
-        const usersQuery = query(
-          collection(db, 'users'),
-          orderBy('subscribers', 'desc')
-        );
-        
-        const usersSnapshot = await getDocs(usersQuery);
         const usersData = usersSnapshot.docs.map(doc => ({
           uid: doc.id,
           ...doc.data()
         })) as any[];
 
-        // 2. Fetch all music videos to aggregate views
+        // Fetch music stats (we do this inside to keep it updated when users change, 
+        // though ideally we'd have a separate listener for videos too)
         const musicQuery = query(
           collection(db, 'videos'),
           where('isMusic', '==', true)
@@ -43,47 +43,45 @@ export default function TopChannels() {
         const musicSnapshot = await getDocs(musicQuery);
         const musicVideos = musicSnapshot.docs.map(doc => doc.data()) as VideoType[];
 
-        // 3. Aggregate music stats per user
         const musicStats: Record<string, { views: number, count: number }> = {};
         musicVideos.forEach(video => {
-          if (!musicStats[video.authorId]) {
-            musicStats[video.authorId] = { views: 0, count: 0 };
+          const authorId = video.authorId;
+          if (!musicStats[authorId]) {
+            musicStats[authorId] = { views: 0, count: 0 };
           }
-          musicStats[video.authorId].views += (video.views || 0);
-          musicStats[video.authorId].count += 1;
+          musicStats[authorId].views += (Number(video.views) || 0);
+          musicStats[authorId].count += 1;
         });
 
-        // 4. Combine data
         const combinedData: TopChannel[] = usersData.map(user => ({
           uid: user.uid,
           displayName: user.displayName || 'User',
           photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
           bio: user.bio || '',
-          subscribers: user.subscribers || 0,
+          subscribers: Number(user.subscribers) || 0,
           totalMusicViews: musicStats[user.uid]?.views || 0,
           musicCount: musicStats[user.uid]?.count || 0
         }));
 
-        // Sort by a combination or just keep subscriber sort? 
-        // User asked "чтоб топы шитали и подпишики и всего прослушивание треков"
-        // Let's sort by subscribers primarily but show both.
         setChannels(combinedData);
       } catch (error) {
-        console.error("Error fetching top data:", error);
+        console.error("Error in TopChannels snapshot:", error);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    fetchTopData();
+    return () => unsubscribeUsers();
   }, []);
 
-  const sortedChannels = [...channels].sort((a, b) => {
-    if (sortBy === 'subscribers') {
-      return b.subscribers - a.subscribers;
-    }
-    return b.totalMusicViews - a.totalMusicViews;
-  });
+  const sortedChannels = React.useMemo(() => {
+    return [...channels].sort((a, b) => {
+      if (sortBy === 'subscribers') {
+        return (b.subscribers || 0) - (a.subscribers || 0);
+      }
+      return (b.totalMusicViews || 0) - (a.totalMusicViews || 0);
+    });
+  }, [channels, sortBy]);
 
   if (loading) {
     return (
@@ -103,18 +101,20 @@ export default function TopChannels() {
           <h1 className="text-2xl md:text-3xl font-bold text-[var(--studio-text)]">Топ авторов</h1>
           <p className="text-xs md:text-sm text-[var(--studio-muted)]">Откройте для себя самых популярных создателей</p>
         </div>
-        <div className="ml-auto flex bg-[var(--studio-sidebar)] p-1 rounded-xl border border-[var(--studio-border)]">
+        <div className="ml-auto flex bg-[var(--studio-sidebar)] p-1 rounded-xl border border-[var(--studio-border)] shadow-sm">
           <button 
             onClick={() => setSortBy('subscribers')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${sortBy === 'subscribers' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold transition-all uppercase tracking-wider ${sortBy === 'subscribers' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
           >
-            ПО ПОДПИСЧИКАМ
+            <Users className="w-3 h-3" />
+            Подписчики
           </button>
           <button 
             onClick={() => setSortBy('music')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${sortBy === 'music' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold transition-all uppercase tracking-wider ${sortBy === 'music' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
           >
-            ПО ПРОСЛУШИВАНИЯМ
+            <Music className="w-3 h-3" />
+            Прослушивания
           </button>
         </div>
       </div>
@@ -144,17 +144,15 @@ export default function TopChannels() {
               />
               <div className="min-w-0 pr-8">
                 <h2 className="text-lg md:text-xl font-bold group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{channel.displayName}</h2>
-                <div className="flex flex-col gap-1.5 mt-1">
-                  <div className="flex items-center gap-2 text-[var(--studio-muted)]">
+                <div className="flex flex-col gap-1.5 mt-2">
+                  <div className={`flex items-center gap-2 transition-colors ${sortBy === 'subscribers' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
                     <Users className="w-3.5 h-3.5" />
                     <span className="font-bold text-[11px] uppercase tracking-wider">{channel.subscribers.toLocaleString()} подписчиков</span>
                   </div>
-                  {channel.musicCount > 0 && (
-                    <div className="flex items-center gap-2 text-blue-500">
-                      <Music className="w-3.5 h-3.5" />
-                      <span className="font-bold text-[11px] uppercase tracking-wider">{channel.totalMusicViews.toLocaleString()} прослушиваний</span>
-                    </div>
-                  )}
+                  <div className={`flex items-center gap-2 transition-colors ${sortBy === 'music' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
+                    <Music className="w-3.5 h-3.5" />
+                    <span className="font-bold text-[11px] uppercase tracking-wider">{channel.totalMusicViews.toLocaleString()} прослушиваний</span>
+                  </div>
                 </div>
               </div>
             </div>
