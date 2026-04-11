@@ -85,17 +85,17 @@ service cloud.firestore {
     }
 
     match /history/{historyId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
       allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
     match /watch_later/{id} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
       allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
     match /favorites/{id} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
       allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
@@ -104,6 +104,11 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /commentActions/{actionId} {
+      allow read: if isAuthenticated() && actionId.matches(request.auth.uid + '_.*');
+      allow write: if isAuthenticated() && actionId.matches(request.auth.uid + '_.*');
     }
   }
 }

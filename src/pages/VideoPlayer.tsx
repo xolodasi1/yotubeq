@@ -156,9 +156,7 @@ export default function VideoPlayer() {
           // Check like
           const likeId = `${user.uid}_${id}`;
           const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
-          if (likeSnap.exists() && likeSnap.data().type === 'like') {
-            setIsLiked(true);
-          }
+          setIsLiked(likeSnap.exists() && likeSnap.data().type === 'like');
 
           // Check favorite
           const favSnap = await getDoc(doc(db, 'favorites', likeId));
@@ -171,9 +169,12 @@ export default function VideoPlayer() {
           // Check subscription
           const subId = `${user.uid}_${data.authorId}`;
           const subSnap = await getDoc(doc(db, 'subscriptions', subId));
-          if (subSnap.exists()) {
-            setIsSubscribed(true);
-          }
+          setIsSubscribed(subSnap.exists());
+        } else {
+          setIsLiked(false);
+          setIsFavorited(false);
+          setIsWatchLater(false);
+          setIsSubscribed(false);
         }
 
       } catch (error) {

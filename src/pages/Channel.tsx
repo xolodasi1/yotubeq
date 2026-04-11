@@ -75,9 +75,9 @@ export default function Channel() {
         if (user) {
           const subId = `${user.uid}_${id}`;
           const subSnap = await getDoc(doc(db, 'subscriptions', subId));
-          if (subSnap.exists()) {
-            setIsSubscribed(true);
-          }
+          setIsSubscribed(subSnap.exists());
+        } else {
+          setIsSubscribed(false);
         }
       } catch (error) {
         console.error("Error fetching channel videos:", error);
