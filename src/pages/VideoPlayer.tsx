@@ -92,7 +92,7 @@ export default function VideoPlayer() {
   useEffect(() => {
     if (!id) return;
     
-    const fetchVideoAndInteractions = async () => {
+    const fetchVideo = async () => {
       try {
         setLoading(true);
         const videoDocRef = doc(db, 'videos', id);
@@ -103,6 +103,7 @@ export default function VideoPlayer() {
         }
         
         const data = {
+          id: videoSnap.id,
           ...videoSnap.data(),
           createdAt: videoSnap.data().createdAt?.toDate?.()?.toISOString() || videoSnap.data().createdAt
         } as VideoType;
@@ -110,19 +111,12 @@ export default function VideoPlayer() {
         setVideo(data);
 
         // Increment views
-        await updateDoc(videoDocRef, {
-          views: increment(1)
-        });
-
-        // Add to History
-        if (user) {
-          const historyId = `${user.uid}_${id}`;
-          await setDoc(doc(db, 'history', historyId), {
-            id: historyId,
-            userId: user.uid,
-            videoId: id,
-            watchedAt: serverTimestamp()
+        try {
+          await updateDoc(videoDocRef, {
+            views: increment(1)
           });
+        } catch (err) {
+          console.error("Failed to increment views:", err);
         }
 
         // Fetch related videos
@@ -151,32 +145,6 @@ export default function VideoPlayer() {
           };
         }) as Comment[]);
 
-        // Fetch user interactions if logged in
-        if (user) {
-          // Check like
-          const likeId = `${user.uid}_${id}`;
-          const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
-          setIsLiked(likeSnap.exists() && likeSnap.data().type === 'like');
-
-          // Check favorite
-          const favSnap = await getDoc(doc(db, 'favorites', likeId));
-          setIsFavorited(favSnap.exists());
-
-          // Check watch later
-          const wlSnap = await getDoc(doc(db, 'watch_later', likeId));
-          setIsWatchLater(wlSnap.exists());
-
-          // Check subscription
-          const subId = `${user.uid}_${data.authorId}`;
-          const subSnap = await getDoc(doc(db, 'subscriptions', subId));
-          setIsSubscribed(subSnap.exists());
-        } else {
-          setIsLiked(false);
-          setIsFavorited(false);
-          setIsWatchLater(false);
-          setIsSubscribed(false);
-        }
-
       } catch (error) {
         console.error("Error fetching video:", error);
       } finally {
@@ -184,9 +152,60 @@ export default function VideoPlayer() {
       }
     };
 
-    fetchVideoAndInteractions();
+    fetchVideo();
     window.scrollTo(0, 0);
-  }, [id, user]);
+  }, [id]);
+
+  useEffect(() => {
+    if (!id || !video) return;
+
+    if (!user) {
+      setIsLiked(false);
+      setIsFavorited(false);
+      setIsWatchLater(false);
+      setIsSubscribed(false);
+      return;
+    }
+
+    const fetchInteractions = async () => {
+      try {
+        // Add to History
+        try {
+          const historyId = `${user.uid}_${id}`;
+          await setDoc(doc(db, 'history', historyId), {
+            id: historyId,
+            userId: user.uid,
+            videoId: id,
+            watchedAt: serverTimestamp()
+          });
+        } catch (err) {
+          console.error("Failed to add to history:", err);
+        }
+
+        // Check like
+        const likeId = `${user.uid}_${id}`;
+        const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
+        setIsLiked(likeSnap.exists() && likeSnap.data().type === 'like');
+
+        // Check favorite
+        const favSnap = await getDoc(doc(db, 'favorites', likeId));
+        setIsFavorited(favSnap.exists());
+
+        // Check watch later
+        const wlSnap = await getDoc(doc(db, 'watch_later', likeId));
+        setIsWatchLater(wlSnap.exists());
+
+        // Check subscription
+        const subId = `${user.uid}_${video.authorId}`;
+        const subSnap = await getDoc(doc(db, 'subscriptions', subId));
+        setIsSubscribed(subSnap.exists());
+      } catch (error) {
+        console.error("Error fetching interactions:", error);
+      }
+    };
+
+    fetchInteractions();
+  }, [id, user, video?.authorId]);
 
   const handleLike = async () => {
     if (!user || !video) {
