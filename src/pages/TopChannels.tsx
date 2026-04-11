@@ -13,12 +13,15 @@ interface TopChannel {
   subscribers: number;
   totalMusicViews: number;
   musicCount: number;
+  totalViews: number;
 }
 
 export default function TopChannels() {
   const [channels, setChannels] = useState<TopChannel[]>([]);
+  const [topTracks, setTopTracks] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'subscribers' | 'music'>('subscribers');
+  const [topType, setTopType] = useState<'authors' | 'tracks'>('authors');
+  const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views'>('subscribers');
 
   useEffect(() => {
     // Listen to users for real-time subscriber updates
@@ -34,23 +37,28 @@ export default function TopChannels() {
           ...doc.data()
         })) as any[];
 
-        // Fetch music stats (we do this inside to keep it updated when users change, 
-        // though ideally we'd have a separate listener for videos too)
-        const musicQuery = query(
-          collection(db, 'videos'),
-          where('isMusic', '==', true)
-        );
-        const musicSnapshot = await getDocs(musicQuery);
-        const musicVideos = musicSnapshot.docs.map(doc => doc.data()) as VideoType[];
+        // Fetch all videos to aggregate stats
+        const videosQuery = query(collection(db, 'videos'));
+        const videosSnapshot = await getDocs(videosQuery);
+        const allVideos = videosSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt
+        })) as VideoType[];
 
-        const musicStats: Record<string, { views: number, count: number }> = {};
-        musicVideos.forEach(video => {
+        // Aggregate stats per user
+        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number }> = {};
+        allVideos.forEach(video => {
           const authorId = video.authorId;
-          if (!musicStats[authorId]) {
-            musicStats[authorId] = { views: 0, count: 0 };
+          if (!stats[authorId]) {
+            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0 };
           }
-          musicStats[authorId].views += (Number(video.views) || 0);
-          musicStats[authorId].count += 1;
+          const v = Number(video.views) || 0;
+          stats[authorId].totalViews += v;
+          if (video.isMusic) {
+            stats[authorId].musicViews += v;
+            stats[authorId].musicCount += 1;
+          }
         });
 
         const combinedData: TopChannel[] = usersData.map(user => ({
@@ -59,11 +67,20 @@ export default function TopChannels() {
           photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
           bio: user.bio || '',
           subscribers: Number(user.subscribers) || 0,
-          totalMusicViews: musicStats[user.uid]?.views || 0,
-          musicCount: musicStats[user.uid]?.count || 0
+          totalMusicViews: stats[user.uid]?.musicViews || 0,
+          musicCount: stats[user.uid]?.musicCount || 0,
+          totalViews: stats[user.uid]?.totalViews || 0
         }));
 
         setChannels(combinedData);
+
+        // Set top tracks (music only)
+        const musicTracks = allVideos
+          .filter(v => v.isMusic)
+          .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
+          .slice(0, 50);
+        setTopTracks(musicTracks);
+
       } catch (error) {
         console.error("Error in TopChannels snapshot:", error);
       } finally {
@@ -76,10 +93,9 @@ export default function TopChannels() {
 
   const sortedChannels = React.useMemo(() => {
     return [...channels].sort((a, b) => {
-      if (sortBy === 'subscribers') {
-        return (b.subscribers || 0) - (a.subscribers || 0);
-      }
-      return (b.totalMusicViews || 0) - (a.totalMusicViews || 0);
+      if (sortBy === 'subscribers') return (b.subscribers || 0) - (a.subscribers || 0);
+      if (sortBy === 'music') return (b.totalMusicViews || 0) - (a.totalMusicViews || 0);
+      return (b.totalViews || 0) - (a.totalViews || 0);
     });
   }, [channels, sortBy]);
 
@@ -93,86 +109,158 @@ export default function TopChannels() {
 
   return (
     <div className="max-w-[1200px] mx-auto p-4 md:p-6 pb-24 md:pb-6">
-      <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
-        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-blue-600/20 flex items-center justify-center shrink-0">
-          <Trophy className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+            <Trophy className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-[var(--studio-text)] tracking-tight">Чарты IceTube</h1>
+            <p className="text-sm text-[var(--studio-muted)]">Самый популярный контент и авторы</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-[var(--studio-text)]">Топ авторов</h1>
-          <p className="text-xs md:text-sm text-[var(--studio-muted)]">Откройте для себя самых популярных создателей</p>
-        </div>
-        <div className="ml-auto flex bg-[var(--studio-sidebar)] p-1 rounded-xl border border-[var(--studio-border)] shadow-sm">
+
+        <div className="flex bg-[var(--studio-sidebar)] p-1 rounded-2xl border border-[var(--studio-border)] shadow-sm self-start md:self-center">
           <button 
-            onClick={() => setSortBy('subscribers')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold transition-all uppercase tracking-wider ${sortBy === 'subscribers' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
+            onClick={() => setTopType('authors')}
+            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wider ${topType === 'authors' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
           >
-            <Users className="w-3 h-3" />
-            Подписчики
+            Авторы
           </button>
           <button 
-            onClick={() => setSortBy('music')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold transition-all uppercase tracking-wider ${sortBy === 'music' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
+            onClick={() => setTopType('tracks')}
+            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wider ${topType === 'tracks' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
           >
-            <Music className="w-3 h-3" />
-            Прослушивания
+            Треки
           </button>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {sortedChannels.map((channel, index) => (
-          <Link 
-            key={channel.uid} 
-            to={`/channel/${channel.uid}`}
-            className="bg-[var(--studio-sidebar)] rounded-xl md:rounded-2xl p-4 md:p-6 border border-[var(--studio-border)] hover:border-blue-300 hover:shadow-lg hover:shadow-blue-50 transition-all group relative overflow-hidden"
-          >
-            {/* Rank Badge */}
-            <div className={`absolute top-0 right-0 w-12 h-12 md:w-16 md:h-16 flex items-start justify-end p-2 md:p-3 rounded-bl-2xl md:rounded-bl-3xl ${
-              index === 0 ? 'bg-yellow-500/20 text-yellow-600' :
-              index === 1 ? 'bg-gray-400/20 text-gray-500' :
-              index === 2 ? 'bg-amber-700/20 text-amber-800' :
-              'bg-[var(--studio-hover)] text-[var(--studio-muted)]'
-            }`}>
-              <span className="font-bold text-base md:text-lg">#{index + 1}</span>
-            </div>
 
-            <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
-              <img 
-                src={channel.photoURL} 
-                alt={channel.displayName} 
-                className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-blue-100 group-hover:border-blue-500 transition-colors object-cover"
-              />
-              <div className="min-w-0 pr-8">
-                <h2 className="text-lg md:text-xl font-bold group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{channel.displayName}</h2>
-                <div className="flex flex-col gap-1.5 mt-2">
-                  <div className={`flex items-center gap-2 transition-colors ${sortBy === 'subscribers' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
-                    <Users className="w-3.5 h-3.5" />
-                    <span className="font-bold text-[11px] uppercase tracking-wider">{channel.subscribers.toLocaleString()} подписчиков</span>
+      {topType === 'authors' ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <button 
+              onClick={() => setSortBy('subscribers')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border ${sortBy === 'subscribers' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'}`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              По подписчикам
+            </button>
+            <button 
+              onClick={() => setSortBy('views')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border ${sortBy === 'views' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'}`}
+            >
+              <Play className="w-3.5 h-3.5" />
+              По всем просмотрам
+            </button>
+            <button 
+              onClick={() => setSortBy('music')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border ${sortBy === 'music' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'}`}
+            >
+              <Music className="w-3.5 h-3.5" />
+              По прослушиваниям
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedChannels.map((channel, index) => (
+              <Link 
+                key={channel.uid} 
+                to={`/channel/${channel.uid}`}
+                className="bg-[var(--studio-sidebar)] rounded-3xl p-6 border border-[var(--studio-border)] hover:border-blue-300 hover:shadow-xl hover:shadow-blue-50/50 transition-all group relative overflow-hidden"
+              >
+                <div className={`absolute top-0 right-0 w-16 h-16 flex items-start justify-end p-3 rounded-bl-3xl ${
+                  index === 0 ? 'bg-yellow-500/10 text-yellow-600' :
+                  index === 1 ? 'bg-gray-400/10 text-gray-500' :
+                  index === 2 ? 'bg-amber-700/10 text-amber-800' :
+                  'bg-[var(--studio-hover)] text-[var(--studio-muted)]'
+                }`}>
+                  <span className="font-black text-xl italic">#{index + 1}</span>
+                </div>
+
+                <div className="flex items-center gap-5 mb-4">
+                  <div className="relative">
+                    <img 
+                      src={channel.photoURL} 
+                      alt={channel.displayName} 
+                      className="w-16 h-16 rounded-2xl border-2 border-white shadow-md group-hover:scale-105 transition-transform object-cover"
+                    />
+                    {index < 3 && (
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+                        <Trophy className={`w-3 h-3 ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : 'text-amber-700'}`} />
+                      </div>
+                    )}
                   </div>
-                  <div className={`flex items-center gap-2 transition-colors ${sortBy === 'music' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
-                    <Music className="w-3.5 h-3.5" />
-                    <span className="font-bold text-[11px] uppercase tracking-wider">{channel.totalMusicViews.toLocaleString()} прослушиваний</span>
+                  <div className="min-w-0 pr-8">
+                    <h2 className="text-xl font-bold group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{channel.displayName}</h2>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'subscribers' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{channel.subscribers.toLocaleString()}</span>
+                      </div>
+                      <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'views' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
+                        <Play className="w-3.5 h-3.5" />
+                        <span>{channel.totalViews.toLocaleString()}</span>
+                      </div>
+                      {channel.musicCount > 0 && (
+                        <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'music' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
+                          <Music className="w-3.5 h-3.5" />
+                          <span>{channel.totalMusicViews.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {channel.bio && (
-              <p className="text-xs md:text-sm text-[var(--studio-text)]/80 line-clamp-2 mt-1 md:mt-2">
-                {channel.bio}
-              </p>
-            )}
-          </Link>
-        ))}
-
-        {channels.length === 0 && (
-          <div className="col-span-full text-center py-16 md:py-20 text-[var(--studio-muted)]">
-            <Users className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 opacity-20" />
-            <h2 className="text-xl md:text-2xl font-bold">Авторы не найдены</h2>
-            <p className="mt-2 text-sm md:text-base">Станьте первым, кто создаст канал!</p>
+                {channel.bio && (
+                  <p className="text-sm text-[var(--studio-text)]/70 line-clamp-2 mt-2 font-medium leading-relaxed">
+                    {channel.bio}
+                  </p>
+                )}
+              </Link>
+            ))}
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <div className="space-y-4">
+          {topTracks.map((track, index) => (
+            <Link 
+              key={track.id} 
+              to={`/video/${track.id}`}
+              className="flex items-center gap-4 bg-[var(--studio-sidebar)] p-4 rounded-2xl border border-[var(--studio-border)] hover:border-blue-300 hover:shadow-lg transition-all group"
+            >
+              <div className="w-12 text-center font-black text-2xl italic text-[var(--studio-muted)] group-hover:text-blue-600 transition-colors">
+                {index + 1}
+              </div>
+              <div className="relative w-24 md:w-32 aspect-video rounded-xl overflow-hidden shadow-sm">
+                <img src={track.thumbnailUrl} alt={track.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Play className="w-8 h-8 text-white fill-current" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-[var(--studio-text)] group-hover:text-blue-600 transition-colors line-clamp-1">{track.title}</h3>
+                <p className="text-sm text-[var(--studio-muted)] font-medium">{track.authorName}</p>
+              </div>
+              <div className="text-right hidden sm:block">
+                <div className="flex items-center justify-end gap-2 text-blue-600 font-black text-lg">
+                  <Play className="w-4 h-4" />
+                  {track.views.toLocaleString()}
+                </div>
+                <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest">Прослушиваний</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {((topType === 'authors' && channels.length === 0) || (topType === 'tracks' && topTracks.length === 0)) && (
+        <div className="text-center py-20 text-[var(--studio-muted)]">
+          <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-10" />
+          <h2 className="text-2xl font-bold">Чарты пока пусты</h2>
+          <p className="mt-2">Станьте первым, кто попадет в топ!</p>
+        </div>
+      )}
     </div>
   );
 }

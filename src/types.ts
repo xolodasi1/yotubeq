@@ -13,6 +13,8 @@ export interface Video {
   category: string;
   duration: string;
   isShort?: boolean;
+  isMusic?: boolean;
+  type?: 'video' | 'short' | 'music';
 }
 
 export type VideoType = Video;

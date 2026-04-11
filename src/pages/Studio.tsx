@@ -151,6 +151,11 @@ export default function Studio() {
     e.preventDefault();
     if (!user || !videoFile || uploading) return;
 
+    if (contentType === 'music' && !thumbnailFile) {
+      toast.error('Для музыкальных треков обязательно нужно загрузить обложку (превью)');
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
     try {
@@ -257,8 +262,10 @@ export default function Studio() {
 
               {/* Thumbnail Upload */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Значок (превью)</label>
-                <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-center cursor-pointer bg-gray-50/50">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                  Значок (превью) {contentType === 'music' && <span className="text-red-500">*обязательно</span>}
+                </label>
+                <div className={`relative border-2 border-dashed rounded-xl p-6 transition-all text-center cursor-pointer bg-gray-50/50 ${contentType === 'music' && !thumbnailFile ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50/30'}`}>
                   <input
                     type="file"
                     accept="image/*"
