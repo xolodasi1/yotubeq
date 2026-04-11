@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone } from 'lucide-react';
+import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 
@@ -8,19 +8,32 @@ const studioItems = [
   { icon: Layout, label: 'Контент', path: '/studio/content' },
   { icon: BarChart2, label: 'Аналитика', path: '/studio/analytics' },
   { icon: MessageSquare, label: 'Комментарии', path: '/studio/comments' },
+  { icon: Users, label: 'Сообщество', path: '/studio/community' },
 ];
 
 const mainItems = [
   { icon: Youtube, label: 'На главную', path: '/' },
   { icon: Smartphone, label: 'Shorts', path: '/shorts' },
   { icon: ListMusic, label: 'Музыка', path: '/music' },
+  { icon: Camera, label: 'Фото', path: '/photos' },
   { icon: Users, label: 'Топ каналов', path: '/top-channels' },
   { icon: Clock, label: 'История', path: '/history' },
   { icon: Heart, label: 'Понравившиеся', path: '/favorites' },
   { icon: ListMusic, label: 'Плейлисты', path: '/playlists' },
 ];
 
-const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: any, label: string, path: string, isActive: boolean, key?: string }) => {
+const SidebarItem = ({ icon: Icon, label, path, isActive, locked }: { icon: any, label: string, path: string, isActive: boolean, locked?: boolean, key?: string }) => {
+  if (locked) {
+    return (
+      <div className="flex items-center justify-between px-6 py-3 text-[var(--text-secondary)] opacity-50 cursor-not-allowed">
+        <div className="flex items-center gap-4">
+          <Icon className="w-5 h-5" />
+          <span className="text-sm font-medium">{label}</span>
+        </div>
+        <Lock className="w-3 h-3" />
+      </div>
+    );
+  }
   return (
     <Link
       to={path}
@@ -92,7 +105,14 @@ export default function Sidebar() {
             <>
               <div className="px-6 mb-2 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Студия</div>
               {studioItems.map((item) => (
-                <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} isActive={location.pathname === item.path} />
+                <SidebarItem 
+                  key={item.path} 
+                  icon={item.icon} 
+                  label={item.label} 
+                  path={item.path} 
+                  isActive={location.pathname === item.path}
+                  locked={item.path === '/studio/community' && (user?.subscribers || 0) < 10}
+                />
               ))}
             </>
           ) : (
@@ -126,6 +146,17 @@ export default function Sidebar() {
           {(isStudio ? studioItems : mainItems).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            const isLocked = item.path === '/studio/community' && (user?.subscribers || 0) < 10;
+            
+            if (isLocked) {
+              return (
+                <div key={item.label} className="flex flex-col items-center gap-1 p-2 min-w-[60px] opacity-30">
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[9px] font-medium">{item.label}</span>
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.label}

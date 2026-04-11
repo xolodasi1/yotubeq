@@ -18,6 +18,7 @@ export default function StudioAnalytics() {
     subscribers: 0,
     topVideo: null as VideoType | null
   });
+  const [popularTab, setPopularTab] = useState<'all' | 'video' | 'short' | 'music' | 'photo'>('all');
 
   useEffect(() => {
     if (!user) return;
@@ -150,12 +151,46 @@ export default function StudioAnalytics() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Content */}
         <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-lg p-6 shadow-sm space-y-6">
-          <h2 className="font-bold text-lg text-[var(--studio-text)]">Самый популярный контент</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="font-bold text-lg text-[var(--studio-text)]">Самый популярный контент</h2>
+            <div className="flex bg-[var(--studio-hover)] p-1 rounded-lg border border-[var(--studio-border)]">
+              {[
+                { id: 'all', label: 'Все' },
+                { id: 'video', label: 'Видео' },
+                { id: 'short', label: 'Shorts' },
+                { id: 'music', label: 'Музыка' },
+                { id: 'photo', label: 'Фото' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setPopularTab(tab.id as any)}
+                  className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                    popularTab === tab.id 
+                      ? 'bg-blue-600 text-white shadow-sm' 
+                      : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-4">
-            {[...videos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5).map((video, idx) => (
+            {[...videos]
+              .filter(v => {
+                if (popularTab === 'all') return true;
+                if (popularTab === 'video') return v.type === 'video' || (!v.type && !v.isShort && !v.isMusic);
+                if (popularTab === 'short') return v.type === 'short' || v.isShort;
+                if (popularTab === 'music') return v.type === 'music' || v.isMusic;
+                if (popularTab === 'photo') return v.type === 'photo' || v.isPhoto;
+                return true;
+              })
+              .sort((a, b) => (b.views || 0) - (a.views || 0))
+              .slice(0, 5)
+              .map((video, idx) => (
               <div key={video.id} className="flex items-center gap-4 group p-2 hover:bg-[var(--studio-hover)] rounded-lg transition-colors cursor-pointer">
                 <span className="text-lg font-bold text-[var(--studio-muted)] w-6 text-center">{idx + 1}</span>
-                <div className="relative w-20 aspect-video rounded overflow-hidden border border-[var(--studio-border)] flex-shrink-0">
+                <div className={`relative ${video.isShort ? 'w-12 aspect-[9/16]' : video.isPhoto ? 'w-16 aspect-square' : 'w-20 aspect-video'} rounded overflow-hidden border border-[var(--studio-border)] flex-shrink-0`}>
                   <img src={video.thumbnailUrl} className="w-full h-full object-cover" alt="" />
                 </div>
                 <div className="flex-1 min-w-0">

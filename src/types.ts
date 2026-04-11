@@ -14,7 +14,8 @@ export interface Video {
   duration: string;
   isShort?: boolean;
   isMusic?: boolean;
-  type?: 'video' | 'short' | 'music';
+  isPhoto?: boolean;
+  type?: 'video' | 'short' | 'music' | 'photo';
 }
 
 export type VideoType = Video;
@@ -26,6 +27,7 @@ export interface UserProfile {
   photoURL: string;
   bannerUrl?: string;
   subscribers: number;
+  photosCount?: number;
   bio: string;
   joinedAt: any;
   socialLinks?: {

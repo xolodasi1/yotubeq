@@ -10,6 +10,7 @@ import StudioDashboard from './pages/StudioDashboard';
 import StudioContent from './pages/StudioContent';
 import StudioAnalytics from './pages/StudioAnalytics';
 import StudioComments from './pages/StudioComments';
+import StudioCommunity from './pages/StudioCommunity';
 import Shorts from './pages/Shorts';
 import Music from './pages/Music';
 import TopChannels from './pages/TopChannels';
@@ -21,6 +22,7 @@ import Playlists from './pages/Playlists';
 import PlaylistDetail from './pages/PlaylistDetail';
 import Settings from './pages/Settings';
 import Studio from './pages/Studio';
+import Photos from './pages/Photos';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -30,6 +32,7 @@ interface User {
   email: string;
   displayName: string;
   photoURL: string;
+  subscribers: number;
 }
 
 interface AuthContextType {
@@ -73,31 +76,34 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const userData: User = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
-        };
-        setUser(userData);
-
-        // Ensure user exists in Firestore
+        let subscribers = 0;
         try {
           const userRef = doc(db, 'users', firebaseUser.uid);
           const userSnap = await getDoc(userRef);
-          if (!userSnap.exists()) {
+          if (userSnap.exists()) {
+            subscribers = userSnap.data().subscribers || 0;
+          } else {
             await setDoc(userRef, {
-              uid: userData.uid,
-              email: userData.email,
-              displayName: userData.displayName,
-              photoURL: userData.photoURL,
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
               subscribers: 0,
               createdAt: new Date()
             });
           }
         } catch (error) {
-          console.error("Error saving user to Firestore:", error);
+          console.error("Error fetching/saving user:", error);
         }
+
+        const userData: User = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
+          subscribers: subscribers
+        };
+        setUser(userData);
       } else {
         setUser(null);
       }
@@ -128,12 +134,14 @@ export default function App() {
                 <Route path="/shorts" element={<Shorts />} />
                 <Route path="/music" element={<Music />} />
                 <Route path="/top-channels" element={<TopChannels />} />
+                <Route path="/photos" element={<Photos />} />
                 <Route path="/video/:id" element={<VideoPlayer />} />
                 <Route path="/channel/:id" element={<Channel />} />
                 <Route path="/studio" element={<StudioDashboard />} />
                 <Route path="/studio/content" element={<StudioContent />} />
                 <Route path="/studio/analytics" element={<StudioAnalytics />} />
                 <Route path="/studio/comments" element={<StudioComments />} />
+                <Route path="/studio/community" element={<StudioCommunity />} />
                 <Route path="/studio/upload" element={<Studio />} />
                 <Route path="/history" element={<History />} />
                 <Route path="/watch-later" element={<WatchLater />} />

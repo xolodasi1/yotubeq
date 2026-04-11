@@ -16,7 +16,7 @@ export default function StudioContent() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'videos' | 'shorts' | 'playlists'>('videos');
+  const [activeTab, setActiveTab] = useState<'videos' | 'shorts' | 'music' | 'photos' | 'playlists'>('videos');
   const [editingVideo, setEditingVideo] = useState<VideoType | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -91,10 +91,17 @@ export default function StudioContent() {
     }
   };
 
-  const regularVideos = videos.filter(v => !v.isShort);
-  const shortsVideos = videos.filter(v => v.isShort);
+  const regularVideos = videos.filter(v => v.type === 'video' || (!v.type && !v.isShort && !v.isMusic));
+  const shortsVideos = videos.filter(v => v.type === 'short' || v.isShort);
+  const musicVideos = videos.filter(v => v.type === 'music' || v.isMusic);
+  const photoVideos = videos.filter(v => v.type === 'photo' || v.isPhoto);
 
-  const displayedContent = activeTab === 'videos' ? regularVideos : activeTab === 'shorts' ? shortsVideos : [];
+  const displayedContent = 
+    activeTab === 'videos' ? regularVideos : 
+    activeTab === 'shorts' ? shortsVideos : 
+    activeTab === 'music' ? musicVideos :
+    activeTab === 'photos' ? photoVideos :
+    [];
 
   const filteredVideos = displayedContent.filter(v => 
     v.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -134,6 +141,28 @@ export default function StudioContent() {
         >
           Shorts
           {activeTab === 'shorts' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('music')}
+          className={`pb-4 text-sm font-bold transition-colors relative ${
+            activeTab === 'music' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+          }`}
+        >
+          Музыка
+          {activeTab === 'music' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('photos')}
+          className={`pb-4 text-sm font-bold transition-colors relative ${
+            activeTab === 'photos' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+          }`}
+        >
+          Фото
+          {activeTab === 'photos' && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
           )}
         </button>
@@ -182,7 +211,7 @@ export default function StudioContent() {
           <table className="w-full text-left border-collapse">
             <thead className="bg-[var(--hover)] border-b border-[var(--border)] text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">
               <tr>
-                <th className="px-6 py-4 font-bold">Видео</th>
+                <th className="px-6 py-4 font-bold">{activeTab === 'photos' ? 'Фото' : activeTab === 'music' ? 'Трек' : 'Видео'}</th>
                 <th className="px-6 py-4 font-bold">Дата</th>
                 <th className="px-6 py-4 font-bold">Просмотры</th>
                 <th className="px-6 py-4 font-bold">Лайки</th>
@@ -194,14 +223,16 @@ export default function StudioContent() {
                 <tr key={video.id} className="hover:bg-[var(--hover)] transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex gap-4 items-center min-w-[350px]">
-                      <div className={`relative ${video.isShort ? 'w-16 aspect-[9/16]' : 'w-32 aspect-video'} rounded overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
+                      <div className={`relative ${activeTab === 'shorts' ? 'w-16 aspect-[9/16]' : activeTab === 'photos' ? 'w-24 aspect-square' : 'w-32 aspect-video'} rounded overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
                         <img src={video.thumbnailUrl} className="w-full h-full object-cover" alt="" />
-                        <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-bold">
-                          {video.duration}
-                        </span>
+                        {activeTab !== 'photos' && (
+                          <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-bold">
+                            {video.duration}
+                          </span>
+                        )}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-bold text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(`/video/${video.id}`)}>
+                        <h4 className="font-bold text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(activeTab === 'photos' ? '/photos' : `/video/${video.id}`)}>
                           {video.title}
                         </h4>
                         <p className="text-xs text-[var(--text-secondary)] line-clamp-1 mt-1">{video.description || 'Нет описания'}</p>

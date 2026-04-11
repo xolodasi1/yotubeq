@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../App';
-import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic, Music as MusicIcon } from 'lucide-react';
+import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic, Music as MusicIcon, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { setDoc, doc } from 'firebase/firestore';
@@ -25,7 +25,7 @@ export default function Studio() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [videoDuration, setVideoDuration] = useState('00:00');
-  const [contentType, setContentType] = useState<'video' | 'short' | 'music'>('video');
+  const [contentType, setContentType] = useState<'video' | 'short' | 'music' | 'photo'>('video');
   const [generatingTitle, setGeneratingTitle] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingTags, setGeneratingTags] = useState(false);
@@ -92,6 +92,16 @@ export default function Studio() {
     }
 
     const isAudio = file.type.startsWith('audio/');
+    const isImage = file.type.startsWith('image/');
+    
+    if (isImage) {
+      setContentType('photo');
+      setVideoDuration('00:00');
+      setVideoFile(file);
+      if (!title) setTitle(file.name.replace(/\.[^/.]+$/, ""));
+      return;
+    }
+
     const mediaElement = document.createElement(isAudio ? 'audio' : 'video');
     mediaElement.preload = 'metadata';
     mediaElement.onloadedmetadata = () => {
@@ -115,6 +125,7 @@ export default function Studio() {
     return new Promise((resolve, reject) => {
       const isVideo = file.type.startsWith('video/');
       const isAudio = file.type.startsWith('audio/');
+      const isImage = file.type.startsWith('image/');
       const resourceType = (isVideo || isAudio) ? 'video' : 'image';
       const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
 
@@ -159,12 +170,12 @@ export default function Studio() {
     setUploading(true);
     setUploadProgress(0);
     try {
-      const videoUrl = await uploadFile(videoFile, 'videos', (progress) => {
+      const videoUrl = await uploadFile(videoFile, contentType === 'photo' ? 'photos' : 'videos', (progress) => {
         setUploadProgress(Math.round(progress * 0.8));
       });
 
-      let thumbnailUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
-      if (thumbnailFile) {
+      let thumbnailUrl = contentType === 'photo' ? videoUrl : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
+      if (thumbnailFile && contentType !== 'photo') {
         thumbnailUrl = await uploadFile(thumbnailFile, 'thumbnails', (progress) => {
           setUploadProgress(80 + Math.round(progress * 0.1));
         });
@@ -190,6 +201,7 @@ export default function Studio() {
         type: contentType,
         isShort: contentType === 'short',
         isMusic: contentType === 'music',
+        isPhoto: contentType === 'photo',
         tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
       };
 
@@ -235,7 +247,7 @@ export default function Studio() {
                 <div className="relative group border-2 border-dashed border-gray-200 rounded-xl p-10 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-center cursor-pointer bg-gray-50/50">
                   <input
                     type="file"
-                    accept="video/*,audio/*"
+                    accept="video/*,audio/*,image/*"
                     onChange={handleVideoSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     required
@@ -243,10 +255,12 @@ export default function Studio() {
                   {videoFile ? (
                     <div className="flex flex-col items-center text-blue-600">
                       <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                        {videoFile.type.startsWith('audio/') ? <MusicIcon className="w-8 h-8" /> : <VideoIcon className="w-8 h-8" />}
+                        {videoFile.type.startsWith('audio/') ? <MusicIcon className="w-8 h-8" /> : 
+                         videoFile.type.startsWith('image/') ? <ImageIcon className="w-8 h-8" /> : 
+                         <VideoIcon className="w-8 h-8" />}
                       </div>
                       <span className="text-sm font-bold truncate max-w-full text-gray-900">{videoFile.name}</span>
-                      <span className="text-xs text-gray-500 mt-2 font-medium">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB • {videoDuration}</span>
+                      <span className="text-xs text-gray-500 mt-2 font-medium">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB {contentType !== 'photo' && `• ${videoDuration}`}</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center text-gray-400">
@@ -254,46 +268,49 @@ export default function Studio() {
                         <Upload className="w-8 h-8" />
                       </div>
                       <span className="text-sm font-bold text-gray-600">Выберите файл для загрузки</span>
-                      <span className="text-xs mt-2 font-medium">MP4, WebM, MOV или MP3 (макс. {MAX_VIDEO_SIZE_MB}MB)</span>
+                      <span className="text-xs mt-2 font-medium">MP4, WebM, MP3 или JPG/PNG (макс. {MAX_VIDEO_SIZE_MB}MB)</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Thumbnail Upload */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-                  Значок (превью) {contentType === 'music' && <span className="text-red-500">*обязательно</span>}
-                </label>
-                <div className={`relative border-2 border-dashed rounded-xl p-6 transition-all text-center cursor-pointer bg-gray-50/50 ${contentType === 'music' && !thumbnailFile ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50/30'}`}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  {thumbnailFile ? (
-                    <div className="flex items-center justify-center gap-3 text-blue-600">
-                      <ImageIcon className="w-6 h-6" />
-                      <span className="text-sm font-bold text-gray-900 truncate">{thumbnailFile.name}</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center text-gray-400">
-                      <ImageIcon className="w-6 h-6 mb-2" />
-                      <span className="text-xs font-bold text-gray-600">Загрузить значок</span>
-                    </div>
-                  )}
+              {contentType !== 'photo' && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                    Значок (превью) {contentType === 'music' && <span className="text-red-500">*обязательно</span>}
+                  </label>
+                  <div className={`relative border-2 border-dashed rounded-xl p-6 transition-all text-center cursor-pointer bg-gray-50/50 ${contentType === 'music' && !thumbnailFile ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50/30'}`}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    {thumbnailFile ? (
+                      <div className="flex items-center justify-center gap-3 text-blue-600">
+                        <ImageIcon className="w-6 h-6" />
+                        <span className="text-sm font-bold text-gray-900 truncate">{thumbnailFile.name}</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center text-gray-400">
+                        <ImageIcon className="w-6 h-6 mb-2" />
+                        <span className="text-xs font-bold text-gray-600">Загрузить значок</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Content Type Selection */}
               <div className="space-y-3">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Тип контента</label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
                     { id: 'video', label: 'Видео', icon: VideoIcon },
                     { id: 'short', label: 'Shorts', icon: Smartphone },
-                    { id: 'music', label: 'Музыка', icon: ListMusic }
+                    { id: 'music', label: 'Музыка', icon: ListMusic },
+                    { id: 'photo', label: 'Фото', icon: Camera }
                   ].map((type) => (
                     <button
                       key={type.id}
