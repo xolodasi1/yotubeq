@@ -164,6 +164,24 @@
         "addedAt": { "type": "timestamp" }
       },
       "required": ["id", "userId", "videoId"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notifications for likes, comments, and subscriptions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["like", "comment", "subscribe"] },
+        "videoId": { "type": "string" },
+        "videoTitle": { "type": "string" },
+        "fromUserId": { "type": "string" },
+        "fromUserName": { "type": "string" },
+        "fromUserAvatar": { "type": "string" },
+        "commentText": { "type": "string" },
+        "createdAt": { "type": "timestamp" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["userId", "type", "fromUserId", "fromUserName", "createdAt", "read"]
     }
   },
   "firestore": {
@@ -194,6 +212,10 @@
     "/favorites/{id}": {
       "schema": { "$ref": "#/entities/Favorite" },
       "description": "Favorite videos"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "User notifications"
     }
   }
 }

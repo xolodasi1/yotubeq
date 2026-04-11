@@ -6,7 +6,7 @@ import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake,
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment, serverTimestamp, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 enum OperationType {
@@ -206,6 +206,26 @@ export default function VideoPlayer() {
       } else {
         await setDoc(likeRef, { id: likeId, userId: user.uid, videoId: video.id, type: 'like' });
         await updateDoc(videoRef, { likes: video.likes + 1 });
+        
+        // Add notification
+        if (video.authorId !== user.uid) {
+          try {
+            await addDoc(collection(db, 'notifications'), {
+              userId: video.authorId,
+              type: 'like',
+              videoId: video.id,
+              videoTitle: video.title,
+              fromUserId: user.uid,
+              fromUserName: user.displayName,
+              fromUserAvatar: user.photoURL,
+              createdAt: new Date(),
+              read: false
+            });
+          } catch (err) {
+            console.error("Error adding notification:", err);
+          }
+        }
+
         setVideo({ ...video, likes: video.likes + 1 });
         setIsLiked(true);
       }
@@ -320,6 +340,22 @@ export default function VideoPlayer() {
           createdAt: new Date()
         });
         await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
+        
+        // Add notification
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            userId: video.authorId,
+            type: 'subscribe',
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserAvatar: user.photoURL,
+            createdAt: new Date(),
+            read: false
+          });
+        } catch (err) {
+          console.error("Error adding notification:", err);
+        }
+
         setIsSubscribed(true);
         toast.success('Вы подписались!');
       }
@@ -362,6 +398,26 @@ export default function VideoPlayer() {
 
       await setDoc(doc(db, 'comments', commentId), commentData);
       
+      // Add notification
+      if (user && video.authorId !== user.uid) {
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            userId: video.authorId,
+            type: 'comment',
+            videoId: video.id,
+            videoTitle: video.title,
+            fromUserId: user.uid,
+            fromUserName: authorName,
+            fromUserAvatar: authorPhotoUrl,
+            commentText: newComment.trim(),
+            createdAt: new Date(),
+            read: false
+          });
+        } catch (err) {
+          console.error("Error adding notification:", err);
+        }
+      }
+
       setComments([{ ...commentData, createdAt: commentData.createdAt.toISOString() } as any, ...comments]);
       setNewComment('');
       toast.success('Комментарий опубликован');

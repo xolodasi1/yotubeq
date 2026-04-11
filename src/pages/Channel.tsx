@@ -6,7 +6,7 @@ import ShortCard from '../components/ShortCard';
 import { VideoType, CommunityPost, Playlist } from '../types';
 import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -160,6 +160,22 @@ export default function Channel() {
           createdAt: new Date()
         });
         await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
+        
+        // Add notification
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            userId: id,
+            type: 'subscribe',
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserAvatar: user.photoURL,
+            createdAt: new Date(),
+            read: false
+          });
+        } catch (err) {
+          console.error("Error adding notification:", err);
+        }
+
         setIsSubscribed(true);
         setSubCount(subCount + 1);
         toast.success('Вы подписались!');
