@@ -37,11 +37,26 @@ export default function Channel() {
   useEffect(() => {
     if (!id) return;
     
-    const fetchChannelData = async () => {
+    // Real-time user info (subscribers)
+    const unsubscribeUser = onSnapshot(doc(db, 'users', id), (userDoc) => {
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setAuthorInfo(prev => ({
+          ...prev,
+          name: userData.displayName || 'Ice Creator',
+          photoUrl: userData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
+          bannerUrl: userData.bannerUrl || null,
+          bio: userData.bio || '',
+          subscribers: userData.subscribers || 0,
+          joinedAt: userData.createdAt?.toDate() || prev?.joinedAt || new Date()
+        }));
+        setSubCount(userData.subscribers || 0);
+      }
+    });
+
+    const fetchChannelVideos = async () => {
       try {
         setLoading(true);
-
-        // Fetch videos
         const q = query(
           collection(db, 'videos'),
           where('authorId', '==', id),
@@ -55,40 +70,8 @@ export default function Channel() {
             createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
           };
         }) as VideoType[];
-        
         setVideos(data || []);
 
-        // Fetch user info
-        const userDoc = await getDoc(doc(db, 'users', id));
-        let channelName = 'Ice Creator';
-        let channelPhoto = `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`;
-        let channelBanner = null;
-        let channelBio = '';
-        let subscribers = 0;
-        let joinedAt = new Date();
-
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          channelName = userData.displayName || channelName;
-          channelPhoto = userData.photoURL || channelPhoto;
-          channelBanner = userData.bannerUrl || null;
-          channelBio = userData.bio || '';
-          subscribers = userData.subscribers || 0;
-          joinedAt = userData.createdAt?.toDate() || joinedAt;
-        }
-
-        setAuthorInfo({
-          name: channelName,
-          photoUrl: channelPhoto,
-          bannerUrl: channelBanner,
-          bio: channelBio,
-          subscribers,
-          joinedAt
-        });
-
-        setSubCount(subscribers);
-
-        // Check subscription
         if (user) {
           const subId = `${user.uid}_${id}`;
           const subSnap = await getDoc(doc(db, 'subscriptions', subId));
@@ -96,15 +79,15 @@ export default function Channel() {
             setIsSubscribed(true);
           }
         }
-
       } catch (error) {
-        console.error("Error fetching channel data:", error);
+        console.error("Error fetching channel videos:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchChannelData();
+    fetchChannelVideos();
+    return () => unsubscribeUser();
   }, [id, user]);
 
   // Real-time Community Posts
@@ -254,7 +237,7 @@ export default function Channel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-10 h-10 animate-spin text-red-600" />
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -306,8 +289,8 @@ export default function Channel() {
                   onClick={handleSubscribe}
                   className={`px-10 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
                     isSubscribed 
-                      ? 'bg-gray-100 text-gray-900 hover:bg-gray-200 shadow-gray-100' 
-                      : 'bg-red-600 text-white hover:bg-red-700 shadow-red-100'
+                      ? 'bg-blue-50 text-blue-900 hover:bg-blue-100 shadow-blue-100' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100'
                   }`}
                 >
                   {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
@@ -325,7 +308,7 @@ export default function Channel() {
               onClick={() => setActiveTab(tab)}
               className={`pb-4 border-b-2 font-bold text-sm uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === tab 
-                  ? 'border-red-600 text-red-600' 
+                  ? 'border-blue-600 text-blue-600' 
                   : 'border-transparent text-gray-400 hover:text-gray-900'
               }`}
             >
@@ -349,7 +332,7 @@ export default function Channel() {
                 {shortsVideos.length > 0 && (
                   <section>
                     <div className="flex items-center gap-3 mb-8">
-                      <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-red-100">
+                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100">
                         <Smartphone className="w-5 h-5" />
                       </div>
                       <h2 className="text-xl font-bold text-gray-900">Shorts</h2>
@@ -388,13 +371,13 @@ export default function Channel() {
                 playlists.map(playlist => (
                   <div key={playlist.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 group cursor-pointer shadow-sm hover:shadow-md transition-all">
                     <div className="aspect-video bg-gray-100 flex items-center justify-center relative">
-                      <PlaySquare className="w-12 h-12 text-gray-300 group-hover:text-red-600 transition-colors" />
+                      <PlaySquare className="w-12 h-12 text-gray-300 group-hover:text-blue-600 transition-colors" />
                       <div className="absolute bottom-3 right-3 bg-black/80 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-wider">
                         {playlist.videoIds.length} видео
                       </div>
                     </div>
                     <div className="p-5">
-                      <h3 className="font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-1">{playlist.title}</h3>
+                      <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">{playlist.title}</h3>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Обновлено недавно</p>
                     </div>
                   </div>
@@ -441,14 +424,14 @@ export default function Channel() {
                                 setPollOptions(newOpts);
                               }}
                               placeholder={`Вариант ${idx + 1}`}
-                              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
+                              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all"
                             />
                           </div>
                         ))}
                         <button 
                           type="button" 
                           onClick={() => setPollOptions([...pollOptions, ''])}
-                          className="text-[10px] font-bold text-red-600 uppercase tracking-widest hover:underline flex items-center gap-1.5"
+                          className="text-[10px] font-bold text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-1.5"
                         >
                           <Plus className="w-3 h-3" /> Добавить вариант
                         </button>
@@ -460,14 +443,14 @@ export default function Channel() {
                         <button 
                           type="button" 
                           onClick={() => setPostType('text')}
-                          className={`p-2.5 rounded-xl transition-all ${postType === 'text' ? 'bg-red-50 text-red-600' : 'hover:bg-gray-50 text-gray-400'}`}
+                          className={`p-2.5 rounded-xl transition-all ${postType === 'text' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-400'}`}
                         >
                           <MessageSquare className="w-5 h-5" />
                         </button>
                         <button 
                           type="button" 
                           onClick={() => setPostType('poll')}
-                          className={`p-2.5 rounded-xl transition-all ${postType === 'poll' ? 'bg-red-50 text-red-600' : 'hover:bg-gray-50 text-gray-400'}`}
+                          className={`p-2.5 rounded-xl transition-all ${postType === 'poll' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-400'}`}
                         >
                           <BarChart2 className="w-5 h-5" />
                         </button>
@@ -510,15 +493,15 @@ export default function Channel() {
                               key={idx}
                               onClick={() => handleVote(post.id, idx)}
                               disabled={!user || hasVoted}
-                              className="w-full relative h-12 rounded-xl border border-gray-100 overflow-hidden text-left group transition-all hover:border-red-200"
+                              className="w-full relative h-12 rounded-xl border border-gray-100 overflow-hidden text-left group transition-all hover:border-blue-200"
                             >
                               <div 
-                                className="absolute inset-0 bg-red-50 transition-all duration-700" 
+                                className="absolute inset-0 bg-blue-50 transition-all duration-700" 
                                 style={{ width: hasVoted ? `${percentage}%` : '0%' }}
                               />
                               <div className="absolute inset-0 flex items-center justify-between px-5">
                                 <span className="font-bold text-sm text-gray-700">{opt.text}</span>
-                                {hasVoted && <span className="text-xs font-black text-red-600">{percentage}%</span>}
+                                {hasVoted && <span className="text-xs font-black text-blue-600">{percentage}%</span>}
                               </div>
                             </button>
                           );
@@ -530,8 +513,8 @@ export default function Channel() {
                     )}
 
                     <div className="flex items-center gap-6 text-gray-400 border-t border-gray-50 pt-6">
-                      <button className="flex items-center gap-2 hover:text-red-600 transition-colors group">
-                        <ThumbsUp className="w-4 h-4 group-hover:fill-red-600" />
+                      <button className="flex items-center gap-2 hover:text-blue-600 transition-colors group">
+                        <ThumbsUp className="w-4 h-4 group-hover:fill-blue-600" />
                         <span className="text-xs font-bold">{post.likes}</span>
                       </button>
                       <button className="flex items-center gap-2 hover:text-blue-600 transition-colors group">
@@ -550,7 +533,7 @@ export default function Channel() {
               <div className="lg:col-span-2 space-y-10">
                 <section>
                   <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <Info className="w-5 h-5 text-red-600" />
+                    <Info className="w-5 h-5 text-blue-600" />
                     Описание
                   </h3>
                   <p className="text-gray-600 whitespace-pre-wrap leading-relaxed font-medium">

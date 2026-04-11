@@ -34,11 +34,15 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  theme: 'light',
+  toggleTheme: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -46,6 +50,24 @@ export const useAuth = () => useContext(AuthContext);
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    return (saved as 'light' | 'dark') || 'light';
+  });
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -93,9 +115,9 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, theme, toggleTheme }}>
       <Router>
-        <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+        <div className={`min-h-screen bg-[var(--studio-bg)] text-[var(--studio-text)] flex flex-col transition-colors duration-300`}>
           <Navbar />
           <div className="flex flex-1 overflow-hidden">
             <Sidebar />
@@ -122,7 +144,7 @@ export default function App() {
             </main>
           </div>
         </div>
-        <Toaster theme="light" position="bottom-right" />
+        <Toaster theme={theme} position="bottom-right" />
       </Router>
     </AuthContext.Provider>
   );

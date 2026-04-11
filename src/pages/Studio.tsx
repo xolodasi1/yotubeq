@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../App';
-import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle } from 'lucide-react';
+import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { setDoc, doc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import { generateVideoTitle, generateVideoDescription } from '../services/geminiService';
 
 const MAX_VIDEO_SIZE_MB = 50;
 const CLOUDINARY_CLOUD_NAME = 'du6zw4m8g';
@@ -24,6 +25,42 @@ export default function Studio() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [videoDuration, setVideoDuration] = useState('00:00');
   const [isShort, setIsShort] = useState(false);
+  const [generatingTitle, setGeneratingTitle] = useState(false);
+  const [generatingDesc, setGeneratingDesc] = useState(false);
+
+  const handleGenerateTitle = async () => {
+    if (!description && !category) {
+      toast.error('Добавьте описание или выберите категорию для генерации');
+      return;
+    }
+    setGeneratingTitle(true);
+    try {
+      const aiTitle = await generateVideoTitle(description, category);
+      setTitle(aiTitle);
+      toast.success('Название сгенерировано');
+    } catch (error) {
+      toast.error('Ошибка при генерации названия');
+    } finally {
+      setGeneratingTitle(false);
+    }
+  };
+
+  const handleGenerateDesc = async () => {
+    if (!title) {
+      toast.error('Сначала введите название видео');
+      return;
+    }
+    setGeneratingDesc(true);
+    try {
+      const aiDesc = await generateVideoDescription(title, category);
+      setDescription(aiDesc);
+      toast.success('Описание сгенерировано');
+    } catch (error) {
+      toast.error('Ошибка при генерации описания');
+    } finally {
+      setGeneratingDesc(false);
+    }
+  };
 
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,7 +272,18 @@ export default function Studio() {
 
             <div className="space-y-8">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Название (обязательно)</label>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Название (обязательно)</label>
+                  <button 
+                    type="button"
+                    onClick={handleGenerateTitle}
+                    disabled={generatingTitle}
+                    className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-wider"
+                  >
+                    {generatingTitle ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Сгенерировать ИИ
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={title}
@@ -247,7 +295,18 @@ export default function Studio() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Описание</label>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Описание</label>
+                  <button 
+                    type="button"
+                    onClick={handleGenerateDesc}
+                    disabled={generatingDesc}
+                    className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-wider"
+                  >
+                    {generatingDesc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Сгенерировать ИИ
+                  </button>
+                </div>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}

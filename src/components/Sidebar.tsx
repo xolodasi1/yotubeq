@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic } from 'lucide-react';
+import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 
@@ -12,6 +12,7 @@ const studioItems = [
 
 const mainItems = [
   { icon: Youtube, label: 'На главную', path: '/' },
+  { icon: Users, label: 'Топ каналов', path: '/top-channels' },
   { icon: Clock, label: 'История', path: '/history' },
   { icon: Heart, label: 'Понравившиеся', path: '/favorites' },
   { icon: ListMusic, label: 'Плейлисты', path: '/playlists' },
@@ -23,11 +24,11 @@ const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: any, label: 
       to={path}
       className={`flex items-center gap-4 px-6 py-3 transition-all ${
         isActive 
-          ? 'bg-gray-100 text-red-600 border-r-4 border-red-600' 
-          : 'hover:bg-gray-50 text-gray-600 hover:text-black'
+          ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' 
+          : 'hover:bg-blue-50/50 text-gray-600 hover:text-blue-600'
       }`}
     >
-      <Icon className={`w-5 h-5 ${isActive ? 'text-red-600' : ''}`} />
+      <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : ''}`} />
       <span className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
     </Link>
   );
@@ -93,7 +94,7 @@ export default function Sidebar() {
                 key={item.label}
                 to={item.path}
                 className={`flex flex-col items-center gap-1 p-2 min-w-[60px] rounded-lg transition-colors ${
-                  isActive ? 'text-red-600' : 'text-gray-500 hover:text-black'
+                  isActive ? 'text-blue-600' : 'text-gray-500 hover:text-blue-400'
                 }`}
               >
                 <Icon className="w-5 h-5" />

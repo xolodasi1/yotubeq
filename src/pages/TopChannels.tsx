@@ -42,7 +42,7 @@ export default function TopChannels() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <Loader2 className="w-8 h-8 animate-spin text-ice-accent" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -50,12 +50,12 @@ export default function TopChannels() {
   return (
     <div className="max-w-[1200px] mx-auto p-4 md:p-6 pb-24 md:pb-6">
       <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
-        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-ice-accent/20 flex items-center justify-center shrink-0">
-          <Trophy className="w-5 h-5 md:w-6 md:h-6 text-ice-accent" />
+        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-blue-600/20 flex items-center justify-center shrink-0">
+          <Trophy className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
         </div>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold ice-text-glow">Топ авторов</h1>
-          <p className="text-xs md:text-sm text-ice-muted">Откройте для себя самых популярных создателей</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-900">Топ авторов</h1>
+          <p className="text-xs md:text-sm text-gray-500">Откройте для себя самых популярных создателей</p>
         </div>
       </div>
       
@@ -64,14 +64,14 @@ export default function TopChannels() {
           <Link 
             key={channel.uid} 
             to={`/channel/${channel.uid}`}
-            className="glass rounded-xl md:rounded-2xl p-4 md:p-6 border border-ice-border hover:border-ice-accent/50 transition-all group relative overflow-hidden"
+            className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 border border-gray-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-50 transition-all group relative overflow-hidden"
           >
             {/* Rank Badge */}
             <div className={`absolute top-0 right-0 w-12 h-12 md:w-16 md:h-16 flex items-start justify-end p-2 md:p-3 rounded-bl-2xl md:rounded-bl-3xl ${
-              index === 0 ? 'bg-yellow-500/20 text-yellow-500' :
-              index === 1 ? 'bg-gray-400/20 text-gray-400' :
-              index === 2 ? 'bg-amber-700/20 text-amber-700' :
-              'bg-white/5 text-ice-muted'
+              index === 0 ? 'bg-yellow-500/20 text-yellow-600' :
+              index === 1 ? 'bg-gray-400/20 text-gray-500' :
+              index === 2 ? 'bg-amber-700/20 text-amber-800' :
+              'bg-gray-50 text-gray-400'
             }`}>
               <span className="font-bold text-base md:text-lg">#{index + 1}</span>
             </div>
@@ -80,11 +80,11 @@ export default function TopChannels() {
               <img 
                 src={channel.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.uid}`} 
                 alt={channel.displayName} 
-                className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-ice-accent/30 group-hover:border-ice-accent transition-colors object-cover"
+                className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-blue-100 group-hover:border-blue-500 transition-colors object-cover"
               />
               <div className="min-w-0 pr-8">
-                <h2 className="text-lg md:text-xl font-bold group-hover:text-ice-accent transition-colors line-clamp-1">{channel.displayName}</h2>
-                <div className="flex items-center gap-1 text-ice-muted">
+                <h2 className="text-lg md:text-xl font-bold group-hover:text-blue-600 transition-colors line-clamp-1">{channel.displayName}</h2>
+                <div className="flex items-center gap-1 text-gray-500">
                   <Users className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="font-medium text-[10px] md:text-xs">{channel.subscribers.toLocaleString()} подписчиков</span>
                 </div>

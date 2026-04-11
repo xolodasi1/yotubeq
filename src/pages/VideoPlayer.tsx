@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { auth, db } from '../lib/firebase';
@@ -80,6 +80,8 @@ export default function VideoPlayer() {
   const [editCommentText, setEditCommentText] = useState('');
   const [replyingCommentId, setReplyingCommentId] = useState<string | null>(null);
   const [replyCommentText, setReplyCommentText] = useState('');
+  const [quality, setQuality] = useState('1080p');
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
 
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
@@ -459,14 +461,14 @@ export default function VideoPlayer() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <Loader2 className="w-8 h-8 animate-spin text-ice-accent" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   if (!video) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-ice-muted">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-gray-400">
         <Snowflake className="w-16 h-16 mb-4 opacity-20" />
         <h2 className="text-2xl font-bold">Видео заморожено или не найдено</h2>
       </div>
@@ -489,9 +491,36 @@ export default function VideoPlayer() {
             autoPlay
             className="w-full h-full object-contain bg-black"
           />
+          
+          {/* Quality Selector Overlay */}
+          <div className="absolute top-4 right-4 z-10">
+            <div className="relative">
+              <button 
+                onClick={() => setShowQualityMenu(!showQualityMenu)}
+                className="bg-black/60 hover:bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded border border-white/20 backdrop-blur-sm transition-all flex items-center gap-1"
+              >
+                <SettingsIcon className="w-3 h-3" />
+                {quality}
+              </button>
+              
+              {showQualityMenu && (
+                <div className="absolute top-full right-0 mt-1 bg-black/90 border border-white/10 rounded-lg overflow-hidden shadow-xl min-w-[80px]">
+                  {['2160p (4K)', '1440p', '1080p', '720p', '480p', '360p'].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => { setQuality(q.split(' ')[0]); setShowQualityMenu(false); }}
+                      className={`w-full text-left px-3 py-1.5 text-[10px] font-medium hover:bg-white/10 transition-colors ${quality === q.split(' ')[0] ? 'text-blue-400' : 'text-white'}`}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <h1 className="text-xl md:text-3xl font-bold mt-4 md:mt-6 mb-3 md:mb-4 ice-text-glow leading-tight">{video.title}</h1>
+        <h1 className="text-xl md:text-3xl font-bold mt-4 md:mt-6 mb-3 md:mb-4 text-blue-900 leading-tight">{video.title}</h1>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3 md:gap-4">
@@ -499,19 +528,19 @@ export default function VideoPlayer() {
               <img
                 src={video.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.authorId}`}
                 alt={video.authorName}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-ice-accent shadow-[0_0_10px_rgba(0,242,255,0.3)] group-hover:scale-105 transition-transform"
+                className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-blue-100 shadow-[0_0_10px_rgba(37,99,235,0.2)] group-hover:scale-105 transition-transform"
               />
               <div>
-                <h3 className="font-bold text-base md:text-lg group-hover:text-ice-accent transition-colors line-clamp-1">{video.authorName}</h3>
-                <p className="text-xs text-ice-muted">Канал</p>
+                <h3 className="font-bold text-base md:text-lg group-hover:text-blue-600 transition-colors line-clamp-1">{video.authorName}</h3>
+                <p className="text-xs text-gray-400">Канал</p>
               </div>
             </Link>
             <button 
               onClick={handleSubscribe}
               className={`px-4 py-1.5 md:px-6 md:py-2 rounded-full font-bold transition-colors text-sm md:text-base ${
                 isSubscribed 
-                  ? 'bg-white/10 text-ice-text hover:bg-white/20' 
-                  : 'bg-ice-text text-ice-bg hover:bg-white/90'
+                  ? 'bg-blue-50 text-blue-900 hover:bg-blue-100' 
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
               {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
@@ -519,23 +548,23 @@ export default function VideoPlayer() {
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
-            <div className="flex items-center bg-white/5 rounded-full border border-ice-border">
+            <div className="flex items-center bg-gray-100 rounded-full border border-gray-200">
               <button 
                 onClick={handleLike}
-                className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-white/10 rounded-l-full transition-colors ${isLiked ? 'text-ice-accent' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-gray-200 rounded-l-full transition-colors ${isLiked ? 'text-blue-600' : ''}`}
               >
                 <ThumbsUp className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-current' : ''}`} />
                 <span className="font-medium text-sm md:text-base">{video.likes}</span>
               </button>
-              <div className="w-px h-5 md:h-6 bg-ice-border"></div>
-              <button className="px-3 py-1.5 md:px-4 md:py-2 hover:bg-white/10 rounded-r-full transition-colors">
+              <div className="w-px h-5 md:h-6 bg-gray-200"></div>
+              <button className="px-3 py-1.5 md:px-4 md:py-2 hover:bg-gray-200 rounded-r-full transition-colors">
                 <ThumbsDown className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             </div>
             
             <button 
               onClick={toggleFavorite}
-              className={`flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isFavorited ? 'text-red-400 border-red-400/50' : ''}`}
+              className={`flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isFavorited ? 'text-blue-600 border-blue-400/50' : ''}`}
             >
               <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isFavorited ? 'fill-current' : ''}`} />
               <span className="hidden sm:inline">Избранное</span>
@@ -543,7 +572,7 @@ export default function VideoPlayer() {
 
             <button 
               onClick={toggleWatchLater}
-              className={`flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isWatchLater ? 'text-ice-accent border-ice-accent/50' : ''}`}
+              className={`flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isWatchLater ? 'text-blue-600 border-blue-400/50' : ''}`}
             >
               <Clock className={`w-4 h-4 md:w-5 md:h-5 ${isWatchLater ? 'fill-current' : ''}`} />
               <span className="hidden sm:inline">Позже</span>
@@ -551,13 +580,13 @@ export default function VideoPlayer() {
 
             <button 
               onClick={fetchUserPlaylists}
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base"
+              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base"
             >
               <ListPlus className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden sm:inline">Плейлист</span>
             </button>
 
-            <button className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-ice-border px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base">
+            <button className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base">
               <Share2 className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden sm:inline">Поделиться</span>
             </button>
@@ -607,11 +636,11 @@ export default function VideoPlayer() {
           </div>
         )}
 
-        <div className="glass rounded-xl md:rounded-2xl p-3 md:p-4 border border-ice-border hover:bg-white/5 transition-colors">
+        <div className="bg-white rounded-xl md:rounded-2xl p-3 md:p-4 border border-gray-200 hover:bg-gray-50 transition-colors">
           <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm font-medium mb-2">
             <span>{video.views.toLocaleString()} просмотров</span>
             <span>{formattedDate}</span>
-            <span className="text-ice-accent">#{video.category.replace(/\s+/g, '')}</span>
+            <span className="text-blue-600">#{video.category.replace(/\s+/g, '')}</span>
           </div>
           <p className="text-xs md:text-sm whitespace-pre-wrap">{video.description}</p>
         </div>
@@ -624,7 +653,7 @@ export default function VideoPlayer() {
             <img
               src={user?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous'}
               alt="Current user"
-              className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-ice-accent"
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-blue-200"
             />
             <form onSubmit={handlePostComment} className="flex-1 relative">
               <input
@@ -633,11 +662,11 @@ export default function VideoPlayer() {
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder={user ? "Добавьте крутой комментарий..." : "Добавить комментарий (как Аноним)..."}
                 disabled={submittingComment}
-                className="w-full bg-transparent border-b border-ice-border pb-2 focus:outline-none focus:border-ice-accent transition-colors peer disabled:opacity-50 text-sm md:text-base"
+                className="w-full bg-transparent border-b border-gray-200 pb-2 focus:outline-none focus:border-blue-600 transition-colors peer disabled:opacity-50 text-sm md:text-base"
               />
               <div className="absolute right-0 bottom-2 opacity-0 peer-focus:opacity-100 transition-opacity flex gap-2">
-                <button type="button" onClick={() => setNewComment('')} className="text-xs md:text-sm font-medium hover:text-ice-accent transition-colors">Отмена</button>
-                <button type="submit" disabled={!newComment.trim() || submittingComment} className="bg-ice-accent text-ice-bg px-3 py-1 md:px-4 md:py-1 rounded-full text-xs md:text-sm font-bold hover:bg-ice-accent/90 transition-colors disabled:opacity-50">
+                <button type="button" onClick={() => setNewComment('')} className="text-xs md:text-sm font-medium hover:text-blue-600 transition-colors">Отмена</button>
+                <button type="submit" disabled={!newComment.trim() || submittingComment} className="bg-blue-600 text-white px-3 py-1 md:px-4 md:py-1 rounded-full text-xs md:text-sm font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
                   {submittingComment ? 'Публикация...' : 'Оставить'}
                 </button>
               </div>
@@ -711,9 +740,14 @@ export default function VideoPlayer() {
                         </div>
                       )}
 
-                      {user?.uid === video?.authorId && !c.authorHearted && (
-                        <button onClick={() => handleCommentAction(c.id, 'heart')} className="text-[10px] md:text-xs text-ice-muted hover:text-ice-accent" title="Отметить комментарий">
-                          <Snowflake className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      {user?.uid === video?.authorId && (
+                        <button 
+                          onClick={() => handleCommentAction(c.id, 'heart')} 
+                          className={`text-[10px] md:text-xs transition-colors flex items-center gap-1 ${c.authorHearted ? 'text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}
+                          title={c.authorHearted ? "Убрать снежинку" : "Поставить снежинку"}
+                        >
+                          <Snowflake className={`w-3.5 h-3.5 md:w-4 md:h-4 ${c.authorHearted ? 'fill-current' : ''}`} />
+                          <span className="hidden sm:inline">{c.authorHearted ? 'Снежинка!' : 'Снежинка'}</span>
                         </button>
                       )}
                     </div>

@@ -54,11 +54,11 @@ export default function Navbar() {
             <Menu className="w-6 h-6 text-gray-600" />
           </button>
           <Link to="/" className="flex items-center gap-1">
-            <div className={`w-8 h-8 ${isStudio ? 'bg-red-600' : 'bg-red-600'} rounded flex items-center justify-center`}>
+            <div className={`w-8 h-8 ${isStudio ? 'bg-blue-600' : 'bg-blue-600'} rounded flex items-center justify-center shadow-[0_0_10px_rgba(37,99,235,0.3)]`}>
               <PlaySquare className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight hidden xs:block">
-              {isStudio ? 'Studio' : 'YouTube'}
+            <span className="text-xl font-bold tracking-tight hidden xs:block text-blue-900">
+              {isStudio ? 'IceStudio' : 'IceTube'}
             </span>
           </Link>
         </div>
@@ -92,17 +92,17 @@ export default function Navbar() {
               {isStudio ? (
                 <button 
                   onClick={() => navigate('/studio/upload')}
-                  className="flex items-center gap-2 border border-gray-200 px-3 py-1.5 rounded-sm hover:bg-gray-50 transition-all font-semibold text-sm uppercase tracking-wide"
+                  className="flex items-center gap-2 border border-blue-200 px-3 py-1.5 rounded-sm hover:bg-blue-50 transition-all font-semibold text-sm uppercase tracking-wide text-blue-700"
                 >
-                  <Plus className="w-5 h-5 text-red-600" />
+                  <Plus className="w-5 h-5 text-blue-600" />
                   <span className="hidden sm:inline">Создать</span>
                 </button>
               ) : (
                 <button 
                   onClick={() => navigate('/studio')}
-                  className="flex items-center gap-2 border border-gray-200 px-3 py-1.5 rounded-sm hover:bg-gray-50 transition-all font-semibold text-sm uppercase tracking-wide"
+                  className="flex items-center gap-2 border border-blue-200 px-3 py-1.5 rounded-sm hover:bg-blue-50 transition-all font-semibold text-sm uppercase tracking-wide text-blue-700"
                 >
-                  <Video className="w-5 h-5 text-red-600" />
+                  <Video className="w-5 h-5 text-blue-600" />
                   <span className="hidden sm:inline">Студия</span>
                 </button>
               )}

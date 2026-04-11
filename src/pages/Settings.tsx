@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { Loader2, Settings as SettingsIcon, User, Camera, Save } from 'lucide-react';
+import { Loader2, Settings as SettingsIcon, User, Camera, Save, Moon, Sun } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, theme, toggleTheme } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [photoURL, setPhotoURL] = useState('');
   const [loading, setLoading] = useState(true);
@@ -107,6 +107,26 @@ export default function Settings() {
             placeholder="https://example.com/photo.jpg"
             className="w-full bg-white/5 border border-ice-border rounded-xl px-4 py-3 focus:outline-none focus:border-ice-accent transition-all"
           />
+        </div>
+
+        <div className="pt-6 border-t border-ice-border">
+          <h3 className="text-lg font-bold mb-4">Внешний вид</h3>
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-ice-border">
+            <div className="flex items-center gap-3">
+              {theme === 'dark' ? <Moon className="w-5 h-5 text-blue-400" /> : <Sun className="w-5 h-5 text-yellow-500" />}
+              <div>
+                <p className="font-bold">Темная тема</p>
+                <p className="text-xs text-ice-muted">Переключить режим отображения</p>
+              </div>
+            </div>
+            <button 
+              type="button"
+              onClick={toggleTheme}
+              className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+              <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${theme === 'dark' ? 'translate-x-6' : ''}`} />
+            </button>
+          </div>
         </div>
 
         <button 

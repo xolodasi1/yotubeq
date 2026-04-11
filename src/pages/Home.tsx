@@ -80,7 +80,7 @@ export default function Home() {
       {searchQuery && (
         <div className="mb-10">
           <h2 className="text-2xl font-bold text-gray-900">
-            Результаты поиска для: <span className="text-red-600">"{searchQuery}"</span>
+            Результаты поиска для: <span className="text-blue-600">"{searchQuery}"</span>
           </h2>
           <p className="text-sm text-gray-500 mt-1">Найдено {filteredVideos.length} видео</p>
         </div>
@@ -88,7 +88,7 @@ export default function Home() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center h-[60vh]">
-          <Loader2 className="w-10 h-10 animate-spin text-red-600 mb-4" />
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
           <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Загрузка контента...</p>
         </div>
       ) : filteredVideos.length === 0 ? (
@@ -105,7 +105,7 @@ export default function Home() {
           <section>
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center text-red-600">
+                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
@@ -126,7 +126,7 @@ export default function Home() {
             <section className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-red-200">
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
                     <Smartphone className="w-5 h-5" />
                   </div>
                   <div>
