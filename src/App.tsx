@@ -11,6 +11,7 @@ import StudioContent from './pages/StudioContent';
 import StudioAnalytics from './pages/StudioAnalytics';
 import StudioComments from './pages/StudioComments';
 import Shorts from './pages/Shorts';
+import Music from './pages/Music';
 import TopChannels from './pages/TopChannels';
 import History from './pages/History';
 import WatchLater from './pages/WatchLater';
@@ -125,6 +126,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/shorts" element={<Shorts />} />
+                <Route path="/music" element={<Music />} />
                 <Route path="/top-channels" element={<TopChannels />} />
                 <Route path="/video/:id" element={<VideoPlayer />} />
                 <Route path="/channel/:id" element={<Channel />} />

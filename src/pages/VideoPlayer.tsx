@@ -86,6 +86,7 @@ export default function VideoPlayer() {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
+  const [playlistVisibility, setPlaylistVisibility] = useState<'public' | 'private'>('public');
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -316,6 +317,7 @@ export default function VideoPlayer() {
         title: newPlaylistTitle,
         authorId: user.uid,
         videoIds: [id],
+        visibility: playlistVisibility,
         createdAt: serverTimestamp()
       });
       toast.success('Плейлист создан');
@@ -723,20 +725,42 @@ export default function VideoPlayer() {
                 {userPlaylists.length === 0 && <p className="text-center text-ice-muted py-4">У вас пока нет плейлистов</p>}
               </div>
 
-              <div className="flex gap-2">
+              <div className="space-y-3 mb-6">
                 <input 
                   type="text" 
                   value={newPlaylistTitle}
                   onChange={(e) => setNewPlaylistTitle(e.target.value)}
                   placeholder="Название нового плейлиста"
-                  className="flex-1 bg-white/5 border border-ice-border rounded-xl px-4 py-2 focus:outline-none focus:border-ice-accent"
+                  className="w-full bg-white/5 border border-ice-border rounded-xl px-4 py-2 focus:outline-none focus:border-ice-accent"
                 />
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="visibility" 
+                      checked={playlistVisibility === 'public'} 
+                      onChange={() => setPlaylistVisibility('public')}
+                      className="text-blue-600"
+                    />
+                    <span className="text-sm">Для всех</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="visibility" 
+                      checked={playlistVisibility === 'private'} 
+                      onChange={() => setPlaylistVisibility('private')}
+                      className="text-blue-600"
+                    />
+                    <span className="text-sm">Только для меня</span>
+                  </label>
+                </div>
                 <button 
                   onClick={createPlaylist}
                   disabled={!newPlaylistTitle.trim()}
-                  className="bg-ice-accent text-ice-bg px-4 py-2 rounded-xl font-bold hover:bg-ice-accent/90 transition-colors disabled:opacity-50"
+                  className="w-full bg-ice-accent text-ice-bg py-2 rounded-xl font-bold hover:bg-ice-accent/90 transition-colors disabled:opacity-50"
                 >
-                  Создать
+                  Создать и добавить
                 </button>
               </div>
             </div>

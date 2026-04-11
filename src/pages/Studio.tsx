@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../App';
-import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles } from 'lucide-react';
+import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { setDoc, doc } from 'firebase/firestore';
@@ -25,7 +25,7 @@ export default function Studio() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [videoDuration, setVideoDuration] = useState('00:00');
-  const [isShort, setIsShort] = useState(false);
+  const [contentType, setContentType] = useState<'video' | 'short' | 'music'>('video');
   const [generatingTitle, setGeneratingTitle] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingTags, setGeneratingTags] = useState(false);
@@ -100,7 +100,7 @@ export default function Studio() {
       setVideoDuration(`${minutes}:${seconds.toString().padStart(2, '0')}`);
       
       if (videoElement.duration <= 60 && videoElement.videoHeight > videoElement.videoWidth) {
-        setIsShort(true);
+        setContentType('short');
       }
     };
     videoElement.src = URL.createObjectURL(file);
@@ -177,7 +177,10 @@ export default function Studio() {
         likes: 0,
         createdAt: new Date().toISOString(),
         duration: videoDuration,
-        isShort: isShort
+        type: contentType,
+        isShort: contentType === 'short',
+        isMusic: contentType === 'music',
+        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
       };
 
       await setDoc(doc(db, 'videos', videoId), newVideoData);
@@ -271,21 +274,30 @@ export default function Studio() {
                 </div>
               </div>
 
-              {/* Shorts Toggle */}
-              <div className="flex items-center justify-between p-5 bg-blue-50/50 rounded-xl border border-blue-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
-                    <Smartphone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-blue-900">Загрузить как Short</h4>
-                    <p className="text-[10px] text-blue-700 font-medium uppercase tracking-wider mt-0.5">Вертикальное видео до 60 секунд</p>
-                  </div>
+              {/* Content Type Selection */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Тип контента</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { id: 'video', label: 'Видео', icon: VideoIcon },
+                    { id: 'short', label: 'Shorts', icon: Smartphone },
+                    { id: 'music', label: 'Музыка', icon: ListMusic }
+                  ].map((type) => (
+                    <button
+                      key={type.id}
+                      type="button"
+                      onClick={() => setContentType(type.id as any)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                        contentType === type.id 
+                          ? 'border-blue-600 bg-blue-50 text-blue-600' 
+                          : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'
+                      }`}
+                    >
+                      <type.icon className="w-5 h-5" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">{type.label}</span>
+                    </button>
+                  ))}
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={isShort} onChange={(e) => setIsShort(e.target.checked)} />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
               </div>
             </div>
 
@@ -331,6 +343,28 @@ export default function Studio() {
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium h-48 resize-none transition-all"
                   placeholder="Расскажите зрителям о своем видео"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Теги (необязательно)</label>
+                  <button 
+                    type="button"
+                    onClick={handleGenerateTags}
+                    disabled={generatingTags}
+                    className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-wider"
+                  >
+                    {generatingTags ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Сгенерировать ИИ
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium transition-all"
+                  placeholder="Теги через запятую"
                 />
               </div>
 

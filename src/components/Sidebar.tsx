@@ -1,5 +1,5 @@
-import React from 'react';
-import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 
@@ -12,6 +12,8 @@ const studioItems = [
 
 const mainItems = [
   { icon: Youtube, label: 'На главную', path: '/' },
+  { icon: Smartphone, label: 'Shorts', path: '/shorts' },
+  { icon: ListMusic, label: 'Музыка', path: '/music' },
   { icon: Users, label: 'Топ каналов', path: '/top-channels' },
   { icon: Clock, label: 'История', path: '/history' },
   { icon: Heart, label: 'Понравившиеся', path: '/favorites' },
@@ -38,6 +40,32 @@ export default function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const isStudio = location.pathname.startsWith('/studio');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstall, setShowInstall] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstall(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstall(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   return (
     <>
@@ -78,6 +106,15 @@ export default function Sidebar() {
         </div>
 
         <div className="mt-auto flex flex-col border-t border-[var(--border)] pt-4">
+          {showInstall && (
+            <button
+              onClick={handleInstallClick}
+              className="flex items-center gap-4 px-6 py-3 transition-all hover:bg-blue-50 text-blue-600 font-bold"
+            >
+              <Download className="w-5 h-5" />
+              <span className="text-sm">Установить приложение</span>
+            </button>
+          )}
           <SidebarItem icon={Settings} label="Настройки" path="/settings" isActive={location.pathname === '/settings'} />
           <SidebarItem icon={HelpCircle} label="Справка" path="/help" isActive={location.pathname === '/help'} />
         </div>

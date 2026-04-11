@@ -70,6 +70,7 @@ export interface Playlist {
   title: string;
   authorId: string;
   videoIds: string[];
+  visibility?: 'public' | 'private';
   createdAt: any;
 }
 

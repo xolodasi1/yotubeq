@@ -46,8 +46,9 @@ export default function Home() {
     return matchesSearch && matchesCategory;
   });
 
-  const regularVideos = filteredVideos.filter(v => !v.isShort);
+  const regularVideos = filteredVideos.filter(v => !v.isShort && !v.isMusic);
   const shortsVideos = filteredVideos.filter(v => v.isShort);
+  const musicVideos = filteredVideos.filter(v => v.isMusic);
 
   const topVideos = [...regularVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
   const newVideos = regularVideos.slice(0, 8);
@@ -120,30 +121,6 @@ export default function Home() {
               ))}
             </div>
           </section>
-
-          {/* Shorts Section */}
-          {shortsVideos.length > 0 && (
-            <section className="bg-[var(--surface)] p-8 rounded-2xl border border-[var(--border)] shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-                    <Smartphone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-[var(--text-primary)]">Shorts</h2>
-                    <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Короткие видео</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-5 overflow-x-auto pb-6 scrollbar-hide snap-x">
-                {shortsVideos.map((video) => (
-                  <div key={video.id} className="snap-start shrink-0">
-                    <ShortCard video={video as any} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
 
           {/* Top by Views Section */}
           {topVideos.length > 0 && !searchQuery && activeCategory === 'Все' && (
