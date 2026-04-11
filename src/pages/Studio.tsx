@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { setDoc, doc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { generateVideoTitle, generateVideoDescription } from '../services/geminiService';
+import { generateVideoTitle, generateVideoDescription, generateVideoTags } from '../services/geminiService';
 
 const MAX_VIDEO_SIZE_MB = 50;
 const CLOUDINARY_CLOUD_NAME = 'du6zw4m8g';
@@ -20,6 +20,7 @@ export default function Studio() {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [tags, setTags] = useState('');
   const [category, setCategory] = useState('Gaming');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -27,6 +28,7 @@ export default function Studio() {
   const [isShort, setIsShort] = useState(false);
   const [generatingTitle, setGeneratingTitle] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
+  const [generatingTags, setGeneratingTags] = useState(false);
 
   const handleGenerateTitle = async () => {
     if (!description && !category) {
@@ -59,6 +61,23 @@ export default function Studio() {
       toast.error('Ошибка при генерации описания');
     } finally {
       setGeneratingDesc(false);
+    }
+  };
+
+  const handleGenerateTags = async () => {
+    if (!title) {
+      toast.error('Сначала введите название видео');
+      return;
+    }
+    setGeneratingTags(true);
+    try {
+      const aiTags = await generateVideoTags(title, description, category);
+      setTags(aiTags);
+      toast.success('Теги сгенерированы');
+    } catch (error) {
+      toast.error('Ошибка при генерации тегов');
+    } finally {
+      setGeneratingTags(false);
     }
   };
 

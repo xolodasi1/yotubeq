@@ -263,14 +263,14 @@ export default function Channel() {
   const canPostCommunity = subCount >= 10;
 
   return (
-    <div className="pb-24 md:pb-12 bg-[var(--studio-sidebar)] min-h-screen">
+    <div className="pb-24 md:pb-12 bg-[var(--surface)] min-h-screen">
       {/* Channel Banner */}
-      <div className="h-40 md:h-80 bg-[var(--studio-hover)] relative overflow-hidden">
+      <div className="h-40 md:h-80 bg-[var(--hover)] relative overflow-hidden">
         {authorInfo?.bannerUrl ? (
           <img src={authorInfo.bannerUrl} alt="Баннер канала" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-[var(--studio-hover)] to-[var(--studio-border)] flex items-center justify-center">
-            <Snowflake className="w-24 h-24 text-[var(--studio-muted)] opacity-20 animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[var(--hover)] to-[var(--border)] flex items-center justify-center">
+            <Snowflake className="w-24 h-24 text-[var(--text-secondary)] opacity-20 animate-pulse" />
           </div>
         )}
       </div>
@@ -281,19 +281,19 @@ export default function Channel() {
           <img
             src={authorInfo?.photoUrl}
             alt="Аватар канала"
-            className="w-28 h-28 md:w-44 md:h-44 rounded-full border-4 border-[var(--studio-sidebar)] shadow-xl bg-[var(--studio-sidebar)] object-cover"
+            className="w-28 h-28 md:w-44 md:h-44 rounded-full border-4 border-[var(--surface)] shadow-xl bg-[var(--surface)] object-cover"
           />
           <div className="flex-1 space-y-3">
-            <h1 className="text-3xl md:text-4xl font-black text-[var(--studio-text)] tracking-tight">{authorInfo?.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-[var(--studio-muted)] uppercase tracking-widest">
+            <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight">{authorInfo?.name}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">
               <span>@user-{id?.substring(0, 8)}</span>
-              <span className="w-1 h-1 bg-[var(--studio-border)] rounded-full" />
+              <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
               <span>{subCount} подписчиков</span>
-              <span className="w-1 h-1 bg-[var(--studio-border)] rounded-full" />
+              <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
               <span>{videos.length} видео</span>
             </div>
             {authorInfo?.bio && (
-              <p className="text-sm text-[var(--studio-muted)] max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
+              <p className="text-sm text-[var(--text-secondary)] max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
             )}
             <div className="pt-2 flex flex-wrap gap-3">
               {user?.uid === id ? (
@@ -305,7 +305,7 @@ export default function Channel() {
                   onClick={handleSubscribe}
                   className={`px-10 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
                     isSubscribed 
-                      ? 'bg-[var(--studio-hover)] text-[var(--studio-text)] hover:bg-gray-200 shadow-none' 
+                      ? 'bg-[var(--hover)] text-[var(--text-primary)] hover:bg-gray-200 shadow-none' 
                       : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100/20'
                   }`}
                 >
@@ -317,7 +317,7 @@ export default function Channel() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-8 border-b border-[var(--studio-border)] mb-10 overflow-x-auto scrollbar-hide bg-[var(--studio-sidebar)]/50 backdrop-blur-sm sticky top-14 z-20 px-4 -mx-4 md:px-0 md:mx-0">
+        <div className="flex gap-8 border-b border-[var(--border)] mb-10 overflow-x-auto scrollbar-hide bg-[var(--surface)]/50 backdrop-blur-sm sticky top-14 z-20 px-4 -mx-4 md:px-0 md:mx-0">
           {(['videos', 'playlists', 'community', 'about'] as TabType[]).map((tab) => (
             <button 
               key={tab}
@@ -325,7 +325,7 @@ export default function Channel() {
               className={`pb-4 border-b-2 font-bold text-sm uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === tab 
                   ? 'border-blue-600 text-blue-600' 
-                  : 'border-transparent text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               {tab === 'videos' ? 'Видео' : 
@@ -339,7 +339,7 @@ export default function Channel() {
         <div className="min-h-[40vh]">
           {activeTab === 'videos' && (
             videos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 text-[var(--studio-muted)]">
+              <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">
                 <PlaySquare className="w-16 h-16 mb-4 opacity-10" />
                 <p className="text-lg font-bold">На канале пока нет видео</p>
               </div>
@@ -351,7 +351,7 @@ export default function Channel() {
                       <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100/20">
                         <Smartphone className="w-5 h-5" />
                       </div>
-                      <h2 className="text-xl font-bold text-[var(--studio-text)]">Shorts</h2>
+                      <h2 className="text-xl font-bold text-[var(--text-primary)]">Shorts</h2>
                     </div>
                     <div className="flex gap-5 overflow-x-auto pb-8 scrollbar-hide snap-x">
                       {shortsVideos.map((video) => (
@@ -368,7 +368,7 @@ export default function Channel() {
                       <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100/20">
                         <PlaySquare className="w-5 h-5" />
                       </div>
-                      <h2 className="text-xl font-bold text-[var(--studio-text)]">Видео</h2>
+                      <h2 className="text-xl font-bold text-[var(--text-primary)]">Видео</h2>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
                       {regularVideos.map((video) => (
@@ -391,15 +391,15 @@ export default function Channel() {
               ) : (
                 playlists.map(playlist => (
                   <div key={playlist.id} className="bg-[var(--studio-sidebar)] rounded-xl overflow-hidden border border-[var(--studio-border)] group cursor-pointer shadow-sm hover:shadow-md transition-all">
-                    <div className="aspect-video bg-[var(--studio-hover)] flex items-center justify-center relative">
-                      <PlaySquare className="w-12 h-12 text-[var(--studio-muted)] group-hover:text-blue-600 transition-colors" />
+                    <div className="aspect-video bg-[var(--hover)] flex items-center justify-center relative">
+                      <PlaySquare className="w-12 h-12 text-[var(--text-secondary)] group-hover:text-blue-600 transition-colors" />
                       <div className="absolute bottom-3 right-3 bg-black/80 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-wider">
                         {playlist.videoIds.length} видео
                       </div>
                     </div>
                     <div className="p-5">
-                      <h3 className="font-bold text-[var(--studio-text)] group-hover:text-blue-600 transition-colors line-clamp-1">{playlist.title}</h3>
-                      <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest mt-2">Обновлено недавно</p>
+                      <h3 className="font-bold text-[var(--text-primary)] group-hover:text-blue-600 transition-colors line-clamp-1">{playlist.title}</h3>
+                      <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-2">Обновлено недавно</p>
                     </div>
                   </div>
                 ))
@@ -410,12 +410,12 @@ export default function Channel() {
           {activeTab === 'community' && (
             <div className="max-w-3xl mx-auto space-y-8">
               {!canPostCommunity && (
-                <div className="bg-[var(--studio-sidebar)] p-10 rounded-2xl border border-[var(--studio-border)] text-center shadow-sm">
-                  <div className="w-16 h-16 bg-[var(--studio-hover)] rounded-full flex items-center justify-center mx-auto mb-6">
-                    <MessageSquare className="w-8 h-8 text-[var(--studio-muted)]" />
+                <div className="bg-[var(--surface)] p-10 rounded-2xl border border-[var(--border)] text-center shadow-sm">
+                  <div className="w-16 h-16 bg-[var(--hover)] rounded-full flex items-center justify-center mx-auto mb-6">
+                    <MessageSquare className="w-8 h-8 text-[var(--text-secondary)]" />
                   </div>
-                  <h3 className="text-lg font-bold text-[var(--studio-text)] mb-2">Сообщество пока недоступно</h3>
-                  <p className="text-sm text-[var(--studio-muted)]">Вкладка "Сообщество" открывается авторам, набравшим более 10 подписчиков.</p>
+                  <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Сообщество пока недоступно</h3>
+                  <p className="text-sm text-[var(--text-secondary)]">Вкладка "Сообщество" открывается авторам, набравшим более 10 подписчиков.</p>
                 </div>
               )}
 
@@ -428,7 +428,7 @@ export default function Channel() {
                         value={newPostText}
                         onChange={(e) => setNewPostText(e.target.value)}
                         placeholder="Поделитесь новостью с вашими подписчиками..."
-                        className="w-full bg-transparent border-b border-[var(--studio-border)] pb-4 focus:outline-none focus:border-blue-600 transition-all resize-none h-28 text-sm font-medium text-[var(--studio-text)]"
+                        className="w-full bg-transparent border-b border-[var(--border)] pb-4 focus:outline-none focus:border-blue-600 transition-all resize-none h-28 text-sm font-medium text-[var(--text-primary)]"
                       />
                     </div>
                     
@@ -445,7 +445,7 @@ export default function Channel() {
                                 setPollOptions(newOpts);
                               }}
                               placeholder={`Вариант ${idx + 1}`}
-                              className="flex-1 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all text-[var(--studio-text)]"
+                              className="flex-1 bg-[var(--hover)] border border-[var(--border)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all text-[var(--text-primary)]"
                             />
                           </div>
                         ))}
@@ -464,14 +464,14 @@ export default function Channel() {
                         <button 
                           type="button" 
                           onClick={() => setPostType('text')}
-                          className={`p-2.5 rounded-xl transition-all ${postType === 'text' ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--studio-hover)] text-[var(--studio-muted)]'}`}
+                          className={`p-2.5 rounded-xl transition-all ${postType === 'text' ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--hover)] text-[var(--text-secondary)]'}`}
                         >
                           <MessageSquare className="w-5 h-5" />
                         </button>
                         <button 
                           type="button" 
                           onClick={() => setPostType('poll')}
-                          className={`p-2.5 rounded-xl transition-all ${postType === 'poll' ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--studio-hover)] text-[var(--studio-muted)]'}`}
+                          className={`p-2.5 rounded-xl transition-all ${postType === 'poll' ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--hover)] text-[var(--text-secondary)]'}`}
                         >
                           <BarChart2 className="w-5 h-5" />
                         </button>
@@ -490,17 +490,17 @@ export default function Channel() {
 
               <div className="space-y-6">
                 {communityPosts.map(post => (
-                  <div key={post.id} className="bg-[var(--studio-sidebar)] p-8 rounded-2xl border border-[var(--studio-border)] shadow-sm hover:shadow-md transition-all">
+                  <div key={post.id} className="bg-[var(--surface)] p-8 rounded-2xl border border-[var(--border)] shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-center gap-4 mb-6">
-                      <img src={post.authorPhotoUrl} className="w-10 h-10 rounded-full border border-[var(--studio-border)]" alt={post.authorName} />
+                      <img src={post.authorPhotoUrl} className="w-10 h-10 rounded-full border border-[var(--border)]" alt={post.authorName} />
                       <div>
-                        <h4 className="font-bold text-[var(--studio-text)] text-sm">{post.authorName}</h4>
-                        <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest mt-0.5">
+                        <h4 className="font-bold text-[var(--text-primary)] text-sm">{post.authorName}</h4>
+                        <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">
                           {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                         </p>
                       </div>
                     </div>
-                    <p className="whitespace-pre-wrap mb-6 text-[var(--studio-text)] leading-relaxed text-sm font-medium">{post.text}</p>
+                    <p className="whitespace-pre-wrap mb-6 text-[var(--text-primary)] leading-relaxed text-sm font-medium">{post.text}</p>
                     
                     {post.type === 'poll' && post.pollOptions && (
                       <div className="space-y-3 mb-8">
@@ -514,26 +514,26 @@ export default function Channel() {
                               key={idx}
                               onClick={() => handleVote(post.id, idx)}
                               disabled={!user || hasVoted}
-                              className="w-full relative h-12 rounded-xl border border-[var(--studio-border)] overflow-hidden text-left group transition-all hover:border-blue-200"
+                              className="w-full relative h-12 rounded-xl border border-[var(--border)] overflow-hidden text-left group transition-all hover:border-blue-200"
                             >
                               <div 
                                 className="absolute inset-0 bg-blue-50 transition-all duration-700" 
                                 style={{ width: hasVoted ? `${percentage}%` : '0%' }}
                               />
                               <div className="absolute inset-0 flex items-center justify-between px-5">
-                                <span className="font-bold text-sm text-[var(--studio-text)]">{opt.text}</span>
+                                <span className="font-bold text-sm text-[var(--text-primary)]">{opt.text}</span>
                                 {hasVoted && <span className="text-xs font-black text-blue-600">{percentage}%</span>}
                               </div>
                             </button>
                           );
                         })}
-                        <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest pl-1">
+                        <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest pl-1">
                           {post.pollOptions.reduce((acc, o) => acc + o.votes, 0)} голосов
                         </p>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-6 text-[var(--studio-muted)] border-t border-[var(--studio-border)] pt-6">
+                    <div className="flex items-center gap-6 text-[var(--text-secondary)] border-t border-[var(--border)] pt-6">
                       <button className="flex items-center gap-2 hover:text-blue-600 transition-colors group">
                         <ThumbsUp className="w-4 h-4 group-hover:fill-blue-600" />
                         <span className="text-xs font-bold">{post.likes}</span>
@@ -557,7 +557,7 @@ export default function Channel() {
                     <Info className="w-5 h-5 text-blue-600" />
                     Описание
                   </h3>
-                  <p className="text-[var(--studio-text)]/80 whitespace-pre-wrap leading-relaxed font-medium">
+                  <p className="text-[var(--text-primary)]/80 whitespace-pre-wrap leading-relaxed font-medium">
                     {authorInfo?.bio || 'Описание канала отсутствует.'}
                   </p>
                 </section>
@@ -570,27 +570,27 @@ export default function Channel() {
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {authorInfo.socialLinks.website && (
-                        <a href={authorInfo.socialLinks.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] hover:border-blue-600 transition-all group">
+                        <a href={authorInfo.socialLinks.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--hover)] rounded-xl border border-[var(--border)] hover:border-blue-600 transition-all group">
                           <Globe className="w-5 h-5 text-blue-600" />
-                          <span className="text-sm font-bold text-[var(--studio-text)] group-hover:text-blue-600">Веб-сайт</span>
+                          <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-600">Веб-сайт</span>
                         </a>
                       )}
                       {authorInfo.socialLinks.telegram && (
-                        <a href={`https://t.me/${authorInfo.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] hover:border-blue-600 transition-all group">
+                        <a href={`https://t.me/${authorInfo.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--hover)] rounded-xl border border-[var(--border)] hover:border-blue-600 transition-all group">
                           <Smartphone className="w-5 h-5 text-blue-400" />
-                          <span className="text-sm font-bold text-[var(--studio-text)] group-hover:text-blue-600">Telegram</span>
+                          <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-600">Telegram</span>
                         </a>
                       )}
                       {authorInfo.socialLinks.vk && (
-                        <a href={authorInfo.socialLinks.vk.startsWith('http') ? authorInfo.socialLinks.vk : `https://vk.com/${authorInfo.socialLinks.vk}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] hover:border-blue-600 transition-all group">
+                        <a href={authorInfo.socialLinks.vk.startsWith('http') ? authorInfo.socialLinks.vk : `https://vk.com/${authorInfo.socialLinks.vk}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--hover)] rounded-xl border border-[var(--border)] hover:border-blue-600 transition-all group">
                           <Globe className="w-5 h-5 text-blue-500" />
-                          <span className="text-sm font-bold text-[var(--studio-text)] group-hover:text-blue-600">VK</span>
+                          <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-600">VK</span>
                         </a>
                       )}
                       {authorInfo.socialLinks.instagram && (
-                        <a href={`https://instagram.com/${authorInfo.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] hover:border-blue-600 transition-all group">
+                        <a href={`https://instagram.com/${authorInfo.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--hover)] rounded-xl border border-[var(--border)] hover:border-blue-600 transition-all group">
                           <Instagram className="w-5 h-5 text-pink-500" />
-                          <span className="text-sm font-bold text-[var(--studio-text)] group-hover:text-blue-600">Instagram</span>
+                          <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-600">Instagram</span>
                         </a>
                       )}
                     </div>
@@ -602,7 +602,7 @@ export default function Channel() {
                     <Mail className="w-5 h-5 text-blue-600" />
                     Контакты
                   </h3>
-                  <div className="flex items-center gap-3 text-sm font-bold text-[var(--studio-muted)] uppercase tracking-widest">
+                  <div className="flex items-center gap-3 text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">
                     <Globe className="w-4 h-4" />
                     <span>Для коммерческих запросов: {authorInfo?.email || 'не указано'}</span>
                   </div>
@@ -610,21 +610,21 @@ export default function Channel() {
               </div>
               <aside className="space-y-8">
                 <div className="bg-[var(--studio-sidebar)] p-8 rounded-2xl border border-[var(--studio-border)] shadow-sm">
-                  <h3 className="text-lg font-bold text-[var(--studio-text)] mb-6 uppercase tracking-widest text-xs">Статистика</h3>
+                  <h3 className="text-lg font-bold text-[var(--text-primary)] mb-6 uppercase tracking-widest text-xs">Статистика</h3>
                   <div className="space-y-5">
                     <div className="flex items-center justify-between border-b border-[var(--studio-border)] pb-4">
                       <div className="flex items-center gap-2 text-[var(--studio-muted)]">
                         <Calendar className="w-4 h-4" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Регистрация</span>
                       </div>
-                      <span className="text-sm font-bold text-[var(--studio-text)]">{authorInfo?.joinedAt ? new Date(authorInfo.joinedAt).toLocaleDateString('ru-RU') : '-'}</span>
+                      <span className="text-sm font-bold text-[var(--text-primary)]">{authorInfo?.joinedAt ? new Date(authorInfo.joinedAt).toLocaleDateString('ru-RU') : '-'}</span>
                     </div>
                     <div className="flex items-center justify-between border-b border-[var(--studio-border)] pb-4">
                       <div className="flex items-center gap-2 text-[var(--studio-muted)]">
                         <BarChart2 className="w-4 h-4" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Просмотры</span>
                       </div>
-                      <span className="text-sm font-bold text-[var(--studio-text)]">{videos.reduce((acc, v) => acc + v.views, 0).toLocaleString()}</span>
+                      <span className="text-sm font-bold text-[var(--text-primary)]">{videos.reduce((acc, v) => acc + v.views, 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

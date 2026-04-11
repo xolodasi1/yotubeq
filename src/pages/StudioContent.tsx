@@ -111,14 +111,14 @@ export default function StudioContent() {
   return (
     <div className="p-8 max-w-[1400px] mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--studio-text)]">Контент на канале</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Контент на канале</h1>
       </div>
 
-      <div className="flex gap-6 border-b border-[var(--studio-border)]">
+      <div className="flex gap-6 border-b border-[var(--border)]">
         <button
           onClick={() => setActiveTab('videos')}
           className={`pb-4 text-sm font-bold transition-colors relative ${
-            activeTab === 'videos' ? 'text-blue-600' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+            activeTab === 'videos' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           Видео
@@ -129,7 +129,7 @@ export default function StudioContent() {
         <button
           onClick={() => setActiveTab('shorts')}
           className={`pb-4 text-sm font-bold transition-colors relative ${
-            activeTab === 'shorts' ? 'text-blue-600' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+            activeTab === 'shorts' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           Shorts
@@ -140,7 +140,7 @@ export default function StudioContent() {
         <button
           onClick={() => setActiveTab('playlists')}
           className={`pb-4 text-sm font-bold transition-colors relative ${
-            activeTab === 'playlists' ? 'text-blue-600' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+            activeTab === 'playlists' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           Плейлисты
@@ -150,21 +150,21 @@ export default function StudioContent() {
         </button>
       </div>
 
-      <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-[var(--studio-border)] flex flex-col sm:flex-row gap-4 items-center justify-between bg-[var(--studio-sidebar)]">
+        <div className="p-4 border-b border-[var(--border)] flex flex-col sm:flex-row gap-4 items-center justify-between bg-[var(--surface)]">
           <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--studio-muted)]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
             <input
               type="text"
               placeholder="Поиск по контенту"
-              className="w-full pl-10 pr-4 py-2 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-md text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[var(--studio-text)]"
+              className="w-full pl-10 pr-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-md text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[var(--text-primary)]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-[var(--studio-muted)] hover:bg-[var(--studio-hover)] rounded transition-colors uppercase tracking-wider">
+            <button className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--hover)] rounded transition-colors uppercase tracking-wider">
               <Filter className="w-4 h-4" />
               Фильтр
             </button>
@@ -174,13 +174,13 @@ export default function StudioContent() {
         {/* Table */}
         <div className="overflow-x-auto">
           {activeTab === 'playlists' ? (
-            <div className="p-12 text-center text-[var(--studio-muted)]">
-              <p className="text-lg font-bold text-[var(--studio-text)]">Плейлисты в разработке</p>
+            <div className="p-12 text-center text-[var(--text-secondary)]">
+              <p className="text-lg font-bold text-[var(--text-primary)]">Плейлисты в разработке</p>
               <p className="text-sm mt-2">Скоро вы сможете создавать и управлять плейлистами.</p>
             </div>
           ) : (
           <table className="w-full text-left border-collapse">
-            <thead className="bg-[var(--studio-hover)] border-b border-[var(--studio-border)] text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest">
+            <thead className="bg-[var(--hover)] border-b border-[var(--border)] text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">
               <tr>
                 <th className="px-6 py-4 font-bold">Видео</th>
                 <th className="px-6 py-4 font-bold">Дата</th>
@@ -189,26 +189,26 @@ export default function StudioContent() {
                 <th className="px-6 py-4 font-bold text-right">Действия</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--studio-border)]">
+            <tbody className="divide-y divide-[var(--border)]">
               {filteredVideos.map((video) => (
-                <tr key={video.id} className="hover:bg-[var(--studio-hover)] transition-colors group">
+                <tr key={video.id} className="hover:bg-[var(--hover)] transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex gap-4 items-center min-w-[350px]">
-                      <div className={`relative ${video.isShort ? 'w-16 aspect-[9/16]' : 'w-32 aspect-video'} rounded overflow-hidden border border-[var(--studio-border)] shrink-0 shadow-sm`}>
+                      <div className={`relative ${video.isShort ? 'w-16 aspect-[9/16]' : 'w-32 aspect-video'} rounded overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
                         <img src={video.thumbnailUrl} className="w-full h-full object-cover" alt="" />
                         <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-bold">
                           {video.duration}
                         </span>
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-bold text-sm text-[var(--studio-text)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(`/video/${video.id}`)}>
+                        <h4 className="font-bold text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(`/video/${video.id}`)}>
                           {video.title}
                         </h4>
-                        <p className="text-xs text-[var(--studio-muted)] line-clamp-1 mt-1">{video.description || 'Нет описания'}</p>
+                        <p className="text-xs text-[var(--text-secondary)] line-clamp-1 mt-1">{video.description || 'Нет описания'}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-[var(--studio-muted)] whitespace-nowrap">
+                  <td className="px-6 py-4 text-sm text-[var(--text-secondary)] whitespace-nowrap">
                     {video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
@@ -221,21 +221,21 @@ export default function StudioContent() {
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => navigate(`/video/${video.id}`)}
-                        className="p-2 hover:bg-[var(--studio-hover)] rounded-full text-[var(--studio-muted)] transition-colors"
+                        className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
                         title="Открыть"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => handleEditClick(video)}
-                        className="p-2 hover:bg-[var(--studio-hover)] rounded-full text-[var(--studio-muted)] transition-colors"
+                        className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
                         title="Редактировать"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => setAnalyticsVideo(video)}
-                        className="p-2 hover:bg-[var(--studio-hover)] rounded-full text-[var(--studio-muted)] transition-colors"
+                        className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
                         title="Аналитика"
                       >
                         <BarChart2 className="w-4 h-4" />
@@ -254,7 +254,7 @@ export default function StudioContent() {
               {filteredVideos.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-24 text-center">
-                    <div className="flex flex-col items-center justify-center text-[var(--studio-muted)]">
+                    <div className="flex flex-col items-center justify-center text-[var(--text-secondary)]">
                       <Search className="w-12 h-12 mb-4 opacity-10" />
                       <p className="text-sm italic">Контент не найден</p>
                     </div>
@@ -273,29 +273,29 @@ export default function StudioContent() {
           <div className="bg-[var(--studio-sidebar)] rounded-lg shadow-xl p-6 w-full max-w-2xl relative flex flex-col gap-6">
             <button 
               onClick={() => setEditingVideo(null)}
-              className="absolute top-4 right-4 p-2 hover:bg-[var(--studio-hover)] rounded-full transition-colors"
+              className="absolute top-4 right-4 p-2 hover:bg-[var(--hover)] rounded-full transition-colors"
             >
               <X className="w-5 h-5 text-[var(--studio-muted)]" />
             </button>
-            <h2 className="text-xl font-bold text-[var(--studio-text)]">Редактировать видео</h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">Редактировать видео</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--studio-muted)] mb-1">Название</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Название</label>
                 <input
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-4 py-2 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-md focus:outline-none focus:border-blue-500 text-[var(--studio-text)]"
+                  className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-md focus:outline-none focus:border-blue-500 text-[var(--text-primary)]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[var(--studio-muted)] mb-1">Описание</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Описание</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={5}
-                  className="w-full px-4 py-2 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-md focus:outline-none focus:border-blue-500 text-[var(--studio-text)] resize-none"
+                  className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-md focus:outline-none focus:border-blue-500 text-[var(--text-primary)] resize-none"
                 />
               </div>
             </div>
@@ -303,7 +303,7 @@ export default function StudioContent() {
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => setEditingVideo(null)}
-                className="px-4 py-2 text-sm font-bold text-[var(--studio-muted)] hover:bg-[var(--studio-hover)] rounded-md transition-colors"
+                className="px-4 py-2 text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--hover)] rounded-md transition-colors"
               >
                 Отмена
               </button>
@@ -330,30 +330,30 @@ export default function StudioContent() {
           <div className="bg-[var(--studio-sidebar)] rounded-lg shadow-xl p-6 w-full max-w-2xl relative flex flex-col gap-6">
             <button 
               onClick={() => setAnalyticsVideo(null)}
-              className="absolute top-4 right-4 p-2 hover:bg-[var(--studio-hover)] rounded-full transition-colors"
+              className="absolute top-4 right-4 p-2 hover:bg-[var(--hover)] rounded-full transition-colors"
             >
               <X className="w-5 h-5 text-[var(--studio-muted)]" />
             </button>
-            <h2 className="text-xl font-bold text-[var(--studio-text)]">Аналитика видео</h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">Аналитика видео</h2>
             
-            <div className="flex gap-4 items-center p-4 bg-[var(--studio-hover)] rounded-lg border border-[var(--studio-border)]">
+            <div className="flex gap-4 items-center p-4 bg-[var(--hover)] rounded-lg border border-[var(--border)]">
               <div className={`relative ${analyticsVideo.isShort ? 'w-16 aspect-[9/16]' : 'w-32 aspect-video'} rounded overflow-hidden shrink-0`}>
                 <img src={analyticsVideo.thumbnailUrl} className="w-full h-full object-cover" alt="" />
               </div>
               <div>
-                <h3 className="font-bold text-[var(--studio-text)] line-clamp-1">{analyticsVideo.title}</h3>
-                <p className="text-sm text-[var(--studio-muted)] mt-1">Опубликовано: {analyticsVideo.createdAt ? format(new Date(analyticsVideo.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}</p>
+                <h3 className="font-bold text-[var(--text-primary)] line-clamp-1">{analyticsVideo.title}</h3>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">Опубликовано: {analyticsVideo.createdAt ? format(new Date(analyticsVideo.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-6 bg-[var(--studio-hover)] rounded-lg border border-[var(--studio-border)] flex flex-col items-center justify-center">
-                <p className="text-sm text-[var(--studio-muted)] mb-2 font-bold uppercase tracking-wider">Просмотры</p>
-                <p className="text-4xl font-black text-[var(--studio-text)]">{analyticsVideo.views?.toLocaleString() || 0}</p>
+                <p className="text-sm text-[var(--text-secondary)] mb-2 font-bold uppercase tracking-wider">Просмотры</p>
+                <p className="text-4xl font-black text-[var(--text-primary)]">{analyticsVideo.views?.toLocaleString() || 0}</p>
               </div>
               <div className="p-6 bg-[var(--studio-hover)] rounded-lg border border-[var(--studio-border)] flex flex-col items-center justify-center">
-                <p className="text-sm text-[var(--studio-muted)] mb-2 font-bold uppercase tracking-wider">Лайки</p>
-                <p className="text-4xl font-black text-[var(--studio-text)]">{analyticsVideo.likes?.toLocaleString() || 0}</p>
+                <p className="text-sm text-[var(--text-secondary)] mb-2 font-bold uppercase tracking-wider">Лайки</p>
+                <p className="text-4xl font-black text-[var(--text-primary)]">{analyticsVideo.likes?.toLocaleString() || 0}</p>
               </div>
             </div>
           </div>

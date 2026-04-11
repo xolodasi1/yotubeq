@@ -53,10 +53,10 @@ export default function Home() {
   const newVideos = regularVideos.slice(0, 8);
 
   return (
-    <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto pb-24 md:pb-10 bg-[var(--studio-bg)] min-h-screen">
+    <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto pb-24 md:pb-10 bg-[var(--bg)] min-h-screen">
       {/* Categories */}
-      <div className="flex items-center gap-4 overflow-x-auto pb-4 mb-8 scrollbar-hide sticky top-14 bg-[var(--studio-bg)]/95 backdrop-blur-sm z-20 py-3 border-b border-[var(--studio-border)]">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-lg text-[var(--studio-muted)] shrink-0">
+      <div className="flex items-center gap-4 overflow-x-auto pb-4 mb-8 scrollbar-hide sticky top-14 bg-[var(--bg)]/95 backdrop-blur-sm z-20 py-3 border-b border-[var(--border)]">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[var(--text-secondary)] shrink-0">
           <Filter className="w-4 h-4" />
           <span className="text-xs font-bold uppercase tracking-wider">Фильтр</span>
         </div>
@@ -67,8 +67,8 @@ export default function Home() {
               onClick={() => setActiveCategory(category)}
               className={`px-4 py-1.5 rounded-lg whitespace-nowrap transition-all duration-200 text-sm font-bold tracking-tight ${
                 activeCategory === category
-                  ? 'bg-[var(--studio-text)] text-[var(--studio-bg)] shadow-md shadow-blue-500/10'
-                  : 'bg-[var(--studio-sidebar)] text-[var(--studio-text)] border border-[var(--studio-border)] hover:bg-[var(--studio-hover)] hover:border-blue-500/50'
+                  ? 'bg-[var(--text-primary)] text-[var(--bg)] shadow-md shadow-blue-500/10'
+                  : 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--hover)] hover:border-blue-500/50'
               }`}
             >
               {category}
@@ -79,24 +79,24 @@ export default function Home() {
 
       {searchQuery && (
         <div className="mb-10">
-          <h2 className="text-2xl font-bold text-[var(--studio-text)]">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">
             Результаты поиска для: <span className="text-blue-600">"{searchQuery}"</span>
           </h2>
-          <p className="text-sm text-[var(--studio-muted)] mt-1">Найдено {filteredVideos.length} видео</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">Найдено {filteredVideos.length} видео</p>
         </div>
       )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center h-[60vh]">
           <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
-          <p className="text-sm font-bold text-[var(--studio-muted)] uppercase tracking-widest">Загрузка контента...</p>
+          <p className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">Загрузка контента...</p>
         </div>
       ) : filteredVideos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-32 text-[var(--studio-muted)]">
-          <div className="w-20 h-20 bg-[var(--studio-hover)] rounded-full flex items-center justify-center mb-6">
+        <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">
+          <div className="w-20 h-20 bg-[var(--hover)] rounded-full flex items-center justify-center mb-6">
             <Sparkles className="w-10 h-10 opacity-20" />
           </div>
-          <p className="text-lg font-bold text-[var(--studio-text)]">Видео не найдены</p>
+          <p className="text-lg font-bold text-[var(--text-primary)]">Видео не найдены</p>
           <p className="text-sm mt-2">Попробуйте изменить параметры поиска или категорию</p>
         </div>
       ) : (
@@ -109,8 +109,8 @@ export default function Home() {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[var(--studio-text)]">Рекомендации</h2>
-                  <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest mt-0.5">Специально для вас</p>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Рекомендации</h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Специально для вас</p>
                 </div>
               </div>
             </div>
@@ -123,15 +123,15 @@ export default function Home() {
 
           {/* Shorts Section */}
           {shortsVideos.length > 0 && (
-            <section className="bg-[var(--studio-sidebar)] p-8 rounded-2xl border border-[var(--studio-border)] shadow-sm">
+            <section className="bg-[var(--surface)] p-8 rounded-2xl border border-[var(--border)] shadow-sm">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
                     <Smartphone className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-[var(--studio-text)]">Shorts</h2>
-                    <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest mt-0.5">Короткие видео</p>
+                    <h2 className="text-xl font-bold text-[var(--text-primary)]">Shorts</h2>
+                    <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Короткие видео</p>
                   </div>
                 </div>
               </div>
@@ -153,8 +153,8 @@ export default function Home() {
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[var(--studio-text)]">Топ по просмотрам</h2>
-                  <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest mt-0.5">Самые популярные</p>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Топ по просмотрам</h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Самые популярные</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
@@ -173,8 +173,8 @@ export default function Home() {
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[var(--studio-text)]">Новые видео</h2>
-                  <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest mt-0.5">Свежий контент</p>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Новые видео</h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Свежий контент</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">

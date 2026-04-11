@@ -117,7 +117,7 @@ export default function App() {
   return (
     <AuthContext.Provider value={{ user, loading, theme, toggleTheme }}>
       <Router>
-        <div className={`min-h-screen bg-[var(--studio-bg)] text-[var(--studio-text)] flex flex-col transition-colors duration-300`}>
+        <div className={`min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col transition-colors duration-300`}>
           <Navbar />
           <div className="flex flex-1 overflow-hidden">
             <Sidebar />
