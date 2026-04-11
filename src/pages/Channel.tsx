@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType, CommunityPost, Playlist } from '../types';
-import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram } from 'lucide-react';
+import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ export default function Channel() {
   const [activeTab, setActiveTab] = useState<TabType>('videos');
   
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [subCount, setSubCount] = useState(0);
 
   // Community State
@@ -75,9 +76,16 @@ export default function Channel() {
         if (user) {
           const subId = `${user.uid}_${id}`;
           const subSnap = await getDoc(doc(db, 'subscriptions', subId));
-          setIsSubscribed(subSnap.exists());
+          if (subSnap.exists()) {
+            setIsSubscribed(true);
+            setNotificationsEnabled(subSnap.data().notificationsEnabled || false);
+          } else {
+            setIsSubscribed(false);
+            setNotificationsEnabled(false);
+          }
         } else {
           setIsSubscribed(false);
+          setNotificationsEnabled(false);
         }
       } catch (error) {
         console.error("Error fetching channel videos:", error);
@@ -131,6 +139,20 @@ export default function Channel() {
     fetchPlaylists();
   }, [id, activeTab]);
 
+  const handleToggleNotifications = async () => {
+    if (!user || !id || !isSubscribed) return;
+    const subId = `${user.uid}_${id}`;
+    const subRef = doc(db, 'subscriptions', subId);
+    try {
+      const newState = !notificationsEnabled;
+      await updateDoc(subRef, { notificationsEnabled: newState });
+      setNotificationsEnabled(newState);
+      toast.success(newState ? 'Уведомления включены' : 'Уведомления выключены');
+    } catch (error) {
+      toast.error('Ошибка при изменении настроек уведомлений');
+    }
+  };
+
   const handleSubscribe = async () => {
     if (!user || !id) {
       toast.error('Пожалуйста, войдите, чтобы подписаться');
@@ -150,16 +172,20 @@ export default function Channel() {
         await deleteDoc(subRef);
         await updateDoc(channelRef, { subscribers: increment(-1) }).catch(() => {});
         setIsSubscribed(false);
+        setNotificationsEnabled(false);
         setSubCount(Math.max(0, subCount - 1));
         toast.success('Вы отписались');
       } else {
-        await setDoc(subRef, {
-          id: subId,
-          subscriberId: user.uid,
-          channelId: id,
-          createdAt: new Date()
-        });
-        await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
+        await Promise.all([
+          setDoc(subRef, {
+            id: subId,
+            subscriberId: user.uid,
+            channelId: id,
+            createdAt: new Date(),
+            notificationsEnabled: false
+          }),
+          updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {})
+        ]);
         
         // Add notification
         try {
@@ -177,6 +203,7 @@ export default function Channel() {
         }
 
         setIsSubscribed(true);
+        setNotificationsEnabled(false);
         setSubCount(subCount + 1);
         toast.success('Вы подписались!');
       }
@@ -295,22 +322,37 @@ export default function Channel() {
             {authorInfo?.bio && (
               <p className="text-sm text-[var(--text-secondary)] max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
             )}
-            <div className="pt-2 flex flex-wrap gap-3">
+            <div className="pt-2 flex flex-wrap gap-3 items-center">
               {user?.uid === id ? (
                 <Link to="/studio" className="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold text-sm transition-all hover:bg-blue-700 shadow-lg shadow-blue-100/20">
                   Настроить канал
                 </Link>
               ) : (
-                <button 
-                  onClick={handleSubscribe}
-                  className={`px-10 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
-                    isSubscribed 
-                      ? 'bg-[var(--hover)] text-[var(--text-primary)] hover:bg-gray-200 shadow-none' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100/20'
-                  }`}
-                >
-                  {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handleSubscribe}
+                    className={`px-10 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
+                      isSubscribed 
+                        ? 'bg-[var(--hover)] text-[var(--text-primary)] hover:bg-gray-200 shadow-none' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100/20'
+                    }`}
+                  >
+                    {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
+                  </button>
+                  {isSubscribed && (
+                    <button
+                      onClick={handleToggleNotifications}
+                      className={`p-2.5 rounded-full transition-all ${
+                        notificationsEnabled 
+                          ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
+                          : 'bg-[var(--hover)] text-[var(--text-secondary)] hover:bg-gray-200'
+                      }`}
+                      title={notificationsEnabled ? "Выключить уведомления" : "Включить уведомления"}
+                    >
+                      {notificationsEnabled ? <Bell className="w-5 h-5 fill-current" /> : <BellOff className="w-5 h-5" />}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>

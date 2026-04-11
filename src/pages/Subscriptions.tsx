@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
+import ShortCard from '../components/ShortCard';
 import { VideoType, UserType } from '../types';
-import { Loader2, Users, Bell } from 'lucide-react';
+import { Loader2, Users, Bell, Video, Music, Smartphone, Camera } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, limit } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
@@ -12,6 +13,7 @@ export default function Subscriptions() {
   const [channels, setChannels] = useState<UserType[]>([]);
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'video' | 'short' | 'music' | 'photo'>('video');
 
   useEffect(() => {
     if (!user) return;
@@ -38,13 +40,14 @@ export default function Subscriptions() {
         const videosQ = query(
           collection(db, 'videos'), 
           where('authorId', 'in', channelIds.slice(0, 10)), // Firestore limit for 'in'
+          where('type', '==', activeTab),
           orderBy('createdAt', 'desc'),
           limit(30)
         );
         const videosSnap = await getDocs(videosQ);
         setVideos(videosSnap.docs.map(d => ({
           ...d.data(),
-          createdAt: d.data().createdAt?.toDate()?.toISOString()
+          createdAt: d.data().createdAt?.toDate?.()?.toISOString() || d.data().createdAt
         })) as VideoType[]);
 
       } catch (error) {
@@ -55,7 +58,7 @@ export default function Subscriptions() {
     };
 
     fetchSubscriptions();
-  }, [user]);
+  }, [user, activeTab]);
 
   if (!user) {
     return (
@@ -81,7 +84,7 @@ export default function Subscriptions() {
       </div>
 
       {channels.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto pb-6 mb-8 scrollbar-hide">
+        <div className="flex gap-4 overflow-x-auto pb-6 mb-8 scrollbar-hide border-b border-[var(--border)]">
           {channels.map(channel => (
             <Link key={channel.uid} to={`/channel/${channel.uid}`} className="flex flex-col items-center gap-2 min-w-[80px] group">
               <img 
@@ -89,21 +92,43 @@ export default function Subscriptions() {
                 className="w-14 h-14 rounded-full border-2 border-gray-200 group-hover:border-blue-500 transition-all" 
                 alt={channel.displayName} 
               />
-              <span className="text-xs text-center line-clamp-1 w-full">{channel.displayName}</span>
+              <span className="text-xs text-center line-clamp-1 w-full font-medium">{channel.displayName}</span>
             </Link>
           ))}
         </div>
       )}
 
+      <div className="flex gap-4 border-b border-[var(--border)] mb-8 overflow-x-auto scrollbar-hide">
+        {[
+          { id: 'video', label: 'Видео', icon: Video },
+          { id: 'short', label: 'Shorts', icon: Smartphone },
+          { id: 'music', label: 'Музыка', icon: Music },
+          { id: 'photo', label: 'Фото', icon: Camera },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex items-center gap-2 pb-4 border-b-2 font-bold text-sm uppercase tracking-widest transition-all whitespace-nowrap ${
+              activeTab === tab.id
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {videos.length === 0 ? (
         <div className="text-center py-20 text-ice-muted">
           <Bell className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p className="text-lg">Новых видео от ваших подписок пока нет.</p>
+          <p className="text-lg">В этой категории пока нет нового контента от ваших подписок.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className={activeTab === 'short' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"}>
           {videos.map((video) => (
-            <VideoCard key={video.id} video={video} />
+            activeTab === 'short' ? <ShortCard video={video} /> : <VideoCard video={video} />
           ))}
         </div>
       )}

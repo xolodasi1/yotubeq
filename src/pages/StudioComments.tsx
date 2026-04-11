@@ -92,14 +92,14 @@ export default function StudioComments() {
   }
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6 pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Комментарии к видео</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)]">Комментарии к видео</h1>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-gray-100 bg-white">
+        <div className="p-4 border-b border-[var(--border)] bg-[var(--surface)]">
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -113,36 +113,36 @@ export default function StudioComments() {
         </div>
 
         {/* List */}
-        <div className="divide-y divide-gray-50">
+        <div className="divide-y divide-[var(--border)]">
           {filteredComments.map((comment) => (
-            <div key={comment.id} className="p-6 hover:bg-gray-50 transition-colors group flex gap-5">
-              <img src={comment.authorPhotoUrl} className="w-10 h-10 rounded-full border border-gray-100 shrink-0 shadow-sm" alt="" />
+            <div key={comment.id} className="p-6 hover:bg-[var(--hover)] transition-colors group flex gap-5">
+              <img src={comment.authorPhotoUrl} className="w-10 h-10 rounded-full border border-[var(--border)] shrink-0 shadow-sm" alt="" />
               <div className="flex-1 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-gray-900">{comment.authorName}</span>
-                    <span className="text-[10px] text-gray-400 font-medium">
+                    <span className="font-bold text-sm text-[var(--text-primary)]">{comment.authorName}</span>
+                    <span className="text-[10px] text-[var(--text-secondary)] font-medium">
                       {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: ru }) : 'недавно'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
                       onClick={() => navigate(`/video/${comment.videoId}`)}
-                      className="p-2 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
+                      className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
                       title="Перейти к видео"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => handleDelete(comment.id)}
-                      className="p-2 hover:bg-red-50 rounded-full text-red-600 transition-colors"
+                      className="p-2 hover:bg-red-500/10 rounded-full text-red-500 transition-colors"
                       title="Удалить"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <p className="text-sm text-gray-800 leading-relaxed">{comment.text}</p>
+                <p className="text-sm text-[var(--text-primary)] leading-relaxed">{comment.text}</p>
                 <div className="flex items-center gap-6 pt-1">
                   <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
                     <Heart className={`w-3.5 h-3.5 ${comment.authorHearted ? 'fill-red-500 text-red-500' : 'text-gray-300'}`} />

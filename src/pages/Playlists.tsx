@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { Playlist, VideoType } from '../types';
-import { Loader2, PlaySquare, Trash2, ExternalLink } from 'lucide-react';
+import { Loader2, PlaySquare, Trash2, ExternalLink, Music, Smartphone, Camera, Video } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
@@ -11,6 +11,7 @@ export default function Playlists() {
   const { user } = useAuth();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'video' | 'music' | 'short' | 'photo'>('video');
 
   useEffect(() => {
     if (!user) return;
@@ -42,6 +43,11 @@ export default function Playlists() {
     }
   };
 
+  const filteredPlaylists = playlists.filter(p => {
+    if (activeTab === 'video') return !p.type || p.type === 'video';
+    return p.type === activeTab;
+  });
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-ice-muted">
@@ -65,14 +71,36 @@ export default function Playlists() {
         <h1 className="text-2xl md:text-3xl font-bold">Ваши плейлисты</h1>
       </div>
 
-      {playlists.length === 0 ? (
+      <div className="flex gap-4 border-b border-[var(--border)] mb-8 overflow-x-auto scrollbar-hide">
+        {[
+          { id: 'video', label: 'Видео', icon: Video },
+          { id: 'music', label: 'Музыка', icon: Music },
+          { id: 'short', label: 'Shorts', icon: Smartphone },
+          { id: 'photo', label: 'Фото', icon: Camera },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex items-center gap-2 pb-4 border-b-2 font-bold text-sm uppercase tracking-widest transition-all whitespace-nowrap ${
+              activeTab === tab.id
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {filteredPlaylists.length === 0 ? (
         <div className="text-center py-20 text-ice-muted">
-          <p className="text-lg">У вас пока нет плейлистов.</p>
-          <Link to="/" className="text-ice-accent hover:underline mt-2 inline-block">Найти видео для добавления</Link>
+          <p className="text-lg">У вас пока нет плейлистов в этой категории.</p>
+          <Link to="/" className="text-ice-accent hover:underline mt-2 inline-block">Найти контент для добавления</Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {playlists.map((playlist) => (
+          {filteredPlaylists.map((playlist) => (
             <div key={playlist.id} className="glass rounded-2xl border border-ice-border overflow-hidden group">
               <div className="aspect-video bg-white/5 flex items-center justify-center relative">
                 <PlaySquare className="w-12 h-12 text-ice-muted group-hover:text-ice-accent transition-colors" />

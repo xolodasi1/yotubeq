@@ -25,6 +25,7 @@ export default function Navbar() {
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', user.uid),
+      where('read', '==', false),
       orderBy('createdAt', 'desc')
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -202,7 +203,7 @@ export default function Navbar() {
                                 className={`p-4 hover:bg-[var(--hover)] transition-colors cursor-pointer ${!notif.read ? 'bg-blue-500/5' : ''}`}
                                 onClick={() => {
                                   markAsRead(notif.id);
-                                  if ((notif.type === 'comment' || notif.type === 'like') && notif.videoId) {
+                                  if ((notif.type === 'comment' || notif.type === 'like' || notif.type === 'new_content') && notif.videoId) {
                                     navigate(`/video/${notif.videoId}`);
                                   } else if (notif.type === 'subscribe' && notif.fromUserId) {
                                     navigate(`/channel/${notif.fromUserId}`);
@@ -215,7 +216,10 @@ export default function Navbar() {
                                   <div>
                                     <p className="text-sm text-[var(--text-primary)]">
                                       <span className="font-bold">{notif.fromUserName}</span>
-                                      {notif.type === 'subscribe' ? ' подписался на ваш канал' : notif.type === 'like' ? ` оценил ваше видео "${notif.videoTitle}"` : ` оставил комментарий: "${notif.commentText}"`}
+                                      {notif.type === 'subscribe' ? ' подписался на ваш канал' : 
+                                       notif.type === 'like' ? ` оценил ваше видео "${notif.videoTitle}"` : 
+                                       notif.type === 'new_content' ? ` опубликовал новый контент: "${notif.videoTitle}"` :
+                                       ` оставил комментарий: "${notif.commentText}"`}
                                     </p>
                                     <p className="text-xs text-[var(--text-secondary)] mt-1">
                                       {notif.createdAt?.toDate ? formatDistanceToNow(notif.createdAt.toDate(), { addSuffix: true, locale: ru }) : 'только что'}
@@ -237,9 +241,6 @@ export default function Navbar() {
                     alt="Profile"
                     className="w-8 h-8 rounded-full border border-[var(--border)]"
                   />
-                </Link>
-                <Link to="/settings" className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors lg:hidden">
-                  <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
                 </Link>
                 <button onClick={handleLogout} className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors hidden sm:block">
                   <LogOut className="w-5 h-5 text-[var(--text-secondary)]" />

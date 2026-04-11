@@ -77,7 +77,7 @@ export default function StudioDashboard() {
   return (
     <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6 md:space-y-8 pb-24">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Панель управления каналом</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)]">Панель управления каналом</h1>
         <div className="flex gap-3">
           <button 
             onClick={() => navigate('/studio/upload')}
@@ -91,32 +91,32 @@ export default function StudioDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Latest Video Performance */}
-        <div className="bg-white dark:bg-[var(--studio-sidebar)] border border-gray-200 dark:border-[var(--studio-border)] rounded-2xl p-4 md:p-6 shadow-sm flex flex-col">
-          <h2 className="font-bold text-lg mb-6 text-gray-900 dark:text-white">Эффективность последнего видео</h2>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 md:p-6 shadow-sm flex flex-col">
+          <h2 className="font-bold text-lg mb-6 text-[var(--text-primary)]">Эффективность последнего видео</h2>
           {videos.length > 0 ? (
             <div className="space-y-6 flex-1 flex flex-col">
-              <div className="relative aspect-video rounded-xl overflow-hidden border border-gray-100 dark:border-[var(--studio-border)] group cursor-pointer" onClick={() => navigate(`/video/${videos[0].id}`)}>
+              <div className="relative aspect-video rounded-xl overflow-hidden border border-[var(--border)] group cursor-pointer" onClick={() => navigate(`/video/${videos[0].id}`)}>
                 <img src={videos[0].thumbnailUrl} alt={videos[0].title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                 <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-bold text-sm line-clamp-2 hover:text-blue-600 cursor-pointer dark:text-gray-200" onClick={() => navigate(`/video/${videos[0].id}`)}>{videos[0].title}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Опубликовано: {videos[0].createdAt ? formatDistanceToNow(new Date(videos[0].createdAt), { addSuffix: true, locale: ru }) : 'Неизвестно'}</p>
+                <h3 className="font-bold text-sm line-clamp-2 hover:text-blue-600 cursor-pointer text-[var(--text-primary)]" onClick={() => navigate(`/video/${videos[0].id}`)}>{videos[0].title}</h3>
+                <p className="text-xs text-[var(--text-secondary)]">Опубликовано: {videos[0].createdAt ? formatDistanceToNow(new Date(videos[0].createdAt), { addSuffix: true, locale: ru }) : 'Неизвестно'}</p>
               </div>
-              <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-[var(--studio-border)]">
+              <div className="space-y-4 pt-4 border-t border-[var(--border)]">
                 <div className="flex justify-between items-center text-sm">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                     <Eye className="w-4 h-4" />
                     <span>Просмотры</span>
                   </div>
-                  <span className="font-bold dark:text-white">{videos[0].views?.toLocaleString()}</span>
+                  <span className="font-bold text-[var(--text-primary)]">{videos[0].views?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                     <ThumbsUp className="w-4 h-4" />
                     <span>Лайки</span>
                   </div>
-                  <span className="font-bold dark:text-white">{videos[0].likes?.toLocaleString()}</span>
+                  <span className="font-bold text-[var(--text-primary)]">{videos[0].likes?.toLocaleString()}</span>
                 </div>
               </div>
               <div className="mt-auto pt-6">
@@ -127,8 +127,8 @@ export default function StudioDashboard() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 text-gray-400">
-              <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 text-[var(--text-secondary)]">
+              <div className="w-16 h-16 bg-[var(--hover)] rounded-full flex items-center justify-center mb-4">
                 <Play className="w-8 h-8 opacity-20" />
               </div>
               <p className="text-sm">Загрузите видео, чтобы увидеть статистику</p>
@@ -137,28 +137,28 @@ export default function StudioDashboard() {
         </div>
 
         {/* Channel Analytics */}
-        <div className="bg-white dark:bg-[var(--studio-sidebar)] border border-gray-200 dark:border-[var(--studio-border)] rounded-2xl p-4 md:p-6 shadow-sm flex flex-col">
-          <h2 className="font-bold text-lg mb-6 text-gray-900 dark:text-white">Аналитика по каналу</h2>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 md:p-6 shadow-sm flex flex-col">
+          <h2 className="font-bold text-lg mb-6 text-[var(--text-primary)]">Аналитика по каналу</h2>
           <div className="space-y-8 flex-1">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider mb-2">Подписчики</p>
-              <p className="text-4xl font-bold text-gray-900 dark:text-white">{stats.subscribers.toLocaleString()}</p>
+              <p className="text-xs text-[var(--text-secondary)] font-medium uppercase tracking-wider mb-2">Подписчики</p>
+              <p className="text-4xl font-bold text-[var(--text-primary)]">{stats.subscribers.toLocaleString()}</p>
               <div className="flex items-center gap-1 text-green-600 text-xs mt-1 font-medium">
                 <TrendingUp className="w-3 h-3" />
                 <span>+0 за последние 28 дней</span>
               </div>
             </div>
             
-            <div className="pt-6 border-t border-gray-50 dark:border-[var(--studio-border)] space-y-4">
-              <h3 className="font-bold text-sm text-gray-800 dark:text-gray-200">Сводка (все время)</h3>
+            <div className="pt-6 border-t border-[var(--border)] space-y-4">
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Сводка (все время)</h3>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 dark:bg-[var(--studio-hover)] p-3 rounded-xl border border-gray-100 dark:border-[var(--studio-border)]">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Просмотры</p>
-                  <p className="text-lg font-bold dark:text-white">{stats.totalViews.toLocaleString()}</p>
+                <div className="bg-[var(--hover)] p-3 rounded-xl border border-[var(--border)]">
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Просмотры</p>
+                  <p className="text-lg font-bold text-[var(--text-primary)]">{stats.totalViews.toLocaleString()}</p>
                 </div>
-                <div className="bg-gray-50 dark:bg-[var(--studio-hover)] p-3 rounded-xl border border-gray-100 dark:border-[var(--studio-border)]">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Лайки</p>
-                  <p className="text-lg font-bold dark:text-white">{stats.totalLikes.toLocaleString()}</p>
+                <div className="bg-[var(--hover)] p-3 rounded-xl border border-[var(--border)]">
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Лайки</p>
+                  <p className="text-lg font-bold text-[var(--text-primary)]">{stats.totalLikes.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -172,17 +172,17 @@ export default function StudioDashboard() {
         </div>
 
         {/* Recent Content List */}
-        <div className="bg-white dark:bg-[var(--studio-sidebar)] border border-gray-200 dark:border-[var(--studio-border)] rounded-2xl p-4 md:p-6 shadow-sm flex flex-col">
-          <h2 className="font-bold text-lg mb-6 text-gray-900 dark:text-white">Последний контент</h2>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 md:p-6 shadow-sm flex flex-col">
+          <h2 className="font-bold text-lg mb-6 text-[var(--text-primary)]">Последний контент</h2>
           <div className="space-y-4 flex-1">
             {videos.slice(1).map(video => (
-              <div key={video.id} className="flex gap-4 items-center group cursor-pointer p-2 hover:bg-gray-50 dark:hover:bg-[var(--studio-hover)] rounded-xl transition-colors" onClick={() => navigate(`/video/${video.id}`)}>
-                <div className="relative w-24 aspect-video rounded-lg overflow-hidden border border-gray-100 dark:border-[var(--studio-border)] flex-shrink-0">
+              <div key={video.id} className="flex gap-4 items-center group cursor-pointer p-2 hover:bg-[var(--hover)] rounded-xl transition-colors" onClick={() => navigate(`/video/${video.id}`)}>
+                <div className="relative w-24 aspect-video rounded-lg overflow-hidden border border-[var(--border)] flex-shrink-0">
                   <img src={video.thumbnailUrl} className="w-full h-full object-cover" alt="" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-blue-600 transition-colors">{video.title}</h4>
-                  <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] line-clamp-1 group-hover:text-blue-600 transition-colors">{video.title}</h4>
+                  <div className="flex items-center gap-2 mt-1 text-[10px] text-[var(--text-secondary)]">
                     <span>{video.views} просм.</span>
                     <span>•</span>
                     <span>{video.createdAt ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru }) : 'Неизвестно'}</span>

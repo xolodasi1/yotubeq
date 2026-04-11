@@ -76,6 +76,7 @@ export interface Playlist {
   videoIds: string[];
   visibility?: 'public' | 'private';
   createdAt: any;
+  type?: 'video' | 'short' | 'music' | 'photo';
 }
 
 export interface CommunityPost {

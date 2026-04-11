@@ -32,6 +32,7 @@ interface User {
   uid: string;
   email: string;
   displayName: string;
+  pseudonym?: string;
   photoURL: string;
   subscribers: number;
 }
@@ -78,16 +79,20 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         let subscribers = 0;
+        let pseudonym = '';
         try {
           const userRef = doc(db, 'users', firebaseUser.uid);
           const userSnap = await getDoc(userRef);
           if (userSnap.exists()) {
-            subscribers = userSnap.data().subscribers || 0;
+            const data = userSnap.data();
+            subscribers = data.subscribers || 0;
+            pseudonym = data.pseudonym || '';
           } else {
             await setDoc(userRef, {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              pseudonym: '',
               photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
               subscribers: 0,
               createdAt: new Date()
@@ -101,6 +106,7 @@ export default function App() {
           uid: firebaseUser.uid,
           email: firebaseUser.email || '',
           displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          pseudonym: pseudonym,
           photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
           subscribers: subscribers
         };

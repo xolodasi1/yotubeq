@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic, Music as MusicIcon, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
-import { setDoc, doc } from 'firebase/firestore';
+import { setDoc, doc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { generateVideoTitle, generateVideoDescription, generateVideoTags } from '../services/geminiService';
 
@@ -206,6 +206,37 @@ export default function Studio() {
       };
 
       await setDoc(doc(db, 'videos', videoId), newVideoData);
+
+      // Send notifications to subscribers who have notifications enabled
+      try {
+        const subsQuery = query(
+          collection(db, 'subscriptions'),
+          where('channelId', '==', user.uid),
+          where('notificationsEnabled', '==', true)
+        );
+        const subsSnap = await getDocs(subsQuery);
+        
+        const notificationPromises = subsSnap.docs.map(subDoc => {
+          const subData = subDoc.data();
+          return addDoc(collection(db, 'notifications'), {
+            userId: subData.subscriberId,
+            type: 'new_content',
+            contentType: contentType,
+            videoId: videoId,
+            videoTitle: title,
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserAvatar: user.photoURL,
+            createdAt: new Date(),
+            read: false
+          });
+        });
+        
+        await Promise.all(notificationPromises);
+      } catch (err) {
+        console.error("Error sending subscriber notifications:", err);
+      }
+
       toast.success('Видео успешно опубликовано!');
       navigate('/studio/content');
     } catch (error: any) {
@@ -230,10 +261,10 @@ export default function Studio() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white">
-          <h1 className="text-xl font-bold text-gray-900">Загрузка видео</h1>
-          <button onClick={() => navigate('/studio')} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface)]">
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">Загрузка видео</h1>
+          <button onClick={() => navigate('/studio')} className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -243,8 +274,8 @@ export default function Studio() {
             <div className="space-y-8">
               {/* Video Upload Area */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Файл видео</label>
-                <div className="relative group border-2 border-dashed border-gray-200 rounded-xl p-10 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-center cursor-pointer bg-gray-50/50">
+                <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest mb-3">Файл видео</label>
+                <div className="relative group border-2 border-dashed border-[var(--border)] rounded-xl p-10 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-center cursor-pointer bg-[var(--hover)]/50">
                   <input
                     type="file"
                     accept="video/*,audio/*,image/*"
@@ -259,15 +290,15 @@ export default function Studio() {
                          videoFile.type.startsWith('image/') ? <ImageIcon className="w-8 h-8" /> : 
                          <VideoIcon className="w-8 h-8" />}
                       </div>
-                      <span className="text-sm font-bold truncate max-w-full text-gray-900">{videoFile.name}</span>
-                      <span className="text-xs text-gray-500 mt-2 font-medium">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB {contentType !== 'photo' && `• ${videoDuration}`}</span>
+                      <span className="text-sm font-bold truncate max-w-full text-[var(--text-primary)]">{videoFile.name}</span>
+                      <span className="text-xs text-[var(--text-secondary)] mt-2 font-medium">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB {contentType !== 'photo' && `• ${videoDuration}`}</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center text-gray-400">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                    <div className="flex flex-col items-center text-[var(--text-secondary)]">
+                      <div className="w-16 h-16 bg-[var(--surface)] rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
                         <Upload className="w-8 h-8" />
                       </div>
-                      <span className="text-sm font-bold text-gray-600">Выберите файл для загрузки</span>
+                      <span className="text-sm font-bold text-[var(--text-primary)]">Выберите файл для загрузки</span>
                       <span className="text-xs mt-2 font-medium">MP4, WebM, MP3 или JPG/PNG (макс. {MAX_VIDEO_SIZE_MB}MB)</span>
                     </div>
                   )}
@@ -277,10 +308,10 @@ export default function Studio() {
               {/* Thumbnail Upload */}
               {contentType !== 'photo' && (
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest mb-3">
                     Значок (превью) {contentType === 'music' && <span className="text-red-500">*обязательно</span>}
                   </label>
-                  <div className={`relative border-2 border-dashed rounded-xl p-6 transition-all text-center cursor-pointer bg-gray-50/50 ${contentType === 'music' && !thumbnailFile ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50/30'}`}>
+                  <div className={`relative border-2 border-dashed rounded-xl p-6 transition-all text-center cursor-pointer bg-[var(--hover)]/50 ${contentType === 'music' && !thumbnailFile ? 'border-red-200 hover:border-red-400' : 'border-[var(--border)] hover:border-blue-500 hover:bg-blue-50/30'}`}>
                     <input
                       type="file"
                       accept="image/*"
@@ -290,12 +321,12 @@ export default function Studio() {
                     {thumbnailFile ? (
                       <div className="flex items-center justify-center gap-3 text-blue-600">
                         <ImageIcon className="w-6 h-6" />
-                        <span className="text-sm font-bold text-gray-900 truncate">{thumbnailFile.name}</span>
+                        <span className="text-sm font-bold text-[var(--text-primary)] truncate">{thumbnailFile.name}</span>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center text-gray-400">
+                      <div className="flex flex-col items-center text-[var(--text-secondary)]">
                         <ImageIcon className="w-6 h-6 mb-2" />
-                        <span className="text-xs font-bold text-gray-600">Загрузить значок</span>
+                        <span className="text-xs font-bold text-[var(--text-primary)]">Загрузить значок</span>
                       </div>
                     )}
                   </div>

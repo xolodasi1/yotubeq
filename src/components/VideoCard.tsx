@@ -13,7 +13,7 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
 
   return (
     <div 
-      className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col"
+      className="bg-[var(--surface)] border border-[var(--border)] rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col"
       onClick={() => navigate(`/video/${video.id}`)}
     >
       <div className="relative aspect-video">
@@ -28,20 +28,20 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
       </div>
       
       <div className="p-3 flex flex-col flex-1">
-        <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 mb-1 leading-snug">
+        <h3 className="font-semibold text-sm text-[var(--text-primary)] line-clamp-2 mb-1 leading-snug">
           {video.title}
         </h3>
         
         <div className="mt-auto">
           <Link 
             to={`/channel/${video.authorId}`}
-            className="text-xs text-gray-500 hover:text-gray-900 transition-colors truncate block mb-2"
+            className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors truncate block mb-2"
             onClick={(e) => e.stopPropagation()}
           >
             {video.authorName}
           </Link>
           
-          <div className="flex items-center justify-between text-[11px] text-gray-500">
+          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <Eye className="w-3 h-3" />

@@ -318,7 +318,8 @@ export default function VideoPlayer() {
         authorId: user.uid,
         videoIds: [id],
         visibility: playlistVisibility,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        type: video.type || 'video'
       });
       toast.success('Плейлист создан');
       setNewPlaylistTitle('');

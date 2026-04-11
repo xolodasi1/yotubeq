@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera, Lock } from 'lucide-react';
+import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera, Lock, Bell } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 
@@ -9,11 +9,12 @@ const studioItems = [
   { icon: BarChart2, label: 'Аналитика', path: '/studio/analytics' },
   { icon: MessageSquare, label: 'Комментарии', path: '/studio/comments' },
   { icon: Users, label: 'Сообщество', path: '/studio/community' },
-  { icon: User, label: 'Профиль', path: '/studio/profile' },
+  { icon: User, label: 'Редактор канала', path: '/studio/profile' },
 ];
 
 const mainItems = [
   { icon: Youtube, label: 'На главную', path: '/' },
+  { icon: Bell, label: 'Подписки', path: '/subscriptions' },
   { icon: Smartphone, label: 'Shorts', path: '/shorts' },
   { icon: ListMusic, label: 'Музыка', path: '/music' },
   { icon: Camera, label: 'Фото', path: '/photos' },
@@ -136,7 +137,6 @@ export default function Sidebar() {
               <span className="text-sm">Установить приложение</span>
             </button>
           )}
-          <SidebarItem icon={Settings} label="Настройки" path="/settings" isActive={location.pathname === '/settings'} />
           <SidebarItem icon={HelpCircle} label="Справка" path="/help" isActive={location.pathname === '/help'} />
         </div>
       </aside>

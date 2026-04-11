@@ -22,6 +22,13 @@
   --border: #e2e8f0;
   --hover: #f1f5f9;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+  /* Studio Variables */
+  --studio-sidebar: #ffffff;
+  --studio-border: #e2e8f0;
+  --studio-hover: #f1f5f9;
+  --studio-text: #0f172a;
+  --studio-muted: #64748b;
 }
 
 .dark {
@@ -33,6 +40,13 @@
   --accent-hover: #60a5fa;
   --border: #334155;
   --hover: #334155;
+
+  /* Studio Variables Dark */
+  --studio-sidebar: #1e293b;
+  --studio-border: #334155;
+  --studio-hover: #334155;
+  --studio-text: #f8fafc;
+  --studio-muted: #94a3b8;
 }
 
 body {
