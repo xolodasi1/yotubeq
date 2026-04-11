@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
-import { Loader2, Trophy, Users, Music, Play, TrendingUp } from 'lucide-react';
+import { Loader2, Trophy, Users, Music, Play, TrendingUp, Camera, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { VideoType } from '../types';
 
@@ -14,14 +14,17 @@ interface TopChannel {
   totalMusicViews: number;
   musicCount: number;
   totalViews: number;
+  totalPhotoLikes: number;
+  photoCount: number;
 }
 
 export default function TopChannels() {
   const [channels, setChannels] = useState<TopChannel[]>([]);
   const [topTracks, setTopTracks] = useState<VideoType[]>([]);
+  const [topPhotos, setTopPhotos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [topType, setTopType] = useState<'authors' | 'tracks'>('authors');
-  const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views'>('subscribers');
+  const [topType, setTopType] = useState<'authors' | 'tracks' | 'photos'>('authors');
+  const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views' | 'photos'>('subscribers');
 
   useEffect(() => {
     // Listen to users for real-time subscriber updates
@@ -47,17 +50,22 @@ export default function TopChannels() {
         })) as VideoType[];
 
         // Aggregate stats per user
-        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number }> = {};
+        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number, photoLikes: number, photoCount: number }> = {};
         allVideos.forEach(video => {
           const authorId = video.authorId;
           if (!stats[authorId]) {
-            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0 };
+            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0, photoLikes: 0, photoCount: 0 };
           }
           const v = Number(video.views) || 0;
+          const l = Number(video.likes) || 0;
           stats[authorId].totalViews += v;
           if (video.isMusic) {
             stats[authorId].musicViews += v;
             stats[authorId].musicCount += 1;
+          }
+          if (video.isPhoto) {
+            stats[authorId].photoLikes += l;
+            stats[authorId].photoCount += 1;
           }
         });
 
@@ -69,7 +77,9 @@ export default function TopChannels() {
           subscribers: Number(user.subscribers) || 0,
           totalMusicViews: stats[user.uid]?.musicViews || 0,
           musicCount: stats[user.uid]?.musicCount || 0,
-          totalViews: stats[user.uid]?.totalViews || 0
+          totalViews: stats[user.uid]?.totalViews || 0,
+          totalPhotoLikes: stats[user.uid]?.photoLikes || 0,
+          photoCount: stats[user.uid]?.photoCount || 0
         }));
 
         setChannels(combinedData);
@@ -80,6 +90,13 @@ export default function TopChannels() {
           .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
           .slice(0, 50);
         setTopTracks(musicTracks);
+
+        // Set top photos (by likes)
+        const popularPhotos = allVideos
+          .filter(v => v.isPhoto)
+          .sort((a, b) => (Number(b.likes) || 0) - (Number(a.likes) || 0))
+          .slice(0, 50);
+        setTopPhotos(popularPhotos);
 
       } catch (error) {
         console.error("Error in TopChannels snapshot:", error);
@@ -95,6 +112,7 @@ export default function TopChannels() {
     return [...channels].sort((a, b) => {
       if (sortBy === 'subscribers') return (b.subscribers || 0) - (a.subscribers || 0);
       if (sortBy === 'music') return (b.totalMusicViews || 0) - (a.totalMusicViews || 0);
+      if (sortBy === 'photos') return (b.totalPhotoLikes || 0) - (a.totalPhotoLikes || 0);
       return (b.totalViews || 0) - (a.totalViews || 0);
     });
   }, [channels, sortBy]);
@@ -133,6 +151,12 @@ export default function TopChannels() {
           >
             Треки
           </button>
+          <button 
+            onClick={() => setTopType('photos')}
+            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wider ${topType === 'photos' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
+          >
+            Фото
+          </button>
         </div>
       </div>
 
@@ -159,6 +183,13 @@ export default function TopChannels() {
             >
               <Music className="w-3.5 h-3.5" />
               По прослушиваниям
+            </button>
+            <button 
+              onClick={() => setSortBy('photos')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border ${sortBy === 'photos' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'}`}
+            >
+              <Camera className="w-3.5 h-3.5" />
+              По лайкам фото
             </button>
           </div>
 
@@ -208,6 +239,12 @@ export default function TopChannels() {
                           <span>{channel.totalMusicViews.toLocaleString()}</span>
                         </div>
                       )}
+                      {channel.photoCount > 0 && (
+                        <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'photos' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>{channel.totalPhotoLikes.toLocaleString()}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -221,7 +258,7 @@ export default function TopChannels() {
             ))}
           </div>
         </>
-      ) : (
+      ) : topType === 'tracks' ? (
         <div className="space-y-4">
           {topTracks.map((track, index) => (
             <Link 
@@ -252,9 +289,36 @@ export default function TopChannels() {
             </Link>
           ))}
         </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {topPhotos.map((photo, index) => (
+            <Link 
+              key={photo.id} 
+              to="/photos"
+              className="bg-[var(--studio-sidebar)] rounded-3xl overflow-hidden border border-[var(--studio-border)] hover:border-pink-300 hover:shadow-xl hover:shadow-pink-50/50 transition-all group relative"
+            >
+              <div className="aspect-square overflow-hidden">
+                <img src={photo.videoUrl} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              </div>
+              <div className="absolute top-4 left-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-xl flex items-center justify-center text-white font-black italic">
+                #{index + 1}
+              </div>
+              <div className="p-4">
+                <h3 className="font-bold text-[var(--studio-text)] line-clamp-1 group-hover:text-pink-500 transition-colors">{photo.title}</h3>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-[var(--studio-muted)]">{photo.authorName}</p>
+                  <div className="flex items-center gap-1.5 text-pink-500 font-bold">
+                    <Heart className="w-3.5 h-3.5 fill-current" />
+                    <span className="text-xs">{photo.likes.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       )}
 
-      {((topType === 'authors' && channels.length === 0) || (topType === 'tracks' && topTracks.length === 0)) && (
+      {((topType === 'authors' && channels.length === 0) || (topType === 'tracks' && topTracks.length === 0) || (topType === 'photos' && topPhotos.length === 0)) && (
         <div className="text-center py-20 text-[var(--studio-muted)]">
           <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-10" />
           <h2 className="text-2xl font-bold">Чарты пока пусты</h2>

@@ -9,6 +9,7 @@ const studioItems = [
   { icon: BarChart2, label: 'Аналитика', path: '/studio/analytics' },
   { icon: MessageSquare, label: 'Комментарии', path: '/studio/comments' },
   { icon: Users, label: 'Сообщество', path: '/studio/community' },
+  { icon: User, label: 'Профиль', path: '/studio/profile' },
 ];
 
 const mainItems = [

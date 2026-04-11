@@ -46,9 +46,10 @@ export default function Home() {
     return matchesSearch && matchesCategory;
   });
 
-  const regularVideos = filteredVideos.filter(v => !v.isShort && !v.isMusic);
+  const regularVideos = filteredVideos.filter(v => !v.isShort && !v.isMusic && !v.isPhoto);
   const shortsVideos = filteredVideos.filter(v => v.isShort);
   const musicVideos = filteredVideos.filter(v => v.isMusic);
+  const photoContent = filteredVideos.filter(v => v.isPhoto);
 
   const topVideos = [...regularVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
   const newVideos = regularVideos.slice(0, 8);

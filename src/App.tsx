@@ -11,6 +11,7 @@ import StudioContent from './pages/StudioContent';
 import StudioAnalytics from './pages/StudioAnalytics';
 import StudioComments from './pages/StudioComments';
 import StudioCommunity from './pages/StudioCommunity';
+import StudioProfile from './pages/StudioProfile';
 import Shorts from './pages/Shorts';
 import Music from './pages/Music';
 import TopChannels from './pages/TopChannels';
@@ -142,6 +143,7 @@ export default function App() {
                 <Route path="/studio/analytics" element={<StudioAnalytics />} />
                 <Route path="/studio/comments" element={<StudioComments />} />
                 <Route path="/studio/community" element={<StudioCommunity />} />
+                <Route path="/studio/profile" element={<StudioProfile />} />
                 <Route path="/studio/upload" element={<Studio />} />
                 <Route path="/history" element={<History />} />
                 <Route path="/watch-later" element={<WatchLater />} />

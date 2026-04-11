@@ -51,6 +51,18 @@ export default function Navbar() {
     }
   };
 
+  const markAllAsRead = async () => {
+    try {
+      const unreadNotifications = notifications.filter(n => !n.read);
+      const promises = unreadNotifications.map(n => updateDoc(doc(db, 'notifications', n.id), { read: true }));
+      await Promise.all(promises);
+      toast.success('Все уведомления прочитаны');
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      toast.error('Ошибка при обновлении уведомлений');
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleGoogleLogin = async () => {
@@ -162,8 +174,19 @@ export default function Navbar() {
 
                   {showNotifications && (
                     <div className="absolute right-0 mt-2 w-80 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-xl overflow-hidden z-50">
-                      <div className="p-4 border-b border-[var(--border)]">
+                      <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface)]">
                         <h3 className="font-bold text-[var(--text-primary)]">Уведомления</h3>
+                        {unreadCount > 0 && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAllAsRead();
+                            }}
+                            className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider"
+                          >
+                            Прочитать все
+                          </button>
+                        )}
                       </div>
                       <div className="max-h-[400px] overflow-y-auto">
                         {notifications.length === 0 ? (

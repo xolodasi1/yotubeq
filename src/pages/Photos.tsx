@@ -147,6 +147,12 @@ export default function Photos() {
         createdAt: serverTimestamp(),
         likes: 0
       });
+      
+      // Update comment count on the photo
+      await updateDoc(doc(db, 'videos', selectedPhoto.id), {
+        commentsCount: increment(1)
+      });
+
       setNewComment('');
       toast.success('Комментарий добавлен');
     } catch (error) { toast.error('Ошибка'); } finally { setSubmittingComment(false); }
@@ -247,7 +253,7 @@ export default function Photos() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MessageCircle className="w-4 h-4" />
-                    <span className="text-xs font-bold">0</span>
+                    <span className="text-xs font-bold">{(photo as any).commentsCount || 0}</span>
                   </div>
                 </div>
               </div>
