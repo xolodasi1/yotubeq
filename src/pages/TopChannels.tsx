@@ -23,11 +23,16 @@ export default function TopChannels() {
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const data = querySnapshot.docs.map(doc => ({
-        uid: doc.id,
-        ...doc.data(),
-        subscribers: doc.data().subscribers || 0
-      })) as TopChannel[];
+      const data = querySnapshot.docs.map(doc => {
+        const userData = doc.data();
+        return {
+          uid: doc.id,
+          displayName: userData.displayName || 'User',
+          photoURL: userData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${doc.id}`,
+          bio: userData.bio || '',
+          subscribers: userData.subscribers || 0
+        };
+      }) as TopChannel[];
       
       setChannels(data);
       setLoading(false);
@@ -54,8 +59,8 @@ export default function TopChannels() {
           <Trophy className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
         </div>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-blue-900">Топ авторов</h1>
-          <p className="text-xs md:text-sm text-gray-500">Откройте для себя самых популярных создателей</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-[var(--studio-text)]">Топ авторов</h1>
+          <p className="text-xs md:text-sm text-[var(--studio-muted)]">Откройте для себя самых популярных создателей</p>
         </div>
       </div>
       
@@ -64,27 +69,27 @@ export default function TopChannels() {
           <Link 
             key={channel.uid} 
             to={`/channel/${channel.uid}`}
-            className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 border border-gray-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-50 transition-all group relative overflow-hidden"
+            className="bg-[var(--studio-sidebar)] rounded-xl md:rounded-2xl p-4 md:p-6 border border-[var(--studio-border)] hover:border-blue-300 hover:shadow-lg hover:shadow-blue-50 transition-all group relative overflow-hidden"
           >
             {/* Rank Badge */}
             <div className={`absolute top-0 right-0 w-12 h-12 md:w-16 md:h-16 flex items-start justify-end p-2 md:p-3 rounded-bl-2xl md:rounded-bl-3xl ${
               index === 0 ? 'bg-yellow-500/20 text-yellow-600' :
               index === 1 ? 'bg-gray-400/20 text-gray-500' :
               index === 2 ? 'bg-amber-700/20 text-amber-800' :
-              'bg-gray-50 text-gray-400'
+              'bg-[var(--studio-hover)] text-[var(--studio-muted)]'
             }`}>
               <span className="font-bold text-base md:text-lg">#{index + 1}</span>
             </div>
 
             <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
               <img 
-                src={channel.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.uid}`} 
+                src={channel.photoURL} 
                 alt={channel.displayName} 
                 className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-blue-100 group-hover:border-blue-500 transition-colors object-cover"
               />
               <div className="min-w-0 pr-8">
-                <h2 className="text-lg md:text-xl font-bold group-hover:text-blue-600 transition-colors line-clamp-1">{channel.displayName}</h2>
-                <div className="flex items-center gap-1 text-gray-500">
+                <h2 className="text-lg md:text-xl font-bold group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{channel.displayName}</h2>
+                <div className="flex items-center gap-1 text-[var(--studio-muted)]">
                   <Users className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="font-medium text-[10px] md:text-xs">{channel.subscribers.toLocaleString()} подписчиков</span>
                 </div>
@@ -92,7 +97,7 @@ export default function TopChannels() {
             </div>
 
             {channel.bio && (
-              <p className="text-xs md:text-sm text-ice-text/80 line-clamp-2 mt-1 md:mt-2">
+              <p className="text-xs md:text-sm text-[var(--studio-text)]/80 line-clamp-2 mt-1 md:mt-2">
                 {channel.bio}
               </p>
             )}
@@ -100,7 +105,7 @@ export default function TopChannels() {
         ))}
 
         {channels.length === 0 && (
-          <div className="col-span-full text-center py-16 md:py-20 text-ice-muted">
+          <div className="col-span-full text-center py-16 md:py-20 text-[var(--studio-muted)]">
             <Users className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 opacity-20" />
             <h2 className="text-xl md:text-2xl font-bold">Авторы не найдены</h2>
             <p className="mt-2 text-sm md:text-base">Станьте первым, кто создаст канал!</p>

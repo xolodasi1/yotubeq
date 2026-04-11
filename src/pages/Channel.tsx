@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType, CommunityPost, Playlist } from '../types';
-import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe } from 'lucide-react';
+import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -247,14 +247,14 @@ export default function Channel() {
   const canPostCommunity = subCount >= 10;
 
   return (
-    <div className="pb-24 md:pb-12 bg-gray-50 min-h-screen">
+    <div className="pb-24 md:pb-12 bg-[var(--studio-sidebar)] min-h-screen">
       {/* Channel Banner */}
-      <div className="h-40 md:h-80 bg-gray-200 relative overflow-hidden">
+      <div className="h-40 md:h-80 bg-[var(--studio-hover)] relative overflow-hidden">
         {authorInfo?.bannerUrl ? (
           <img src={authorInfo.bannerUrl} alt="Баннер канала" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-            <Snowflake className="w-24 h-24 text-gray-300 opacity-20 animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[var(--studio-hover)] to-[var(--studio-border)] flex items-center justify-center">
+            <Snowflake className="w-24 h-24 text-[var(--studio-muted)] opacity-20 animate-pulse" />
           </div>
         )}
       </div>
@@ -265,23 +265,23 @@ export default function Channel() {
           <img
             src={authorInfo?.photoUrl}
             alt="Аватар канала"
-            className="w-28 h-28 md:w-44 md:h-44 rounded-full border-4 border-white shadow-xl bg-white object-cover"
+            className="w-28 h-28 md:w-44 md:h-44 rounded-full border-4 border-[var(--studio-sidebar)] shadow-xl bg-[var(--studio-sidebar)] object-cover"
           />
           <div className="flex-1 space-y-3">
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{authorInfo?.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-gray-500 uppercase tracking-widest">
+            <h1 className="text-3xl md:text-4xl font-black text-[var(--studio-text)] tracking-tight">{authorInfo?.name}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-[var(--studio-muted)] uppercase tracking-widest">
               <span>@user-{id?.substring(0, 8)}</span>
-              <span className="w-1 h-1 bg-gray-300 rounded-full" />
+              <span className="w-1 h-1 bg-[var(--studio-border)] rounded-full" />
               <span>{subCount} подписчиков</span>
-              <span className="w-1 h-1 bg-gray-300 rounded-full" />
+              <span className="w-1 h-1 bg-[var(--studio-border)] rounded-full" />
               <span>{videos.length} видео</span>
             </div>
             {authorInfo?.bio && (
-              <p className="text-sm text-gray-600 max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
+              <p className="text-sm text-[var(--studio-muted)] max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
             )}
             <div className="pt-2 flex flex-wrap gap-3">
               {user?.uid === id ? (
-                <Link to="/studio" className="bg-gray-900 text-white px-8 py-2.5 rounded-full font-bold text-sm transition-all hover:bg-gray-800 shadow-lg shadow-gray-200">
+                <Link to="/studio" className="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold text-sm transition-all hover:bg-blue-700 shadow-lg shadow-blue-100/20">
                   Настроить канал
                 </Link>
               ) : (
@@ -289,8 +289,8 @@ export default function Channel() {
                   onClick={handleSubscribe}
                   className={`px-10 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
                     isSubscribed 
-                      ? 'bg-blue-50 text-blue-900 hover:bg-blue-100 shadow-blue-100' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100'
+                      ? 'bg-[var(--studio-hover)] text-[var(--studio-text)] hover:bg-gray-200 shadow-none' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100/20'
                   }`}
                 >
                   {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
@@ -301,7 +301,7 @@ export default function Channel() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-8 border-b border-gray-200 mb-10 overflow-x-auto scrollbar-hide bg-white/50 backdrop-blur-sm sticky top-14 z-20 px-4 -mx-4 md:px-0 md:mx-0">
+        <div className="flex gap-8 border-b border-[var(--studio-border)] mb-10 overflow-x-auto scrollbar-hide bg-[var(--studio-sidebar)]/50 backdrop-blur-sm sticky top-14 z-20 px-4 -mx-4 md:px-0 md:mx-0">
           {(['videos', 'playlists', 'community', 'about'] as TabType[]).map((tab) => (
             <button 
               key={tab}
@@ -309,7 +309,7 @@ export default function Channel() {
               className={`pb-4 border-b-2 font-bold text-sm uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === tab 
                   ? 'border-blue-600 text-blue-600' 
-                  : 'border-transparent text-gray-400 hover:text-gray-900'
+                  : 'border-transparent text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
               }`}
             >
               {tab === 'videos' ? 'Видео' : 
@@ -323,7 +323,7 @@ export default function Channel() {
         <div className="min-h-[40vh]">
           {activeTab === 'videos' && (
             videos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 text-gray-400">
+              <div className="flex flex-col items-center justify-center py-32 text-[var(--studio-muted)]">
                 <PlaySquare className="w-16 h-16 mb-4 opacity-10" />
                 <p className="text-lg font-bold">На канале пока нет видео</p>
               </div>
@@ -332,10 +332,10 @@ export default function Channel() {
                 {shortsVideos.length > 0 && (
                   <section>
                     <div className="flex items-center gap-3 mb-8">
-                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100">
+                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100/20">
                         <Smartphone className="w-5 h-5" />
                       </div>
-                      <h2 className="text-xl font-bold text-gray-900">Shorts</h2>
+                      <h2 className="text-xl font-bold text-[var(--studio-text)]">Shorts</h2>
                     </div>
                     <div className="flex gap-5 overflow-x-auto pb-8 scrollbar-hide snap-x">
                       {shortsVideos.map((video) => (
@@ -348,7 +348,12 @@ export default function Channel() {
                 )}
                 {regularVideos.length > 0 && (
                   <section>
-                    <h2 className="text-xl font-bold text-gray-900 mb-8">Все видео</h2>
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100/20">
+                        <PlaySquare className="w-5 h-5" />
+                      </div>
+                      <h2 className="text-xl font-bold text-[var(--studio-text)]">Видео</h2>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
                       {regularVideos.map((video) => (
                         <VideoCard key={video.id} video={video as any} />
@@ -363,22 +368,22 @@ export default function Channel() {
           {activeTab === 'playlists' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
               {playlists.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-32 text-gray-400">
+                <div className="col-span-full flex flex-col items-center justify-center py-32 text-[var(--studio-muted)]">
                   <PlaySquare className="w-16 h-16 mb-4 opacity-10" />
                   <p className="text-lg font-bold">Плейлисты не созданы</p>
                 </div>
               ) : (
                 playlists.map(playlist => (
-                  <div key={playlist.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 group cursor-pointer shadow-sm hover:shadow-md transition-all">
-                    <div className="aspect-video bg-gray-100 flex items-center justify-center relative">
-                      <PlaySquare className="w-12 h-12 text-gray-300 group-hover:text-blue-600 transition-colors" />
+                  <div key={playlist.id} className="bg-[var(--studio-sidebar)] rounded-xl overflow-hidden border border-[var(--studio-border)] group cursor-pointer shadow-sm hover:shadow-md transition-all">
+                    <div className="aspect-video bg-[var(--studio-hover)] flex items-center justify-center relative">
+                      <PlaySquare className="w-12 h-12 text-[var(--studio-muted)] group-hover:text-blue-600 transition-colors" />
                       <div className="absolute bottom-3 right-3 bg-black/80 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-wider">
                         {playlist.videoIds.length} видео
                       </div>
                     </div>
                     <div className="p-5">
-                      <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">{playlist.title}</h3>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Обновлено недавно</p>
+                      <h3 className="font-bold text-[var(--studio-text)] group-hover:text-blue-600 transition-colors line-clamp-1">{playlist.title}</h3>
+                      <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest mt-2">Обновлено недавно</p>
                     </div>
                   </div>
                 ))
@@ -389,17 +394,17 @@ export default function Channel() {
           {activeTab === 'community' && (
             <div className="max-w-3xl mx-auto space-y-8">
               {!canPostCommunity && (
-                <div className="bg-white p-10 rounded-2xl border border-gray-200 text-center shadow-sm">
-                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <MessageSquare className="w-8 h-8 text-gray-300" />
+                <div className="bg-[var(--studio-sidebar)] p-10 rounded-2xl border border-[var(--studio-border)] text-center shadow-sm">
+                  <div className="w-16 h-16 bg-[var(--studio-hover)] rounded-full flex items-center justify-center mx-auto mb-6">
+                    <MessageSquare className="w-8 h-8 text-[var(--studio-muted)]" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Сообщество пока недоступно</h3>
-                  <p className="text-sm text-gray-500">Вкладка "Сообщество" открывается авторам, набравшим более 10 подписчиков.</p>
+                  <h3 className="text-lg font-bold text-[var(--studio-text)] mb-2">Сообщество пока недоступно</h3>
+                  <p className="text-sm text-[var(--studio-muted)]">Вкладка "Сообщество" открывается авторам, набравшим более 10 подписчиков.</p>
                 </div>
               )}
 
               {canPostCommunity && user?.uid === id && (
-                <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+                <div className="bg-[var(--studio-sidebar)] p-8 rounded-2xl border border-[var(--studio-border)] shadow-sm">
                   <form onSubmit={handleCreatePost} className="space-y-6">
                     <div className="flex gap-4">
                       <img src={user.photoURL || ''} className="w-10 h-10 rounded-full shrink-0" alt="" />
@@ -407,7 +412,7 @@ export default function Channel() {
                         value={newPostText}
                         onChange={(e) => setNewPostText(e.target.value)}
                         placeholder="Поделитесь новостью с вашими подписчиками..."
-                        className="w-full bg-transparent border-b border-gray-100 pb-4 focus:outline-none focus:border-red-600 transition-all resize-none h-28 text-sm font-medium"
+                        className="w-full bg-transparent border-b border-[var(--studio-border)] pb-4 focus:outline-none focus:border-blue-600 transition-all resize-none h-28 text-sm font-medium text-[var(--studio-text)]"
                       />
                     </div>
                     
@@ -424,7 +429,7 @@ export default function Channel() {
                                 setPollOptions(newOpts);
                               }}
                               placeholder={`Вариант ${idx + 1}`}
-                              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all"
+                              className="flex-1 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all text-[var(--studio-text)]"
                             />
                           </div>
                         ))}
@@ -443,14 +448,14 @@ export default function Channel() {
                         <button 
                           type="button" 
                           onClick={() => setPostType('text')}
-                          className={`p-2.5 rounded-xl transition-all ${postType === 'text' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-400'}`}
+                          className={`p-2.5 rounded-xl transition-all ${postType === 'text' ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--studio-hover)] text-[var(--studio-muted)]'}`}
                         >
                           <MessageSquare className="w-5 h-5" />
                         </button>
                         <button 
                           type="button" 
                           onClick={() => setPostType('poll')}
-                          className={`p-2.5 rounded-xl transition-all ${postType === 'poll' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-400'}`}
+                          className={`p-2.5 rounded-xl transition-all ${postType === 'poll' ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--studio-hover)] text-[var(--studio-muted)]'}`}
                         >
                           <BarChart2 className="w-5 h-5" />
                         </button>
@@ -458,7 +463,7 @@ export default function Channel() {
                       <button 
                         type="submit"
                         disabled={!newPostText.trim() || isPosting}
-                        className="bg-gray-900 text-white px-8 py-2 rounded-full font-bold text-sm hover:bg-gray-800 transition-all disabled:opacity-50 shadow-lg shadow-gray-100"
+                        className="bg-blue-600 text-white px-8 py-2 rounded-full font-bold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 shadow-lg shadow-blue-100/20"
                       >
                         Опубликовать
                       </button>
@@ -469,17 +474,17 @@ export default function Channel() {
 
               <div className="space-y-6">
                 {communityPosts.map(post => (
-                  <div key={post.id} className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+                  <div key={post.id} className="bg-[var(--studio-sidebar)] p-8 rounded-2xl border border-[var(--studio-border)] shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-center gap-4 mb-6">
-                      <img src={post.authorPhotoUrl} className="w-10 h-10 rounded-full border border-gray-100" alt={post.authorName} />
+                      <img src={post.authorPhotoUrl} className="w-10 h-10 rounded-full border border-[var(--studio-border)]" alt={post.authorName} />
                       <div>
-                        <h4 className="font-bold text-gray-900 text-sm">{post.authorName}</h4>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                        <h4 className="font-bold text-[var(--studio-text)] text-sm">{post.authorName}</h4>
+                        <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest mt-0.5">
                           {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
                         </p>
                       </div>
                     </div>
-                    <p className="whitespace-pre-wrap mb-6 text-gray-800 leading-relaxed text-sm font-medium">{post.text}</p>
+                    <p className="whitespace-pre-wrap mb-6 text-[var(--studio-text)] leading-relaxed text-sm font-medium">{post.text}</p>
                     
                     {post.type === 'poll' && post.pollOptions && (
                       <div className="space-y-3 mb-8">
@@ -493,26 +498,26 @@ export default function Channel() {
                               key={idx}
                               onClick={() => handleVote(post.id, idx)}
                               disabled={!user || hasVoted}
-                              className="w-full relative h-12 rounded-xl border border-gray-100 overflow-hidden text-left group transition-all hover:border-blue-200"
+                              className="w-full relative h-12 rounded-xl border border-[var(--studio-border)] overflow-hidden text-left group transition-all hover:border-blue-200"
                             >
                               <div 
                                 className="absolute inset-0 bg-blue-50 transition-all duration-700" 
                                 style={{ width: hasVoted ? `${percentage}%` : '0%' }}
                               />
                               <div className="absolute inset-0 flex items-center justify-between px-5">
-                                <span className="font-bold text-sm text-gray-700">{opt.text}</span>
+                                <span className="font-bold text-sm text-[var(--studio-text)]">{opt.text}</span>
                                 {hasVoted && <span className="text-xs font-black text-blue-600">{percentage}%</span>}
                               </div>
                             </button>
                           );
                         })}
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">
+                        <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest pl-1">
                           {post.pollOptions.reduce((acc, o) => acc + o.votes, 0)} голосов
                         </p>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-6 text-gray-400 border-t border-gray-50 pt-6">
+                    <div className="flex items-center gap-6 text-[var(--studio-muted)] border-t border-[var(--studio-border)] pt-6">
                       <button className="flex items-center gap-2 hover:text-blue-600 transition-colors group">
                         <ThumbsUp className="w-4 h-4 group-hover:fill-blue-600" />
                         <span className="text-xs font-bold">{post.likes}</span>
@@ -532,43 +537,78 @@ export default function Channel() {
             <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-2 space-y-10">
                 <section>
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-[var(--studio-text)] mb-6 flex items-center gap-2">
                     <Info className="w-5 h-5 text-blue-600" />
                     Описание
                   </h3>
-                  <p className="text-gray-600 whitespace-pre-wrap leading-relaxed font-medium">
+                  <p className="text-[var(--studio-text)]/80 whitespace-pre-wrap leading-relaxed font-medium">
                     {authorInfo?.bio || 'Описание канала отсутствует.'}
                   </p>
                 </section>
-                <div className="h-px bg-gray-200" />
+                <div className="h-px bg-[var(--studio-border)]" />
+                {authorInfo?.socialLinks && (Object.values(authorInfo.socialLinks).some(link => link)) && (
+                  <section>
+                    <h3 className="text-xl font-bold text-[var(--studio-text)] mb-6 flex items-center gap-2">
+                      <Globe className="w-5 h-5 text-blue-600" />
+                      Ссылки
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {authorInfo.socialLinks.website && (
+                        <a href={authorInfo.socialLinks.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] hover:border-blue-600 transition-all group">
+                          <Globe className="w-5 h-5 text-blue-600" />
+                          <span className="text-sm font-bold text-[var(--studio-text)] group-hover:text-blue-600">Веб-сайт</span>
+                        </a>
+                      )}
+                      {authorInfo.socialLinks.telegram && (
+                        <a href={`https://t.me/${authorInfo.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] hover:border-blue-600 transition-all group">
+                          <Smartphone className="w-5 h-5 text-blue-400" />
+                          <span className="text-sm font-bold text-[var(--studio-text)] group-hover:text-blue-600">Telegram</span>
+                        </a>
+                      )}
+                      {authorInfo.socialLinks.vk && (
+                        <a href={authorInfo.socialLinks.vk.startsWith('http') ? authorInfo.socialLinks.vk : `https://vk.com/${authorInfo.socialLinks.vk}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] hover:border-blue-600 transition-all group">
+                          <Globe className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-bold text-[var(--studio-text)] group-hover:text-blue-600">VK</span>
+                        </a>
+                      )}
+                      {authorInfo.socialLinks.instagram && (
+                        <a href={`https://instagram.com/${authorInfo.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] hover:border-blue-600 transition-all group">
+                          <Instagram className="w-5 h-5 text-pink-500" />
+                          <span className="text-sm font-bold text-[var(--studio-text)] group-hover:text-blue-600">Instagram</span>
+                        </a>
+                      )}
+                    </div>
+                  </section>
+                )}
+                <div className="h-px bg-[var(--studio-border)]" />
                 <section>
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-[var(--studio-text)] mb-6 flex items-center gap-2">
                     <Mail className="w-5 h-5 text-blue-600" />
                     Контакты
                   </h3>
-                  <div className="flex items-center gap-3 text-sm font-bold text-gray-500 uppercase tracking-widest">
+                  <div className="flex items-center gap-3 text-sm font-bold text-[var(--studio-muted)] uppercase tracking-widest">
                     <Globe className="w-4 h-4" />
                     <span>Для коммерческих запросов: {authorInfo?.email || 'не указано'}</span>
                   </div>
                 </section>
               </div>
               <aside className="space-y-8">
-                <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6 uppercase tracking-widest text-xs">Статистика</h3>
+                <div className="bg-[var(--studio-sidebar)] p-8 rounded-2xl border border-[var(--studio-border)] shadow-sm">
+                  <h3 className="text-lg font-bold text-[var(--studio-text)] mb-6 uppercase tracking-widest text-xs">Статистика</h3>
                   <div className="space-y-5">
-                    <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-                      <div className="flex items-center gap-2 text-gray-400">
+                    <div className="flex items-center justify-between border-b border-[var(--studio-border)] pb-4">
+                      <div className="flex items-center gap-2 text-[var(--studio-muted)]">
                         <Calendar className="w-4 h-4" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Регистрация</span>
                       </div>
-                      <span className="text-sm font-bold text-gray-700">{authorInfo?.joinedAt ? new Date(authorInfo.joinedAt).toLocaleDateString('ru-RU') : '-'}</span>
+                      <span className="text-sm font-bold text-[var(--studio-text)]">{authorInfo?.joinedAt ? new Date(authorInfo.joinedAt).toLocaleDateString('ru-RU') : '-'}</span>
                     </div>
-                    <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-                      <div className="flex items-center gap-2 text-gray-400">
+                    <div className="flex items-center justify-between border-b border-[var(--studio-border)] pb-4">
+                      <div className="flex items-center gap-2 text-[var(--studio-muted)]">
                         <BarChart2 className="w-4 h-4" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Просмотры</span>
                       </div>
-                      <span className="text-sm font-bold text-gray-700">{videos.reduce((acc, v) => acc + v.views, 0).toLocaleString()}</span>
+                      <span className="text-sm font-bold text-[var(--studio-text)]">{videos.reduce((acc, v) => acc + v.views, 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

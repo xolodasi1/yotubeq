@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 enum OperationType {
@@ -429,7 +429,7 @@ export default function VideoPlayer() {
   };
 
   const handleCommentAction = async (commentId: string, action: 'like' | 'dislike' | 'heart') => {
-    if (!user && action !== 'heart') {
+    if (!user) {
       toast.error('Пожалуйста, войдите, чтобы взаимодействовать с комментариями');
       return;
     }
@@ -438,23 +438,54 @@ export default function VideoPlayer() {
 
     try {
       const commentRef = doc(db, 'comments', commentId);
-      if (action === 'like') {
-        const newLikes = (comment.likes || 0) + 1;
-        await updateDoc(commentRef, { likes: newLikes });
-        setComments(comments.map(c => c.id === commentId ? { ...c, likes: newLikes } : c));
-      } else if (action === 'dislike') {
-        const newDislikes = (comment.dislikes || 0) + 1;
-        await updateDoc(commentRef, { dislikes: newDislikes });
-        setComments(comments.map(c => c.id === commentId ? { ...c, dislikes: newDislikes } : c));
-      } else if (action === 'heart') {
+      
+      if (action === 'heart') {
         if (user?.uid !== video?.authorId) return;
         const newHearted = !comment.authorHearted;
         await updateDoc(commentRef, { authorHearted: newHearted });
         setComments(comments.map(c => c.id === commentId ? { ...c, authorHearted: newHearted } : c));
+        return;
+      }
+
+      // Handle Like/Dislike with persistence
+      const actionId = `${user.uid}_${commentId}`;
+      const actionRef = doc(db, 'commentActions', actionId);
+      const actionSnap = await getDoc(actionRef);
+      const currentAction = actionSnap.exists() ? actionSnap.data().type : null;
+
+      if (currentAction === action) {
+        // Remove action
+        await deleteDoc(actionRef);
+        const updateData: any = { [action === 'like' ? 'likes' : 'dislikes']: increment(-1) };
+        await updateDoc(commentRef, updateData);
+        setComments(comments.map(c => c.id === commentId ? { ...c, [action === 'like' ? 'likes' : 'dislikes']: (c[action === 'like' ? 'likes' : 'dislikes'] || 0) - 1 } : c));
+      } else if (currentAction) {
+        // Switch action
+        await updateDoc(actionRef, { type: action });
+        const updateData: any = {
+          [action === 'like' ? 'likes' : 'dislikes']: increment(1),
+          [action === 'like' ? 'dislikes' : 'likes']: increment(-1)
+        };
+        await updateDoc(commentRef, updateData);
+        setComments(comments.map(c => c.id === commentId ? { 
+          ...c, 
+          [action === 'like' ? 'likes' : 'dislikes']: (c[action === 'like' ? 'likes' : 'dislikes'] || 0) + 1,
+          [action === 'like' ? 'dislikes' : 'likes']: (c[action === 'like' ? 'dislikes' : 'likes'] || 0) - 1
+        } : c));
+      } else {
+        // New action
+        await setDoc(actionRef, {
+          userId: user.uid,
+          commentId,
+          type: action
+        });
+        const updateData: any = { [action === 'like' ? 'likes' : 'dislikes']: increment(1) };
+        await updateDoc(commentRef, updateData);
+        setComments(comments.map(c => c.id === commentId ? { ...c, [action === 'like' ? 'likes' : 'dislikes']: (c[action === 'like' ? 'likes' : 'dislikes'] || 0) + 1 } : c));
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `comments/${commentId}`);
-      toast.error('Не удалось обновить комментарий');
+      toast.error('Не удалось обновить реакцию');
     }
   };
 
@@ -520,7 +551,7 @@ export default function VideoPlayer() {
           </div>
         </div>
 
-        <h1 className="text-xl md:text-3xl font-bold mt-4 md:mt-6 mb-3 md:mb-4 text-blue-900 leading-tight">{video.title}</h1>
+        <h1 className="text-xl md:text-3xl font-bold mt-4 md:mt-6 mb-3 md:mb-4 text-[var(--studio-text)] leading-tight">{video.title}</h1>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3 md:gap-4">
@@ -531,15 +562,15 @@ export default function VideoPlayer() {
                 className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-blue-100 shadow-[0_0_10px_rgba(37,99,235,0.2)] group-hover:scale-105 transition-transform"
               />
               <div>
-                <h3 className="font-bold text-base md:text-lg group-hover:text-blue-600 transition-colors line-clamp-1">{video.authorName}</h3>
-                <p className="text-xs text-gray-400">Канал</p>
+                <h3 className="font-bold text-base md:text-lg group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{video.authorName}</h3>
+                <p className="text-xs text-[var(--studio-muted)]">Канал</p>
               </div>
             </Link>
             <button 
               onClick={handleSubscribe}
               className={`px-4 py-1.5 md:px-6 md:py-2 rounded-full font-bold transition-colors text-sm md:text-base ${
                 isSubscribed 
-                  ? 'bg-blue-50 text-blue-900 hover:bg-blue-100' 
+                  ? 'bg-[var(--studio-hover)] text-[var(--studio-text)] hover:bg-gray-200' 
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
@@ -636,18 +667,18 @@ export default function VideoPlayer() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl md:rounded-2xl p-3 md:p-4 border border-gray-200 hover:bg-gray-50 transition-colors">
-          <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm font-medium mb-2">
+        <div className="mt-4 p-3 md:p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)]">
+          <div className="flex items-center gap-3 text-xs md:text-sm font-bold mb-2 text-[var(--studio-text)]">
             <span>{video.views.toLocaleString()} просмотров</span>
             <span>{formattedDate}</span>
             <span className="text-blue-600">#{video.category.replace(/\s+/g, '')}</span>
           </div>
-          <p className="text-xs md:text-sm whitespace-pre-wrap">{video.description}</p>
+          <p className="text-xs md:text-sm whitespace-pre-wrap text-[var(--studio-text)]/90">{video.description}</p>
         </div>
 
         {/* Comments Section */}
         <div className="mt-6 md:mt-8">
-          <h3 className="text-lg md:text-xl font-bold mb-4 md:mb-6">{comments.length} Комментариев</h3>
+          <h3 className="text-lg md:text-xl font-bold mb-4 md:mb-6 text-[var(--studio-text)]">{comments.length} Комментариев</h3>
           
           <div className="flex gap-3 md:gap-4 mb-6 md:mb-8">
             <img
@@ -685,60 +716,60 @@ export default function VideoPlayer() {
                     alt={c.authorName}
                     className="w-8 h-8 md:w-10 md:h-10 rounded-full"
                   />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-xs md:text-sm">@{c.authorName.replace(/\s+/g, '').toLowerCase()}</span>
-                      <span className="text-[10px] md:text-xs text-ice-muted">
-                        {c.createdAt ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: true }) : 'только что'}
-                      </span>
-                      {c.isEdited && <span className="text-[10px] md:text-xs text-ice-muted">(изменено)</span>}
-                    </div>
-                    
-                    {editingCommentId === c.id ? (
-                      <div className="mb-2">
-                        <input
-                          type="text"
-                          value={editCommentText}
-                          onChange={(e) => setEditCommentText(e.target.value)}
-                          className="w-full bg-transparent border-b border-ice-border pb-1 focus:outline-none focus:border-ice-accent text-xs md:text-sm"
-                        />
-                        <div className="flex gap-2 mt-2">
-                          <button onClick={() => setEditingCommentId(null)} className="text-[10px] md:text-xs hover:text-ice-accent">Отмена</button>
-                          <button onClick={() => handleEditComment(c.id)} className="text-[10px] md:text-xs bg-ice-accent text-ice-bg px-2 py-1 rounded">Сохранить</button>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold text-xs md:text-sm text-[var(--studio-text)]">@{c.authorName.replace(/\s+/g, '').toLowerCase()}</span>
+                          <span className="text-[10px] md:text-xs text-[var(--studio-muted)]">
+                            {c.createdAt ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
+                          </span>
+                          {c.isEdited && <span className="text-[10px] md:text-xs text-[var(--studio-muted)]">(изменено)</span>}
                         </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs md:text-sm mb-2 leading-relaxed">{c.text}</p>
+                        
+                        {editingCommentId === c.id ? (
+                          <div className="mb-2">
+                            <input
+                              type="text"
+                              value={editCommentText}
+                              onChange={(e) => setEditCommentText(e.target.value)}
+                              className="w-full bg-transparent border-b border-[var(--studio-border)] pb-1 focus:outline-none focus:border-blue-600 text-xs md:text-sm text-[var(--studio-text)]"
+                            />
+                            <div className="flex gap-2 mt-2">
+                              <button onClick={() => setEditingCommentId(null)} className="text-[10px] md:text-xs hover:text-blue-600 text-[var(--studio-muted)]">Отмена</button>
+                              <button onClick={() => handleEditComment(c.id)} className="text-[10px] md:text-xs bg-blue-600 text-white px-2 py-1 rounded">Сохранить</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs md:text-sm mb-2 leading-relaxed text-[var(--studio-text)]/90">{c.text}</p>
+                        )}
+
+                        <div className="flex items-center gap-3 md:gap-4">
+                          <button onClick={() => handleCommentAction(c.id, 'like')} className="flex items-center gap-1 text-[var(--studio-muted)] hover:text-blue-600 transition-colors">
+                            <ThumbsUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            <span className="text-[10px] md:text-xs">{c.likes || 0}</span>
+                          </button>
+                          <button onClick={() => handleCommentAction(c.id, 'dislike')} className="flex items-center gap-1 text-[var(--studio-muted)] hover:text-blue-600 transition-colors">
+                            <ThumbsDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            <span className="text-[10px] md:text-xs">{c.dislikes || 0}</span>
+                          </button>
+                      
+                    {!isReply && (
+                      <button onClick={() => { setReplyingCommentId(c.id); setReplyCommentText(''); }} className="text-[10px] md:text-xs text-[var(--studio-muted)] hover:text-blue-600 font-medium">
+                        Ответить
+                      </button>
                     )}
 
-                    <div className="flex items-center gap-3 md:gap-4">
-                      <button onClick={() => handleCommentAction(c.id, 'like')} className="flex items-center gap-1 text-ice-muted hover:text-ice-text transition-colors">
-                        <ThumbsUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        <span className="text-[10px] md:text-xs">{c.likes || 0}</span>
+                    {user?.uid === c.authorId && (
+                      <button onClick={() => { setEditingCommentId(c.id); setEditCommentText(c.text); }} className="text-[10px] md:text-xs text-[var(--studio-muted)] hover:text-blue-600 font-medium">
+                        Изменить
                       </button>
-                      <button onClick={() => handleCommentAction(c.id, 'dislike')} className="flex items-center gap-1 text-ice-muted hover:text-ice-text transition-colors">
-                        <ThumbsDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        <span className="text-[10px] md:text-xs">{c.dislikes || 0}</span>
-                      </button>
-                      
-                      {!isReply && (
-                        <button onClick={() => { setReplyingCommentId(c.id); setReplyCommentText(''); }} className="text-[10px] md:text-xs text-ice-muted hover:text-ice-text font-medium">
-                          Ответить
-                        </button>
-                      )}
+                    )}
 
-                      {user?.uid === c.authorId && (
-                        <button onClick={() => { setEditingCommentId(c.id); setEditCommentText(c.text); }} className="text-[10px] md:text-xs text-ice-muted hover:text-ice-text font-medium">
-                          Изменить
-                        </button>
-                      )}
-
-                      {c.authorHearted && (
-                        <div className="flex items-center gap-1 text-ice-accent" title="Отмечено автором">
-                          <Snowflake className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                          <img src={video?.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video?.authorId}`} className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-ice-accent" alt="Author" />
-                        </div>
-                      )}
+                    {c.authorHearted && (
+                      <div className="flex items-center gap-1 text-blue-400" title="Отмечено автором">
+                        <Snowflake className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        <img src={video?.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video?.authorId}`} className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-blue-400" alt="Author" />
+                      </div>
+                    )}
 
                       {user?.uid === video?.authorId && (
                         <button 
@@ -761,11 +792,11 @@ export default function VideoPlayer() {
                             value={replyCommentText}
                             onChange={(e) => setReplyCommentText(e.target.value)}
                             placeholder="Напишите ответ..."
-                            className="w-full bg-transparent border-b border-ice-border pb-1 focus:outline-none focus:border-ice-accent text-xs md:text-sm"
+                            className="w-full bg-transparent border-b border-[var(--studio-border)] pb-1 focus:outline-none focus:border-blue-600 text-xs md:text-sm text-[var(--studio-text)]"
                           />
                           <div className="flex gap-2 mt-2 justify-end">
-                            <button onClick={() => setReplyingCommentId(null)} className="text-[10px] md:text-xs hover:text-ice-accent">Отмена</button>
-                            <button onClick={() => handleReplyComment(c.id)} className="text-[10px] md:text-xs bg-ice-accent text-ice-bg px-3 py-1 rounded-full font-bold">Ответить</button>
+                            <button onClick={() => setReplyingCommentId(null)} className="text-[10px] md:text-xs hover:text-blue-600 text-[var(--studio-muted)]">Отмена</button>
+                            <button onClick={() => handleReplyComment(c.id)} className="text-[10px] md:text-xs bg-blue-600 text-white px-3 py-1 rounded-full font-bold">Ответить</button>
                           </div>
                         </div>
                       </div>
@@ -784,22 +815,22 @@ export default function VideoPlayer() {
 
       {/* Related Videos */}
       <div className="xl:w-[400px] shrink-0">
-        <h3 className="text-lg font-bold mb-4">Похожие видео</h3>
+        <h3 className="text-lg font-bold mb-4 text-[var(--studio-text)]">Похожие видео</h3>
         <div className="flex flex-col gap-4">
           {relatedVideos.map((v) => (
             <Link key={v.id} to={`/video/${v.id}`} className="flex gap-3 group">
-              <div className="w-32 md:w-40 aspect-video rounded-xl overflow-hidden shrink-0 border border-ice-border relative">
+              <div className="w-32 md:w-40 aspect-video rounded-xl overflow-hidden shrink-0 border border-[var(--studio-border)] relative">
                 <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-medium text-white">
                   {v.duration}
                 </div>
               </div>
               <div className="flex flex-col py-0.5 md:py-1">
-                <h4 className="font-bold text-xs md:text-sm line-clamp-2 group-hover:text-ice-accent transition-colors leading-tight mb-1">
+                <h4 className="font-bold text-xs md:text-sm line-clamp-2 group-hover:text-blue-600 transition-colors leading-tight mb-1 text-[var(--studio-text)]">
                   {v.title}
                 </h4>
-                <span className="text-[10px] md:text-xs text-ice-muted">{v.authorName}</span>
-                <span className="text-[10px] md:text-xs text-ice-muted">{v.views} просмотров • {v.createdAt ? formatDistanceToNow(new Date(v.createdAt)) : 'недавно'}</span>
+                <span className="text-[10px] md:text-xs text-[var(--studio-muted)]">{v.authorName}</span>
+                <span className="text-[10px] md:text-xs text-[var(--studio-muted)]">{v.views} просмотров • {v.createdAt ? formatDistanceToNow(new Date(v.createdAt), { locale: ru }) : 'недавно'}</span>
               </div>
             </Link>
           ))}

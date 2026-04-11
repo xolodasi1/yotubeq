@@ -26,6 +26,12 @@ export interface UserProfile {
   subscribers: number;
   bio: string;
   joinedAt: any;
+  socialLinks?: {
+    website?: string;
+    telegram?: string;
+    vk?: string;
+    instagram?: string;
+  };
 }
 
 export type UserType = UserProfile;
@@ -98,4 +104,11 @@ export interface FavoriteItem {
   userId: string;
   videoId: string;
   addedAt: any;
+}
+
+export interface CommentAction {
+  id: string; // userId_commentId
+  userId: string;
+  commentId: string;
+  type: 'like' | 'dislike';
 }
