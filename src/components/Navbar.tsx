@@ -1,6 +1,6 @@
 import { Search, Menu, Video, Bell, LogIn, LogOut, X, Plus, HelpCircle, PlaySquare } from 'lucide-react';
 import { useAuth } from '../App';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { auth } from '../lib/firebase';
@@ -11,13 +11,15 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isStudio = location.pathname.startsWith('/studio');
 
   const handleGoogleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       setShowAuthModal(false);
-      toast.success('Добро пожаловать в Студию!');
+      toast.success(isStudio ? 'Добро пожаловать в Студию!' : 'Добро пожаловать!');
     } catch (error: any) {
       toast.error(error.message || 'Ошибка аутентификации');
     }
@@ -26,7 +28,7 @@ export default function Navbar() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toast.info('До скорой встречи в Студии!');
+      toast.info(isStudio ? 'До скорой встречи в Студии!' : 'До скорой встречи!');
       navigate('/');
     } catch (error: any) {
       toast.error('Не удалось выйти из системы');
@@ -36,7 +38,11 @@ export default function Navbar() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/studio/content?q=${searchQuery}`);
+      if (isStudio) {
+        navigate(`/studio/content?q=${searchQuery}`);
+      } else {
+        navigate(`/?q=${searchQuery}`);
+      }
     }
   };
 
@@ -48,10 +54,12 @@ export default function Navbar() {
             <Menu className="w-6 h-6 text-gray-600" />
           </button>
           <Link to="/" className="flex items-center gap-1">
-            <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
+            <div className={`w-8 h-8 ${isStudio ? 'bg-red-600' : 'bg-red-600'} rounded flex items-center justify-center`}>
               <PlaySquare className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight hidden xs:block">Studio</span>
+            <span className="text-xl font-bold tracking-tight hidden xs:block">
+              {isStudio ? 'Studio' : 'YouTube'}
+            </span>
           </Link>
         </div>
 
@@ -62,7 +70,7 @@ export default function Navbar() {
             </div>
             <input
               type="text"
-              placeholder="Поиск по каналу"
+              placeholder={isStudio ? "Поиск по каналу" : "Введите запрос"}
               className="w-full bg-gray-50 border border-gray-200 rounded-md py-1.5 pl-10 pr-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -81,13 +89,23 @@ export default function Navbar() {
 
           {user ? (
             <>
-              <button 
-                onClick={() => navigate('/studio/upload')}
-                className="flex items-center gap-2 border border-gray-200 px-3 py-1.5 rounded-sm hover:bg-gray-50 transition-all font-semibold text-sm uppercase tracking-wide"
-              >
-                <Plus className="w-5 h-5 text-red-600" />
-                <span className="hidden sm:inline">Создать</span>
-              </button>
+              {isStudio ? (
+                <button 
+                  onClick={() => navigate('/studio/upload')}
+                  className="flex items-center gap-2 border border-gray-200 px-3 py-1.5 rounded-sm hover:bg-gray-50 transition-all font-semibold text-sm uppercase tracking-wide"
+                >
+                  <Plus className="w-5 h-5 text-red-600" />
+                  <span className="hidden sm:inline">Создать</span>
+                </button>
+              ) : (
+                <button 
+                  onClick={() => navigate('/studio')}
+                  className="flex items-center gap-2 border border-gray-200 px-3 py-1.5 rounded-sm hover:bg-gray-50 transition-all font-semibold text-sm uppercase tracking-wide"
+                >
+                  <Video className="w-5 h-5 text-red-600" />
+                  <span className="hidden sm:inline">Студия</span>
+                </button>
+              )}
               
               <div className="flex items-center gap-3 ml-2">
                 <Link to={`/channel/${user.uid}`}>

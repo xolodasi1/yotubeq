@@ -36,11 +36,12 @@ const SidebarItem = ({ icon: Icon, label, path, isActive }: { icon: any, label: 
 export default function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
+  const isStudio = location.pathname.startsWith('/studio');
 
   return (
     <>
       <aside className="w-64 bg-white border-r border-gray-200 hidden lg:flex flex-col py-6">
-        {user && (
+        {user && isStudio && (
           <div className="px-6 mb-8 flex flex-col items-center text-center">
             <div className="relative group cursor-pointer" onClick={() => window.location.href = `/channel/${user.uid}`}>
               <img
@@ -58,17 +59,21 @@ export default function Sidebar() {
         )}
 
         <div className="flex flex-col">
-          <div className="px-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Студия</div>
-          {studioItems.map((item) => (
-            <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} isActive={location.pathname === item.path} />
-          ))}
-        </div>
-
-        <div className="mt-8 flex flex-col border-t border-gray-100 pt-6">
-          <div className="px-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Навигация</div>
-          {mainItems.map((item) => (
-            <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} isActive={location.pathname === item.path} />
-          ))}
+          {isStudio ? (
+            <>
+              <div className="px-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Студия</div>
+              {studioItems.map((item) => (
+                <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} isActive={location.pathname === item.path} />
+              ))}
+            </>
+          ) : (
+            <>
+              <div className="px-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Навигация</div>
+              {mainItems.map((item) => (
+                <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} isActive={location.pathname === item.path} />
+              ))}
+            </>
+          )}
         </div>
 
         <div className="mt-auto flex flex-col border-t border-gray-100 pt-4">
@@ -80,7 +85,7 @@ export default function Sidebar() {
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 pb-safe">
         <div className="flex items-center justify-around p-1">
-          {studioItems.map((item) => {
+          {(isStudio ? studioItems : mainItems).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
