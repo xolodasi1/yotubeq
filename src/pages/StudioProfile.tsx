@@ -52,6 +52,7 @@ export default function StudioProfile() {
     if (!user) return;
     setSaving(true);
     try {
+      // Update user profile
       await updateDoc(doc(db, 'users', user.uid), {
         displayName,
         pseudonym,
@@ -59,8 +60,33 @@ export default function StudioProfile() {
         bio,
         socialLinks
       });
-      toast.success('Профиль обновлен');
+
+      // Propagate changes to all user's videos/tracks/photos
+      const q = query(collection(db, 'videos'), where('authorId', '==', user.uid));
+      const snapshot = await getDocs(q);
+      
+      const updatePromises = snapshot.docs.map(videoDoc => 
+        updateDoc(doc(db, 'videos', videoDoc.id), {
+          authorName: displayName,
+          authorPhotoUrl: photoURL
+        })
+      );
+
+      // Propagate to comments
+      const commentsQ = query(collection(db, 'comments'), where('authorId', '==', user.uid));
+      const commentsSnapshot = await getDocs(commentsQ);
+      const commentUpdatePromises = commentsSnapshot.docs.map(commentDoc =>
+        updateDoc(doc(db, 'comments', commentDoc.id), {
+          authorName: displayName,
+          authorPhotoUrl: photoURL
+        })
+      );
+      
+      await Promise.all([...updatePromises, ...commentUpdatePromises]);
+
+      toast.success('Профиль и контент обновлены');
     } catch (error) {
+      console.error("Error saving profile:", error);
       toast.error('Ошибка при сохранении');
     } finally {
       setSaving(false);

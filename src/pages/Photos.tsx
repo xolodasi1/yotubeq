@@ -3,7 +3,7 @@ import { db } from '../lib/firebase';
 import { collection, getDocs, query, orderBy, where, doc, getDoc, setDoc, deleteDoc, updateDoc, addDoc, serverTimestamp, increment, onSnapshot } from 'firebase/firestore';
 import { VideoType, Comment, Playlist } from '../types';
 import { Loader2, Camera, Heart, MessageCircle, Share2, Download, Plus, X, Globe, Lock, Send } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../App';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { ru } from 'date-fns/locale';
 
 export default function Photos() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [photos, setPhotos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<VideoType | null>(null);
@@ -232,7 +233,7 @@ export default function Photos() {
             <motion.div
               layoutId={photo.id}
               key={photo.id}
-              onClick={() => setSelectedPhoto(photo)}
+              onClick={() => navigate(`/video/${photo.id}`)}
               className="relative group cursor-pointer break-inside-avoid rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--surface)] hover:shadow-2xl hover:shadow-pink-500/10 transition-all duration-500"
             >
               <img 

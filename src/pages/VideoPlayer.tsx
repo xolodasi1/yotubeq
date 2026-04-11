@@ -120,13 +120,24 @@ export default function VideoPlayer() {
           console.error("Failed to increment views:", err);
         }
 
-        // Fetch related videos
-        const relatedQ = query(collection(db, 'videos'), limit(10));
+        // Fetch related videos of the same type
+        let relatedQ;
+        if (data.isShort) {
+          relatedQ = query(collection(db, 'videos'), where('isShort', '==', true), limit(12));
+        } else if (data.isMusic) {
+          relatedQ = query(collection(db, 'videos'), where('isMusic', '==', true), limit(12));
+        } else if (data.isPhoto || data.type === 'photo') {
+          relatedQ = query(collection(db, 'videos'), where('type', '==', 'photo'), limit(12));
+        } else {
+          relatedQ = query(collection(db, 'videos'), where('isShort', '==', false), where('isMusic', '==', false), where('type', '!=', 'photo'), limit(12));
+        }
+
         const relatedSnap = await getDocs(relatedQ);
         const relatedData = relatedSnap.docs
           .map(d => {
             const vData = d.data();
             return {
+              id: d.id,
               ...vData,
               createdAt: vData.createdAt?.toDate?.()?.toISOString() || vData.createdAt
             };
@@ -469,6 +480,18 @@ export default function VideoPlayer() {
     }
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот комментарий?')) return;
+    try {
+      await deleteDoc(doc(db, 'comments', commentId));
+      setComments(comments.filter(c => c.id !== commentId && c.parentId !== commentId));
+      toast.success('Комментарий удален');
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast.error('Не удалось удалить комментарий');
+    }
+  };
+
   const handleReplyComment = async (parentId: string) => {
     if (!replyCommentText.trim() || !video) return;
     try {
@@ -618,6 +641,14 @@ export default function VideoPlayer() {
                 controls
                 autoPlay
                 className="absolute bottom-0 left-0 w-full h-12 bg-black/60 backdrop-blur-md"
+              />
+            </div>
+          ) : video.isPhoto || video.type === 'photo' ? (
+            <div className="w-full h-full flex items-center justify-center bg-black/20 backdrop-blur-sm">
+              <img 
+                src={video.videoUrl} 
+                alt={video.title} 
+                className="max-w-full max-h-full object-contain shadow-2xl"
               />
             </div>
           ) : (
@@ -888,9 +919,14 @@ export default function VideoPlayer() {
                     )}
 
                     {user?.uid === c.authorId && (
-                      <button onClick={() => { setEditingCommentId(c.id); setEditCommentText(c.text); }} className="text-[10px] md:text-xs text-[var(--studio-muted)] hover:text-blue-600 font-medium">
-                        Изменить
-                      </button>
+                      <>
+                        <button onClick={() => { setEditingCommentId(c.id); setEditCommentText(c.text); }} className="text-[10px] md:text-xs text-[var(--studio-muted)] hover:text-blue-600 font-medium">
+                          Изменить
+                        </button>
+                        <button onClick={() => handleDeleteComment(c.id)} className="text-[10px] md:text-xs text-[var(--studio-muted)] hover:text-red-600 font-medium">
+                          Удалить
+                        </button>
+                      </>
                     )}
 
                     {c.authorHearted && (
@@ -942,9 +978,11 @@ export default function VideoPlayer() {
         </div>
       </div>
 
-      {/* Related Videos */}
+      {/* Related Content */}
       <div className="xl:w-[400px] shrink-0">
-        <h3 className="text-lg font-bold mb-4 text-[var(--studio-text)]">Похожие видео</h3>
+        <h3 className="text-lg font-bold mb-4 text-[var(--studio-text)]">
+          {video.isShort ? 'Похожие Shorts' : video.isMusic ? 'Похожие треки' : video.isPhoto ? 'Похожие фото' : 'Похожие видео'}
+        </h3>
         <div className="flex flex-col gap-4">
           {relatedVideos.map((v) => (
             <Link key={v.id} to={`/video/${v.id}`} className="flex gap-3 group">

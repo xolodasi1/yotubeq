@@ -234,7 +234,7 @@ export default function StudioContent() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="font-bold text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(activeTab === 'photos' ? '/photos' : `/video/${video.id}`)}>
+                            <h4 className="font-bold text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(`/video/${video.id}`)}>
                               {video.title}
                             </h4>
                             <p className="text-xs text-[var(--text-secondary)] line-clamp-1 mt-1">{video.description || 'Нет описания'}</p>
