@@ -17,6 +17,7 @@ interface TopChannel {
   totalMusicViews: number;
   musicCount: number;
   totalViews: number;
+  totalLikes: number;
   totalPhotoLikes: number;
   photoCount: number;
   totalIces: number;
@@ -30,7 +31,7 @@ export default function TopChannels() {
   const [topShorts, setTopShorts] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [topType, setTopType] = useState<'authors' | 'tracks' | 'photos' | 'videos' | 'shorts'>('authors');
-  const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views' | 'photos' | 'ices'>('subscribers');
+  const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views' | 'photos' | 'ices' | 'likes'>('subscribers');
 
   useEffect(() => {
     // Listen to users for real-time subscriber updates
@@ -56,17 +57,20 @@ export default function TopChannels() {
         })) as VideoType[];
 
         // Aggregate stats per user
-        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number, photoLikes: number, photoCount: number, totalIces: number }> = {};
+        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number, likes: number, photoLikes: number, photoCount: number, totalIces: number }> = {};
         allVideos.forEach(video => {
           const authorId = video.authorId;
           if (!stats[authorId]) {
-            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0, photoLikes: 0, photoCount: 0, totalIces: 0 };
+            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0, likes: 0, photoLikes: 0, photoCount: 0, totalIces: 0 };
           }
           const v = Number(video.views) || 0;
           const l = Number(video.likes) || 0;
           const i = Number(video.ices) || 0;
           stats[authorId].totalViews += v;
           stats[authorId].totalIces += i;
+          if (!video.isShort && !video.isMusic && !video.isPhoto && video.type !== 'photo') {
+            stats[authorId].likes += l;
+          }
           if (video.isMusic) {
             stats[authorId].musicViews += v;
             stats[authorId].musicCount += 1;
@@ -88,6 +92,7 @@ export default function TopChannels() {
           totalMusicViews: stats[user.uid]?.musicViews || 0,
           musicCount: stats[user.uid]?.musicCount || 0,
           totalViews: stats[user.uid]?.totalViews || 0,
+          totalLikes: stats[user.uid]?.likes || 0,
           totalPhotoLikes: stats[user.uid]?.photoLikes || 0,
           photoCount: stats[user.uid]?.photoCount || 0,
           totalIces: stats[user.uid]?.totalIces || 0
@@ -139,6 +144,7 @@ export default function TopChannels() {
       if (sortBy === 'music') return (b.totalMusicViews || 0) - (a.totalMusicViews || 0);
       if (sortBy === 'photos') return (b.totalPhotoLikes || 0) - (a.totalPhotoLikes || 0);
       if (sortBy === 'ices') return (b.totalIces || 0) - (a.totalIces || 0);
+      if (sortBy === 'likes') return (b.totalLikes || 0) - (a.totalLikes || 0);
       return (b.totalViews || 0) - (a.totalViews || 0);
     });
   }, [channels, sortBy]);
@@ -207,6 +213,13 @@ export default function TopChannels() {
             >
               <Users className="w-3.5 h-3.5" />
               По подписчикам
+            </button>
+            <button 
+              onClick={() => setSortBy('likes')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border ${sortBy === 'likes' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'}`}
+            >
+              <Heart className="w-3.5 h-3.5" />
+              По лайкам на видео
             </button>
             <button 
               onClick={() => setSortBy('views')}
@@ -288,6 +301,10 @@ export default function TopChannels() {
                           <span>{channel.totalMusicViews.toLocaleString()}</span>
                         </div>
                       )}
+                      <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'likes' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
+                        <Heart className="w-3.5 h-3.5" />
+                        <span>{channel.totalLikes.toLocaleString()}</span>
+                      </div>
                       {channel.photoCount > 0 && (
                         <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'photos' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
                           <Camera className="w-3.5 h-3.5" />
