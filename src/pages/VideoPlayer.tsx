@@ -741,7 +741,7 @@ export default function VideoPlayer() {
   }
 
   const formattedDate = video.createdAt 
-    ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true }) 
+    ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru }) 
     : 'недавно';
 
   return (
