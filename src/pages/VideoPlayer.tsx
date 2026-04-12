@@ -753,18 +753,18 @@ export default function VideoPlayer() {
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
-            <div className="flex items-center bg-gray-100 rounded-full border border-gray-200">
+            <div className="flex items-center bg-[var(--studio-hover)] rounded-full border border-[var(--studio-border)]">
               <button 
                 onClick={handleLike}
-                className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-gray-200 rounded-l-full transition-colors ${isLiked ? 'text-blue-600' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-[var(--hover)] rounded-l-full transition-colors ${isLiked ? 'text-blue-600' : 'text-[var(--studio-text)]'}`}
               >
                 <ThumbsUp className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-current' : ''}`} />
                 <span className="font-medium text-sm md:text-base">{video.likes}</span>
               </button>
-              <div className="w-px h-5 md:h-6 bg-gray-200"></div>
+              <div className="w-px h-5 md:h-6 bg-[var(--studio-border)]"></div>
               <button 
                 onClick={handleIce}
-                className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-gray-200 rounded-r-full transition-colors ${isIced ? 'text-blue-400' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-[var(--hover)] rounded-r-full transition-colors ${isIced ? 'text-blue-400' : 'text-[var(--studio-text)]'}`}
               >
                 <Snowflake className={`w-4 h-4 md:w-5 md:h-5 ${isIced ? 'fill-current' : ''}`} />
                 <span className="font-medium text-sm md:text-base">{video.ices || 0}</span>
@@ -773,7 +773,7 @@ export default function VideoPlayer() {
             
             <button 
               onClick={toggleFavorite}
-              className={`flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isFavorited ? 'text-blue-600 border-blue-400/50' : ''}`}
+              className={`flex items-center gap-2 bg-[var(--studio-hover)] hover:bg-[var(--hover)] border border-[var(--studio-border)] px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isFavorited ? 'text-blue-600 border-blue-400/50' : 'text-[var(--studio-text)]'}`}
             >
               <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isFavorited ? 'fill-current' : ''}`} />
               <span className="hidden sm:inline">Избранное</span>
@@ -781,7 +781,7 @@ export default function VideoPlayer() {
 
             <button 
               onClick={toggleWatchLater}
-              className={`flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isWatchLater ? 'text-blue-600 border-blue-400/50' : ''}`}
+              className={`flex items-center gap-2 bg-[var(--studio-hover)] hover:bg-[var(--hover)] border border-[var(--studio-border)] px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isWatchLater ? 'text-blue-600 border-blue-400/50' : 'text-[var(--studio-text)]'}`}
             >
               <Clock className={`w-4 h-4 md:w-5 md:h-5 ${isWatchLater ? 'fill-current' : ''}`} />
               <span className="hidden sm:inline">Позже</span>
@@ -789,13 +789,13 @@ export default function VideoPlayer() {
 
             <button 
               onClick={fetchUserPlaylists}
-              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base"
+              className="flex items-center gap-2 bg-[var(--studio-hover)] hover:bg-[var(--hover)] border border-[var(--studio-border)] px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base text-[var(--studio-text)]"
             >
               <ListPlus className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden sm:inline">Плейлист</span>
             </button>
 
-            <button className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base">
+            <button className="flex items-center gap-2 bg-[var(--studio-hover)] hover:bg-[var(--hover)] border border-[var(--studio-border)] px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base text-[var(--studio-text)]">
               <Share2 className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden sm:inline">Поделиться</span>
             </button>
@@ -893,10 +893,10 @@ export default function VideoPlayer() {
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder={user ? "Добавьте крутой комментарий..." : "Добавить комментарий (как Аноним)..."}
                 disabled={submittingComment}
-                className="w-full bg-transparent border-b border-gray-200 pb-2 focus:outline-none focus:border-blue-600 transition-colors peer disabled:opacity-50 text-sm md:text-base"
+                className="w-full bg-transparent border-b border-[var(--studio-border)] pb-2 focus:outline-none focus:border-blue-600 transition-colors peer disabled:opacity-50 text-sm md:text-base text-[var(--studio-text)]"
               />
               <div className="absolute right-0 bottom-2 opacity-0 peer-focus:opacity-100 transition-opacity flex gap-2">
-                <button type="button" onClick={() => setNewComment('')} className="text-xs md:text-sm font-medium hover:text-blue-600 transition-colors">Отмена</button>
+                <button type="button" onClick={() => setNewComment('')} className="text-xs md:text-sm font-medium hover:text-blue-600 transition-colors text-[var(--studio-muted)]">Отмена</button>
                 <button type="submit" disabled={!newComment.trim() || submittingComment} className="bg-blue-600 text-white px-3 py-1 md:px-4 md:py-1 rounded-full text-xs md:text-sm font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
                   {submittingComment ? 'Публикация...' : 'Оставить'}
                 </button>
