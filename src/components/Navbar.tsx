@@ -135,6 +135,13 @@ export default function Navbar() {
             <Search className="w-6 h-6 text-[var(--text-secondary)]" />
           </button>
           
+          <button 
+            onClick={() => navigate('/settings')}
+            className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors hidden sm:block"
+          >
+            <Settings className="w-6 h-6 text-[var(--text-secondary)]" />
+          </button>
+          
           <button className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors hidden sm:block">
             <HelpCircle className="w-6 h-6 text-[var(--text-secondary)]" />
           </button>

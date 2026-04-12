@@ -3,7 +3,7 @@ import { db } from '../lib/firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { VideoType } from '../types';
 import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, User } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Shorts() {
   const [shorts, setShorts] = useState<VideoType[]>([]);

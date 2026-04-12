@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function StudioProfile() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [pseudonym, setPseudonym] = useState('');
   const [photoURL, setPhotoURL] = useState('');
@@ -243,15 +245,32 @@ export default function StudioProfile() {
           </div>
         </div>
 
-        <div className="pt-8">
+        <div className="pt-8 flex flex-col gap-4">
           <button 
             type="submit" 
             disabled={saving}
-            className="w-full md:w-auto px-10 bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-blue-600/20 uppercase tracking-widest text-xs"
+            className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-blue-600/20 uppercase tracking-widest text-xs"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             Опубликовать изменения
           </button>
+          
+          <div className="flex gap-4">
+            <button 
+              type="button"
+              onClick={() => window.location.reload()}
+              className="flex-1 bg-[var(--studio-hover)] text-[var(--studio-text)] font-bold py-4 rounded-2xl hover:bg-[var(--studio-border)] transition-all"
+            >
+              Отменить все изменения
+            </button>
+            <button 
+              type="button"
+              onClick={() => navigate(`/channel/${user.uid}`)}
+              className="flex-1 bg-[var(--studio-hover)] text-[var(--studio-text)] font-bold py-4 rounded-2xl hover:bg-[var(--studio-border)] transition-all"
+            >
+              Перейти на канал
+            </button>
+          </div>
         </div>
       </form>
     </div>

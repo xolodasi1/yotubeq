@@ -138,8 +138,8 @@ export default function VideoPlayer() {
             const vData = d.data();
             return {
               id: d.id,
-              ...vData,
-              createdAt: vData.createdAt?.toDate?.()?.toISOString() || vData.createdAt
+              ...(vData as any),
+              createdAt: (vData as any).createdAt?.toDate?.()?.toISOString() || (vData as any).createdAt
             };
           })
           .filter((v: any) => v.id !== id) as VideoType[];
