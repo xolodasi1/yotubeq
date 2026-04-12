@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
@@ -127,7 +127,10 @@ export default function App() {
 
           if (userChannels.length === 0) {
             // Create primary channel
-            const channelId = crypto.randomUUID();
+            const channelId = typeof crypto.randomUUID === 'function' 
+              ? crypto.randomUUID() 
+              : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            
             const primaryChannel: ChannelType = {
               id: channelId,
               ownerId: firebaseUser.uid,
@@ -155,6 +158,7 @@ export default function App() {
           });
         } catch (error) {
           console.error("Error fetching/saving user:", error);
+          toast.error("Ошибка при инициализации профиля. Пожалуйста, обновите страницу.");
         }
       } else {
         setUser(null);
