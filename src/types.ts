@@ -9,6 +9,7 @@ export interface Video {
   authorPhotoUrl: string;
   views: number;
   likes: number;
+  ices?: number;
   createdAt: any; // Timestamp
   category: string;
   duration: string;

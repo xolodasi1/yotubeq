@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, TrendingUp, BarChart2, PieChart, Calendar, ChevronRight, Clock, Users, Globe, UserCheck, UserMinus, MapPin, Search } from 'lucide-react';
+import { Eye, ThumbsUp, TrendingUp, BarChart2, PieChart, Calendar, ChevronRight, Clock, Users, Globe, UserCheck, UserMinus, MapPin, Search, Snowflake } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -15,6 +15,7 @@ export default function StudioAnalytics() {
   const [stats, setStats] = useState({
     totalViews: 0,
     totalLikes: 0,
+    totalIces: 0,
     avgViews: 0,
     subscribers: 0,
     watchTime: 0,
@@ -39,11 +40,13 @@ export default function StudioAnalytics() {
         
         let views = 0;
         let likes = 0;
+        let ices = 0;
         let topV = data[0] || null;
 
         data.forEach(v => {
           views += v.views || 0;
           likes += v.likes || 0;
+          ices += v.ices || 0;
           if (topV && (v.views || 0) > (topV.views || 0)) {
             topV = v;
           }
@@ -57,6 +60,7 @@ export default function StudioAnalytics() {
           ...prev,
           totalViews: views,
           totalLikes: likes,
+          totalIces: ices,
           watchTime: watchTime,
           avgViews: data.length > 0 ? Math.round(views / data.length) : 0,
           topVideo: topV
@@ -118,7 +122,7 @@ export default function StudioAnalytics() {
       {activeMainTab === 'overview' && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
           {/* Stats Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
             <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest">Просмотры</p>
@@ -179,6 +183,22 @@ export default function StudioAnalytics() {
                 <div className="flex items-center gap-1 text-green-600 text-[10px] mt-2 font-bold">
                   <TrendingUp className="w-3 h-3" />
                   <span>+5%</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest">Льдышки</p>
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-400">
+                  <Snowflake className="w-4 h-4 md:w-5 md:h-5" />
+                </div>
+              </div>
+              <div>
+                <p className="text-xl md:text-3xl font-bold text-[var(--studio-text)]">{stats.totalIces.toLocaleString()}</p>
+                <div className="flex items-center gap-1 text-green-600 text-[10px] mt-2 font-bold">
+                  <TrendingUp className="w-3 h-3" />
+                  <span>+7%</span>
                 </div>
               </div>
             </div>
@@ -266,6 +286,9 @@ export default function StudioAnalytics() {
                     </p>
                     <p className="text-xs text-[var(--studio-muted)] flex items-center gap-1">
                       <ThumbsUp className="w-3 h-3" /> {video.likes?.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-[var(--studio-muted)] flex items-center gap-1">
+                      <Snowflake className="w-3 h-3 text-blue-400" /> {video.ices?.toLocaleString() || 0}
                     </p>
                   </div>
                 </div>

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
-import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter } from 'lucide-react';
+import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
@@ -14,14 +14,15 @@ export default function Home() {
   const searchQuery = searchParams.get('q') || '';
   const [activeCategory, setActiveCategory] = useState('Все');
   const [videos, setVideos] = useState<VideoType[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchVideos = async () => {
+    const fetchData = async () => {
       try {
-        const q = query(collection(db, 'videos'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => {
+        const videosQuery = query(collection(db, 'videos'), orderBy('createdAt', 'desc'));
+        const videosSnapshot = await getDocs(videosQuery);
+        const videosData = videosSnapshot.docs.map(doc => {
           const videoData = doc.data();
           return {
             ...videoData,
@@ -29,14 +30,22 @@ export default function Home() {
             createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
           };
         }) as VideoType[];
-        setVideos(data);
+        setVideos(videosData);
+
+        const usersQuery = query(collection(db, 'users'));
+        const usersSnapshot = await getDocs(usersQuery);
+        const usersData = usersSnapshot.docs.map(doc => ({
+          ...doc.data(),
+          uid: doc.id
+        }));
+        setUsers(usersData);
       } catch (error) {
-        console.error("Error fetching videos:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchVideos();
+    fetchData();
   }, []);
 
   const filteredVideos = videos.filter(video => {
@@ -61,8 +70,20 @@ export default function Home() {
     return matchesSearch && matchesCategory;
   });
 
-  const topVideos = [...filteredVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
-  const newVideos = [...filteredVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
+  const filteredUsers = users.filter(user => {
+    if (!searchQuery) return false;
+    const searchLower = searchQuery.toLowerCase();
+    const matchesName = user.displayName?.toLowerCase().includes(searchLower) || user.uid.toLowerCase().includes(searchLower);
+    const matchesAliases = user.searchAliases?.some((alias: string) => alias.toLowerCase().includes(searchLower));
+    return matchesName || matchesAliases;
+  });
+
+  const regularVideos = filteredVideos.filter(v => !v.isShort);
+  const shortsVideos = filteredVideos.filter(v => v.isShort);
+
+  const topVideos = [...regularVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
+  const newVideos = [...regularVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
+  const topIcedVideos = [...regularVideos].sort((a, b) => (b.ices || 0) - (a.ices || 0)).slice(0, 8);
 
   return (
     <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto pb-24 md:pb-10 bg-[var(--bg)] min-h-screen">
@@ -94,7 +115,7 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">
             Результаты поиска для: <span className="text-blue-600">"{searchQuery}"</span>
           </h2>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">Найдено {filteredVideos.length} видео</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">Найдено {filteredVideos.length} видео и {filteredUsers.length} каналов</p>
         </div>
       )}
 
@@ -103,39 +124,89 @@ export default function Home() {
           <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
           <p className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">Загрузка контента...</p>
         </div>
-      ) : filteredVideos.length === 0 ? (
+      ) : filteredVideos.length === 0 && filteredUsers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">
           <div className="w-20 h-20 bg-[var(--hover)] rounded-full flex items-center justify-center mb-6">
             <Sparkles className="w-10 h-10 opacity-20" />
           </div>
-          <p className="text-lg font-bold text-[var(--text-primary)]">Видео не найдены</p>
+          <p className="text-lg font-bold text-[var(--text-primary)]">Ничего не найдено</p>
           <p className="text-sm mt-2">Попробуйте изменить параметры поиска или категорию</p>
         </div>
       ) : (
         <div className="flex flex-col gap-16">
-          {/* Main Content Section */}
-          <section>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
+          {/* Channels Search Results */}
+          {searchQuery && filteredUsers.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-500">
-                  <Sparkles className="w-5 h-5" />
+                  <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[var(--text-primary)]">
-                    {activeCategory !== 'Все' ? activeCategory : 'Рекомендации'}
-                  </h2>
-                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">
-                    {searchQuery ? 'Результаты поиска' : 'Контент'}
-                  </p>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Каналы</h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Авторы</p>
                 </div>
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
-              {filteredVideos.map((video) => (
-                <VideoCard key={video.id} video={video as any} />
-              ))}
-            </div>
-          </section>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredUsers.map(user => (
+                  <Link key={user.uid} to={`/channel/${user.uid}`} className="flex items-center gap-4 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl hover:border-blue-500/50 hover:shadow-lg transition-all group">
+                    <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`} alt={user.displayName} className="w-16 h-16 rounded-full object-cover group-hover:scale-105 transition-transform" />
+                    <div>
+                      <h3 className="font-bold text-lg text-[var(--text-primary)] group-hover:text-blue-500 transition-colors">{user.displayName}</h3>
+                      <p className="text-sm text-[var(--text-secondary)]">{user.subscribers || 0} подписчиков</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Main Content Section */}
+          {regularVideos.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-500">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-[var(--text-primary)]">
+                      {activeCategory !== 'Все' ? activeCategory : 'Рекомендации'}
+                    </h2>
+                    <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">
+                      {searchQuery ? 'Результаты поиска' : 'Контент'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
+                {regularVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Shorts Section */}
+          {shortsVideos.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 bg-red-900/20 rounded-xl flex items-center justify-center text-red-500">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Shorts</h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Короткие видео</p>
+                </div>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x">
+                {shortsVideos.map((video) => (
+                  <div key={video.id} className="snap-start">
+                    <ShortCard video={video as any} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Top by Views Section - Only show if not searching and in 'Все' */}
           {!searchQuery && activeCategory === 'Все' && topVideos.length > 0 && (
@@ -151,6 +222,26 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
                 {topVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Top by Ices Section - Only show if not searching and in 'Все' */}
+          {!searchQuery && activeCategory === 'Все' && topIcedVideos.length > 0 && topIcedVideos.some(v => (v.ices || 0) > 0) && (
+            <section>
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-400">
+                  <Snowflake className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Топ по льдышкам</h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Самые крутые видео</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
+                {topIcedVideos.filter(v => (v.ices || 0) > 0).map((video) => (
                   <VideoCard key={video.id} video={video as any} />
                 ))}
               </div>

@@ -69,6 +69,7 @@ export default function VideoPlayer() {
   
   // Real interactions state
   const [isLiked, setIsLiked] = useState(false);
+  const [isIced, setIsIced] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isWatchLater, setIsWatchLater] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -201,6 +202,11 @@ export default function VideoPlayer() {
         const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
         setIsLiked(likeSnap.exists() && likeSnap.data().type === 'like');
 
+        // Check ice
+        const iceId = `${user.uid}_${id}`;
+        const iceSnap = await getDoc(doc(db, 'video_ices', iceId));
+        setIsIced(iceSnap.exists());
+
         // Check favorite
         const favSnap = await getDoc(doc(db, 'favorites', likeId));
         setIsFavorited(favSnap.exists());
@@ -266,6 +272,34 @@ export default function VideoPlayer() {
     } catch (error) {
       console.error("Error toggling like:", error);
       toast.error('Не удалось обновить лайк');
+    }
+  };
+
+  const handleIce = async () => {
+    if (!user || !video) {
+      toast.error('Пожалуйста, войдите, чтобы ставить льдышки');
+      return;
+    }
+
+    const iceId = `${user.uid}_${video.id}`;
+    const iceRef = doc(db, 'video_ices', iceId);
+    const videoRef = doc(db, 'videos', video.id);
+
+    try {
+      if (isIced) {
+        await deleteDoc(iceRef);
+        await updateDoc(videoRef, { ices: Math.max(0, (video.ices || 0) - 1) });
+        setVideo({ ...video, ices: Math.max(0, (video.ices || 0) - 1) });
+        setIsIced(false);
+      } else {
+        await setDoc(iceRef, { id: iceId, userId: user.uid, videoId: video.id, createdAt: serverTimestamp() });
+        await updateDoc(videoRef, { ices: (video.ices || 0) + 1 });
+        setVideo({ ...video, ices: (video.ices || 0) + 1 });
+        setIsIced(true);
+      }
+    } catch (error) {
+      console.error("Error toggling ice:", error);
+      toast.error('Не удалось обновить льдышку');
     }
   };
 
@@ -728,8 +762,12 @@ export default function VideoPlayer() {
                 <span className="font-medium text-sm md:text-base">{video.likes}</span>
               </button>
               <div className="w-px h-5 md:h-6 bg-gray-200"></div>
-              <button className="px-3 py-1.5 md:px-4 md:py-2 hover:bg-gray-200 rounded-r-full transition-colors">
-                <ThumbsDown className="w-4 h-4 md:w-5 md:h-5" />
+              <button 
+                onClick={handleIce}
+                className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-gray-200 rounded-r-full transition-colors ${isIced ? 'text-blue-400' : ''}`}
+              >
+                <Snowflake className={`w-4 h-4 md:w-5 md:h-5 ${isIced ? 'fill-current' : ''}`} />
+                <span className="font-medium text-sm md:text-base">{video.ices || 0}</span>
               </button>
             </div>
             

@@ -1,10 +1,311 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
-import { collection, getDocs, query, where, orderBy, setDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { VideoType } from '../types';
-import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, User } from 'lucide-react';
+import { collection, getDocs, query, where, orderBy, setDoc, doc, serverTimestamp, getDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
+import { VideoType, Comment } from '../types';
+import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, X, Send, Snowflake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
+import { ru } from 'date-fns/locale';
+
+const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> = ({ short, isActive, user }) => {
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(short.likes || 0);
+  const [isIced, setIsIced] = useState(false);
+  const [icesCount, setIcesCount] = useState(short.ices || 0);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (isActive) {
+      videoRef.current?.play().catch(e => console.log("Auto-play prevented:", e));
+    } else {
+      videoRef.current?.pause();
+      if (videoRef.current) videoRef.current.currentTime = 0;
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchInteractions = async () => {
+      try {
+        const likeId = `${user.uid}_${short.id}`;
+        const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
+        setIsLiked(likeSnap.exists() && likeSnap.data().type === 'like');
+
+        const iceId = `${user.uid}_${short.id}`;
+        const iceSnap = await getDoc(doc(db, 'video_ices', iceId));
+        setIsIced(iceSnap.exists());
+
+        const subId = `${user.uid}_${short.authorId}`;
+        const subSnap = await getDoc(doc(db, 'subscriptions', subId));
+        setIsSubscribed(subSnap.exists());
+      } catch (err) {
+        console.error("Error fetching interactions:", err);
+      }
+    };
+    fetchInteractions();
+  }, [user, short.id, short.authorId]);
+
+  const fetchComments = async () => {
+    try {
+      const q = query(collection(db, 'comments'), where('videoId', '==', short.id), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      setComments(snap.docs.map(d => ({ ...d.data(), createdAt: d.data().createdAt?.toDate?.()?.toISOString() || d.data().createdAt })) as Comment[]);
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (showComments) {
+      fetchComments();
+    }
+  }, [showComments]);
+
+  const handleLike = async () => {
+    if (!user) return toast.error('Войдите, чтобы ставить лайки');
+    const likeId = `${user.uid}_${short.id}`;
+    const likeRef = doc(db, 'video_likes', likeId);
+    const videoRef = doc(db, 'videos', short.id);
+
+    try {
+      if (isLiked) {
+        await deleteDoc(likeRef);
+        await updateDoc(videoRef, { likes: Math.max(0, likesCount - 1) });
+        setLikesCount(Math.max(0, likesCount - 1));
+        setIsLiked(false);
+      } else {
+        await setDoc(likeRef, { id: likeId, userId: user.uid, videoId: short.id, type: 'like' });
+        await updateDoc(videoRef, { likes: likesCount + 1 });
+        setLikesCount(likesCount + 1);
+        setIsLiked(true);
+      }
+    } catch (err) {
+      toast.error('Не удалось обновить лайк');
+    }
+  };
+
+  const handleIce = async () => {
+    if (!user) return toast.error('Войдите, чтобы ставить льдышки');
+    const iceId = `${user.uid}_${short.id}`;
+    const iceRef = doc(db, 'video_ices', iceId);
+    const videoRef = doc(db, 'videos', short.id);
+
+    try {
+      if (isIced) {
+        await deleteDoc(iceRef);
+        await updateDoc(videoRef, { ices: Math.max(0, icesCount - 1) });
+        setIcesCount(Math.max(0, icesCount - 1));
+        setIsIced(false);
+      } else {
+        await setDoc(iceRef, { id: iceId, userId: user.uid, videoId: short.id, createdAt: serverTimestamp() });
+        await updateDoc(videoRef, { ices: icesCount + 1 });
+        setIcesCount(icesCount + 1);
+        setIsIced(true);
+      }
+    } catch (err) {
+      toast.error('Не удалось обновить льдышку');
+    }
+  };
+
+  const handleSubscribe = async () => {
+
+    if (!user) return toast.error('Войдите, чтобы подписаться');
+    if (user.uid === short.authorId) return toast.error('Нельзя подписаться на себя');
+
+    const subId = `${user.uid}_${short.authorId}`;
+    const subRef = doc(db, 'subscriptions', subId);
+    const channelRef = doc(db, 'users', short.authorId);
+
+    try {
+      if (isSubscribed) {
+        await deleteDoc(subRef);
+        await updateDoc(channelRef, { subscribers: increment(-1) }).catch(() => {});
+        setIsSubscribed(false);
+        toast.success('Вы отписались');
+      } else {
+        await setDoc(subRef, { id: subId, subscriberId: user.uid, channelId: short.authorId, createdAt: serverTimestamp() });
+        await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
+        setIsSubscribed(true);
+        toast.success('Вы подписались!');
+      }
+    } catch (err) {
+      toast.error('Не удалось обновить подписку');
+    }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/video/${short.id}`);
+    toast.success('Ссылка скопирована');
+  };
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return toast.error('Войдите, чтобы оставить комментарий');
+    if (!newComment.trim()) return;
+    
+    setSubmittingComment(true);
+    try {
+      const commentId = crypto.randomUUID();
+      const commentData = {
+        id: commentId,
+        videoId: short.id,
+        authorId: user.uid,
+        authorName: user.displayName || 'User',
+        authorPhotoUrl: user.photoURL || '',
+        text: newComment.trim(),
+        createdAt: new Date(),
+        likes: 0,
+        dislikes: 0
+      };
+      await setDoc(doc(db, 'comments', commentId), commentData);
+      setComments([{ ...commentData, createdAt: commentData.createdAt.toISOString() } as any, ...comments]);
+      setNewComment('');
+      toast.success('Комментарий добавлен');
+    } catch (err) {
+      toast.error('Не удалось добавить комментарий');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  return (
+    <div className="h-full w-full snap-start relative flex items-center justify-center bg-black">
+      <video
+        ref={videoRef}
+        src={short.videoUrl}
+        className="h-full w-full object-contain"
+        loop
+        playsInline
+        muted={!isActive}
+        onClick={() => {
+          if (videoRef.current) {
+            if (videoRef.current.paused) videoRef.current.play();
+            else videoRef.current.pause();
+          }
+        }}
+      />
+      
+      {/* Overlay Info */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white z-10 pointer-events-none">
+        <div className="flex items-center gap-3 mb-4 pointer-events-auto">
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20">
+            <img src={short.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${short.authorId}`} alt={short.authorName} />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm">@{short.authorName}</h3>
+            <button 
+              onClick={handleSubscribe}
+              className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mt-1 transition-colors ${isSubscribed ? 'bg-white/20 text-white' : 'bg-white text-black'}`}
+            >
+              {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
+            </button>
+          </div>
+        </div>
+        <p className="text-sm font-medium line-clamp-2 mb-4">{short.title}</p>
+        <div className="flex items-center gap-2 text-xs opacity-80">
+          <MusicIcon className="w-3 h-3" />
+          <span>Оригинальный звук - {short.authorName}</span>
+        </div>
+      </div>
+
+      {/* Side Actions */}
+      <div className="absolute right-4 bottom-24 flex flex-col gap-6 items-center text-white z-10">
+        <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
+          <div className={`w-12 h-12 backdrop-blur-md rounded-full flex items-center justify-center transition-all ${isLiked ? 'bg-blue-600' : 'bg-white/10 group-hover:bg-white/20'}`}>
+            <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
+          </div>
+          <span className="text-xs font-bold shadow-black drop-shadow-md">{likesCount}</span>
+        </button>
+        <button onClick={handleIce} className="flex flex-col items-center gap-1 group">
+          <div className={`w-12 h-12 backdrop-blur-md rounded-full flex items-center justify-center transition-all ${isIced ? 'bg-blue-400' : 'bg-white/10 group-hover:bg-white/20'}`}>
+            <Snowflake className={`w-6 h-6 ${isIced ? 'fill-current' : ''}`} />
+          </div>
+          <span className="text-xs font-bold shadow-black drop-shadow-md">{icesCount}</span>
+        </button>
+        <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-1 group">
+          <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white/20 transition-all">
+            <MessageSquare className="w-6 h-6" />
+          </div>
+          <span className="text-xs font-bold shadow-black drop-shadow-md">Комментарии</span>
+        </button>
+        <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
+          <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white/20 transition-all">
+            <Share2 className="w-6 h-6" />
+          </div>
+          <span className="text-xs font-bold shadow-black drop-shadow-md">Поделиться</span>
+        </button>
+      </div>
+
+      {/* Comments Modal */}
+      <AnimatePresence>
+        {showComments && (
+          <motion.div 
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="absolute bottom-0 left-0 right-0 h-[60%] bg-[var(--surface)] rounded-t-3xl z-50 flex flex-col shadow-2xl border-t border-[var(--border)]"
+          >
+            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+              <h3 className="font-bold text-[var(--text-primary)]">Комментарии</h3>
+              <button onClick={() => setShowComments(false)} className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {comments.length === 0 ? (
+                <p className="text-center text-[var(--text-secondary)] py-8">Пока нет комментариев. Будьте первым!</p>
+              ) : (
+                comments.map(comment => (
+                  <div key={comment.id} className="flex gap-3">
+                    <img src={comment.authorPhotoUrl} alt="" className="w-8 h-8 rounded-full" />
+                    <div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-bold text-sm text-[var(--text-primary)]">{comment.authorName}</span>
+                        <span className="text-xs text-[var(--text-secondary)]">
+                          {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: ru }) : ''}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[var(--text-primary)] mt-1">{comment.text}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-4 border-t border-[var(--border)] bg-[var(--surface)]">
+              <form onSubmit={handlePostComment} className="flex items-center gap-2">
+                <img src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=guest`} alt="" className="w-8 h-8 rounded-full" />
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Добавьте комментарий..."
+                  className="flex-1 bg-[var(--hover)] border-none rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-[var(--text-primary)]"
+                />
+                <button 
+                  type="submit" 
+                  disabled={!newComment.trim() || submittingComment}
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-full disabled:opacity-50 transition-opacity"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 export default function Shorts() {
   const { user } = useAuth();
@@ -90,62 +391,17 @@ export default function Shorts() {
     <div 
       ref={containerRef}
       onScroll={handleScroll}
-      className="h-[calc(100vh-64px)] overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black"
+      className="h-[calc(100vh-64px)] overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black relative"
     >
       {shorts.map((short, index) => (
-        <div 
+        <ShortPlayer 
           key={short.id} 
-          className="h-full w-full snap-start relative flex items-center justify-center"
-        >
-          <video
-            src={short.videoUrl}
-            className="h-full w-full object-contain"
-            loop
-            autoPlay={index === currentIndex}
-            muted={index !== currentIndex}
-          />
-          
-          {/* Overlay Info */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20">
-                <img src={short.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${short.authorId}`} alt={short.authorName} />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm">@{short.authorName}</h3>
-                <button className="text-[10px] font-bold uppercase tracking-wider bg-white text-black px-3 py-1 rounded-full mt-1">Подписаться</button>
-              </div>
-            </div>
-            <p className="text-sm font-medium line-clamp-2 mb-4">{short.title}</p>
-            <div className="flex items-center gap-2 text-xs opacity-80">
-              <MusicIcon className="w-3 h-3" />
-              <span>Оригинальный звук - {short.authorName}</span>
-            </div>
-          </div>
-
-          {/* Side Actions */}
-          <div className="absolute right-4 bottom-24 flex flex-col gap-6 items-center text-white">
-            <button className="flex flex-col items-center gap-1 group">
-              <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white/20 transition-all">
-                <Heart className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold">{short.likes || 0}</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 group">
-              <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white/20 transition-all">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold">0</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 group">
-              <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white/20 transition-all">
-                <Share2 className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold">Поделиться</span>
-            </button>
-          </div>
-        </div>
+          short={short} 
+          isActive={index === currentIndex} 
+          user={user} 
+        />
       ))}
     </div>
   );
 }
+

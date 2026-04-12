@@ -11,6 +11,7 @@ export default function StudioProfile() {
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [pseudonym, setPseudonym] = useState('');
+  const [searchAliases, setSearchAliases] = useState('');
   const [photoURL, setPhotoURL] = useState('');
   const [bio, setBio] = useState('');
   const [socialLinks, setSocialLinks] = useState({
@@ -34,6 +35,7 @@ export default function StudioProfile() {
           const data = snap.data();
           setDisplayName(data.displayName || '');
           setPseudonym(data.pseudonym || '');
+          setSearchAliases(data.searchAliases?.join(', ') || '');
           setPhotoURL(data.photoURL || '');
           setBio(data.bio || '');
           if (data.socialLinks) {
@@ -61,9 +63,11 @@ export default function StudioProfile() {
     setSaving(true);
     try {
       // Update user profile
+      const aliasesArray = searchAliases.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
       await updateDoc(doc(db, 'users', user.uid), {
         displayName,
         pseudonym,
+        searchAliases: aliasesArray,
         photoURL,
         bio,
         socialLinks
@@ -165,6 +169,19 @@ export default function StudioProfile() {
                 value={pseudonym}
                 onChange={(e) => setPseudonym(e.target.value)}
                 placeholder="@mychannel"
+                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-blue-600 transition-all text-[var(--studio-text)] font-medium"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest flex items-center gap-2">
+                <Globe className="w-3.5 h-3.5" /> Альтернативные имена для поиска (через запятую)
+              </label>
+              <input 
+                type="text" 
+                value={searchAliases}
+                onChange={(e) => setSearchAliases(e.target.value)}
+                placeholder="напр. my channel, мой канал, май ченел"
                 className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-blue-600 transition-all text-[var(--studio-text)] font-medium"
               />
             </div>

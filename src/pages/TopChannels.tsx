@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
-import { Loader2, Trophy, Users, Music, Play, TrendingUp, Camera, Heart } from 'lucide-react';
+import { Loader2, Trophy, Users, Music, Play, TrendingUp, Camera, Heart, Snowflake } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { VideoType } from '../types';
 
@@ -16,6 +16,7 @@ interface TopChannel {
   totalViews: number;
   totalPhotoLikes: number;
   photoCount: number;
+  totalIces: number;
 }
 
 export default function TopChannels() {
@@ -24,7 +25,7 @@ export default function TopChannels() {
   const [topPhotos, setTopPhotos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [topType, setTopType] = useState<'authors' | 'tracks' | 'photos'>('authors');
-  const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views' | 'photos'>('subscribers');
+  const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views' | 'photos' | 'ices'>('subscribers');
 
   useEffect(() => {
     // Listen to users for real-time subscriber updates
@@ -50,15 +51,17 @@ export default function TopChannels() {
         })) as VideoType[];
 
         // Aggregate stats per user
-        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number, photoLikes: number, photoCount: number }> = {};
+        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number, photoLikes: number, photoCount: number, totalIces: number }> = {};
         allVideos.forEach(video => {
           const authorId = video.authorId;
           if (!stats[authorId]) {
-            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0, photoLikes: 0, photoCount: 0 };
+            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0, photoLikes: 0, photoCount: 0, totalIces: 0 };
           }
           const v = Number(video.views) || 0;
           const l = Number(video.likes) || 0;
+          const i = Number(video.ices) || 0;
           stats[authorId].totalViews += v;
+          stats[authorId].totalIces += i;
           if (video.isMusic) {
             stats[authorId].musicViews += v;
             stats[authorId].musicCount += 1;
@@ -79,7 +82,8 @@ export default function TopChannels() {
           musicCount: stats[user.uid]?.musicCount || 0,
           totalViews: stats[user.uid]?.totalViews || 0,
           totalPhotoLikes: stats[user.uid]?.photoLikes || 0,
-          photoCount: stats[user.uid]?.photoCount || 0
+          photoCount: stats[user.uid]?.photoCount || 0,
+          totalIces: stats[user.uid]?.totalIces || 0
         }));
 
         setChannels(combinedData);
@@ -113,6 +117,7 @@ export default function TopChannels() {
       if (sortBy === 'subscribers') return (b.subscribers || 0) - (a.subscribers || 0);
       if (sortBy === 'music') return (b.totalMusicViews || 0) - (a.totalMusicViews || 0);
       if (sortBy === 'photos') return (b.totalPhotoLikes || 0) - (a.totalPhotoLikes || 0);
+      if (sortBy === 'ices') return (b.totalIces || 0) - (a.totalIces || 0);
       return (b.totalViews || 0) - (a.totalViews || 0);
     });
   }, [channels, sortBy]);
@@ -176,6 +181,13 @@ export default function TopChannels() {
             >
               <Play className="w-3.5 h-3.5" />
               По всем просмотрам
+            </button>
+            <button 
+              onClick={() => setSortBy('ices')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border ${sortBy === 'ices' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'}`}
+            >
+              <Snowflake className="w-3.5 h-3.5" />
+              По льдышкам
             </button>
             <button 
               onClick={() => setSortBy('music')}
@@ -243,6 +255,12 @@ export default function TopChannels() {
                         <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'photos' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
                           <Camera className="w-3.5 h-3.5" />
                           <span>{channel.totalPhotoLikes.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {channel.totalIces > 0 && (
+                        <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'ices' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
+                          <Snowflake className="w-3.5 h-3.5" />
+                          <span>{channel.totalIces.toLocaleString()}</span>
                         </div>
                       )}
                     </div>

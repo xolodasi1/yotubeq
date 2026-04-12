@@ -78,6 +78,10 @@
           "type": "number",
           "description": "Number of likes"
         },
+        "ices": {
+          "type": "number",
+          "description": "Number of ices"
+        },
         "createdAt": {
           "type": "timestamp",
           "description": "When the video was uploaded"

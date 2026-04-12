@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Video } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Eye, ThumbsUp } from 'lucide-react';
+import { Eye, ThumbsUp, Snowflake } from 'lucide-react';
 
 export default function VideoCard({ video }: { video: Video; key?: string }) {
   const navigate = useNavigate();
@@ -51,6 +51,12 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
                 <ThumbsUp className="w-3 h-3" />
                 {video.likes?.toLocaleString() || 0}
               </span>
+              {video.ices ? (
+                <span className="flex items-center gap-1 text-blue-400">
+                  <Snowflake className="w-3 h-3" />
+                  {video.ices?.toLocaleString() || 0}
+                </span>
+              ) : null}
             </div>
             <span>{formattedDate}</span>
           </div>

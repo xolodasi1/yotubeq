@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -16,6 +16,7 @@ export default function StudioDashboard() {
   const [stats, setStats] = useState({
     totalViews: 0,
     totalLikes: 0,
+    totalIces: 0,
     subscribers: 0
   });
 
@@ -45,15 +46,18 @@ export default function StudioDashboard() {
         const allVSnapshot = await getDocs(allVq);
         let views = 0;
         let likes = 0;
+        let ices = 0;
         allVSnapshot.docs.forEach(doc => {
           const d = doc.data();
           views += d.views || 0;
           likes += d.likes || 0;
+          ices += d.ices || 0;
         });
 
         setStats({
           totalViews: views,
           totalLikes: likes,
+          totalIces: ices,
           subscribers: user.subscribers || 0
         });
       } catch (error) {
@@ -118,6 +122,13 @@ export default function StudioDashboard() {
                   </div>
                   <span className="font-bold text-[var(--text-primary)]">{videos[0].likes?.toLocaleString()}</span>
                 </div>
+                <div className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                    <Snowflake className="w-4 h-4 text-blue-400" />
+                    <span>Льдышки</span>
+                  </div>
+                  <span className="font-bold text-[var(--text-primary)]">{videos[0].ices?.toLocaleString() || 0}</span>
+                </div>
               </div>
               <div className="mt-auto pt-6">
                 <Link to="/studio/content" className="flex items-center justify-center gap-2 w-full text-blue-600 text-xs font-bold hover:bg-blue-50 dark:hover:bg-blue-900/10 py-3 rounded-xl transition-colors uppercase tracking-wider">
@@ -151,7 +162,7 @@ export default function StudioDashboard() {
             
             <div className="pt-6 border-t border-[var(--border)] space-y-4">
               <h3 className="font-bold text-sm text-[var(--text-primary)]">Сводка (все время)</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="bg-[var(--hover)] p-3 rounded-xl border border-[var(--border)]">
                   <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Просмотры</p>
                   <p className="text-lg font-bold text-[var(--text-primary)]">{stats.totalViews.toLocaleString()}</p>
@@ -159,6 +170,10 @@ export default function StudioDashboard() {
                 <div className="bg-[var(--hover)] p-3 rounded-xl border border-[var(--border)]">
                   <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Лайки</p>
                   <p className="text-lg font-bold text-[var(--text-primary)]">{stats.totalLikes.toLocaleString()}</p>
+                </div>
+                <div className="bg-[var(--hover)] p-3 rounded-xl border border-[var(--border)]">
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Льдышки</p>
+                  <p className="text-lg font-bold text-[var(--text-primary)]">{stats.totalIces.toLocaleString()}</p>
                 </div>
               </div>
             </div>

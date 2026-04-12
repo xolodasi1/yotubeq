@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Trash2, Edit, ExternalLink, Search, Filter, MoreVertical, BarChart2, X, Save } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Trash2, Edit, ExternalLink, Search, Filter, MoreVertical, BarChart2, X, Save, Snowflake } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -217,6 +217,7 @@ export default function StudioContent() {
                     <th className="px-6 py-4 font-bold">Дата</th>
                     <th className="px-6 py-4 font-bold">Просмотры</th>
                     <th className="px-6 py-4 font-bold">Лайки</th>
+                    <th className="px-6 py-4 font-bold">Льдышки</th>
                     <th className="px-6 py-4 font-bold text-right">Действия</th>
                   </tr>
                 </thead>
@@ -249,6 +250,9 @@ export default function StudioContent() {
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
                         {video.likes?.toLocaleString() || 0}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
+                        {video.ices?.toLocaleString() || 0}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -313,6 +317,9 @@ export default function StudioContent() {
                           </div>
                           <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-secondary)]">
                             <ThumbsUp className="w-3 h-3" /> {video.likes?.toLocaleString() || 0}
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-secondary)]">
+                            <Snowflake className="w-3 h-3 text-blue-400" /> {video.ices?.toLocaleString() || 0}
                           </div>
                         </div>
                       </div>
@@ -441,7 +448,7 @@ export default function StudioContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="p-6 bg-[var(--studio-hover)] rounded-lg border border-[var(--studio-border)] flex flex-col items-center justify-center">
                 <p className="text-sm text-[var(--text-secondary)] mb-2 font-bold uppercase tracking-wider">Просмотры</p>
                 <p className="text-4xl font-black text-[var(--text-primary)]">{analyticsVideo.views?.toLocaleString() || 0}</p>
@@ -449,6 +456,10 @@ export default function StudioContent() {
               <div className="p-6 bg-[var(--studio-hover)] rounded-lg border border-[var(--studio-border)] flex flex-col items-center justify-center">
                 <p className="text-sm text-[var(--text-secondary)] mb-2 font-bold uppercase tracking-wider">Лайки</p>
                 <p className="text-4xl font-black text-[var(--text-primary)]">{analyticsVideo.likes?.toLocaleString() || 0}</p>
+              </div>
+              <div className="p-6 bg-[var(--studio-hover)] rounded-lg border border-[var(--studio-border)] flex flex-col items-center justify-center">
+                <p className="text-sm text-[var(--text-secondary)] mb-2 font-bold uppercase tracking-wider">Льдышки</p>
+                <p className="text-4xl font-black text-[var(--text-primary)]">{analyticsVideo.ices?.toLocaleString() || 0}</p>
               </div>
             </div>
           </div>
