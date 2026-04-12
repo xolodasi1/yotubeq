@@ -126,7 +126,7 @@ export default function Navbar() {
             <img 
               src={APP_LOGO_URL} 
               alt="IceTube Logo" 
-              className="w-10 h-10 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] object-contain"
+              className="w-10 h-10 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] object-scale-down p-1"
               crossOrigin="anonymous"
             />
             <span className="text-xl font-bold tracking-tight hidden xs:block text-[var(--text-primary)]">

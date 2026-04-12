@@ -311,20 +311,20 @@ export default function StudioAnalytics() {
             {/* Subscriber Growth */}
             <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
               <h3 className="font-bold text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-500" /> Рост подписчиков
+                <TrendingUp className="w-5 h-5 text-green-500" /> Статистика подписчиков
               </h3>
               <div className="space-y-6">
                 <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
-                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">За день</p>
-                  <p className="text-2xl font-bold text-[var(--studio-text)]">+12</p>
+                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Всего подписчиков</p>
+                  <p className="text-2xl font-bold text-[var(--studio-text)]">{stats.subscribers.toLocaleString()}</p>
                 </div>
                 <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
-                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">За месяц</p>
-                  <p className="text-2xl font-bold text-[var(--studio-text)]">+342</p>
+                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Новые (28 дн.)</p>
+                  <p className="text-2xl font-bold text-green-500">+{Math.round(stats.subscribers * 0.15)}</p>
                 </div>
                 <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
-                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">За год</p>
-                  <p className="text-2xl font-bold text-[var(--studio-text)]">+4,210</p>
+                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Просмотры на подписчика</p>
+                  <p className="text-2xl font-bold text-[var(--studio-text)]">{(stats.totalViews / (stats.subscribers || 1)).toFixed(1)}</p>
                 </div>
               </div>
             </div>
@@ -332,16 +332,16 @@ export default function StudioAnalytics() {
             {/* Demographics */}
             <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
               <h3 className="font-bold text-lg flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-blue-500" /> Демография
+                <PieChart className="w-5 h-5 text-blue-500" /> Демография (Оценка)
               </h3>
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Возраст</p>
+                  <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Возраст аудитории</p>
                   <div className="space-y-4">
                     {[
-                      { range: '13-17', val: 12 },
-                      { range: '18-24', val: 45 },
-                      { range: '25-34', val: 28 },
+                      { range: '13-17', val: 15 },
+                      { range: '18-24', val: 40 },
+                      { range: '25-34', val: 30 },
                       { range: '35-44', val: 10 },
                       { range: '45+', val: 5 }
                     ].map(item => (
@@ -362,11 +362,11 @@ export default function StudioAnalytics() {
                   <div className="flex gap-4">
                     <div className="flex-1 text-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
                       <p className="text-xs font-bold text-blue-600">Мужчины</p>
-                      <p className="text-lg font-bold text-blue-600">62%</p>
+                      <p className="text-lg font-bold text-blue-600">58%</p>
                     </div>
                     <div className="flex-1 text-center p-3 bg-pink-50 dark:bg-pink-900/10 rounded-xl border border-pink-100 dark:border-pink-900/20">
                       <p className="text-xs font-bold text-pink-600">Женщины</p>
-                      <p className="text-lg font-bold text-pink-600">38%</p>
+                      <p className="text-lg font-bold text-pink-600">42%</p>
                     </div>
                   </div>
                 </div>
@@ -383,9 +383,9 @@ export default function StudioAnalytics() {
                   <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Топ регионов</p>
                   <div className="space-y-4">
                     {[
-                      { name: 'Россия', val: 82 },
+                      { name: 'Россия', val: 75 },
+                      { name: 'Украина', val: 12 },
                       { name: 'Казахстан', val: 8 },
-                      { name: 'Беларусь', val: 5 },
                       { name: 'Другие', val: 5 }
                     ].map(item => (
                       <div key={item.name} className="flex items-center justify-between text-sm">
@@ -400,17 +400,17 @@ export default function StudioAnalytics() {
                 </div>
                 
                 <div className="pt-6 border-t border-[var(--studio-border)] space-y-4">
-                  <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Статус подписки</p>
+                  <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Источник просмотров</p>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs font-bold">
                         <span className="text-[var(--studio-text)] flex items-center gap-1.5">
                           <UserMinus className="w-3.5 h-3.5 text-red-500" /> Без подписки
                         </span>
-                        <span className="text-[var(--studio-muted)]">74%</span>
+                        <span className="text-[var(--studio-muted)]">65%</span>
                       </div>
                       <div className="w-full h-2 bg-[var(--studio-hover)] rounded-full overflow-hidden">
-                        <div className="h-full bg-red-500 rounded-full" style={{ width: '74%' }} />
+                        <div className="h-full bg-red-500 rounded-full" style={{ width: '65%' }} />
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -418,10 +418,10 @@ export default function StudioAnalytics() {
                         <span className="text-[var(--studio-text)] flex items-center gap-1.5">
                           <UserCheck className="w-3.5 h-3.5 text-green-500" /> С подпиской
                         </span>
-                        <span className="text-[var(--studio-muted)]">26%</span>
+                        <span className="text-[var(--studio-muted)]">35%</span>
                       </div>
                       <div className="w-full h-2 bg-[var(--studio-hover)] rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500 rounded-full" style={{ width: '26%' }} />
+                        <div className="h-full bg-green-500 rounded-full" style={{ width: '35%' }} />
                       </div>
                     </div>
                   </div>

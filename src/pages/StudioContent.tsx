@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { VideoType } from '../types';
 import { Eye, ThumbsUp, MessageSquare, Trash2, Edit, ExternalLink, Search, Filter, MoreVertical, BarChart2, X, Save, Snowflake } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -20,6 +20,11 @@ export default function StudioContent() {
   const [editingVideo, setEditingVideo] = useState<VideoType | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editThumbnail, setEditThumbnail] = useState('');
+  const [editHashtags, setEditHashtags] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editPlaylistId, setEditPlaylistId] = useState('');
+  const [playlists, setPlaylists] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [analyticsVideo, setAnalyticsVideo] = useState<VideoType | null>(null);
 
@@ -65,10 +70,33 @@ export default function StudioContent() {
     }
   };
 
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchPlaylists = async () => {
+      try {
+        const q = query(collection(db, 'playlists'), where('authorId', '==', user.uid));
+        const snap = await getDocs(q);
+        setPlaylists(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (error) {
+        console.error("Error fetching playlists:", error);
+      }
+    };
+
+    fetchPlaylists();
+  }, [user]);
+
   const handleEditClick = (video: VideoType) => {
     setEditingVideo(video);
     setEditTitle(video.title);
     setEditDescription(video.description || '');
+    setEditThumbnail(video.thumbnailUrl || '');
+    setEditHashtags(video.hashtags?.join(', ') || '');
+    setEditCategory(video.category || '');
+    
+    // Find if video is in any playlist
+    const currentPlaylist = playlists.find(p => p.videoIds?.includes(video.id));
+    setEditPlaylistId(currentPlaylist?.id || '');
   };
 
   const handleSaveEdit = async () => {
@@ -76,11 +104,37 @@ export default function StudioContent() {
     setIsSaving(true);
     try {
       const videoRef = doc(db, 'videos', editingVideo.id);
-      await updateDoc(videoRef, {
+      const hashtagsArray = editHashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
+      
+      const updateData: any = {
         title: editTitle,
-        description: editDescription
-      });
-      setVideos(videos.map(v => v.id === editingVideo.id ? { ...v, title: editTitle, description: editDescription } : v));
+        description: editDescription,
+        thumbnailUrl: editThumbnail,
+        category: editCategory,
+        hashtags: hashtagsArray
+      };
+
+      await updateDoc(videoRef, updateData);
+
+      // Handle Playlist update
+      if (editPlaylistId) {
+        const playlistRef = doc(db, 'playlists', editPlaylistId);
+        const playlistSnap = await getDoc(playlistRef);
+        if (playlistSnap.exists()) {
+          const pData = playlistSnap.data();
+          const videoIds = pData.videoIds || [];
+          if (!videoIds.includes(editingVideo.id)) {
+            await updateDoc(playlistRef, {
+              videoIds: [...videoIds, editingVideo.id]
+            });
+          }
+        }
+      }
+
+      setVideos(videos.map(v => v.id === editingVideo.id ? { 
+        ...v, 
+        ...updateData
+      } : v));
       toast.success('Видео успешно обновлено');
       setEditingVideo(null);
     } catch (error) {
@@ -381,24 +435,76 @@ export default function StudioContent() {
             </button>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">Редактировать видео</h2>
             
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
               <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Название</label>
+                <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Название</label>
                 <input
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-md focus:outline-none focus:border-blue-500 text-[var(--text-primary)]"
+                  className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] font-medium"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Описание</label>
+                <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Описание</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  rows={5}
-                  className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-md focus:outline-none focus:border-blue-500 text-[var(--text-primary)] resize-none"
+                  rows={4}
+                  className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] resize-none font-medium"
                 />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Ссылка на превью</label>
+                  <input
+                    type="text"
+                    value={editThumbnail}
+                    onChange={(e) => setEditThumbnail(e.target.value)}
+                    className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Категория</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm font-medium"
+                  >
+                    <option value="">Выберите категорию</option>
+                    <option value="Игры">Игры</option>
+                    <option value="Музыка">Музыка</option>
+                    <option value="Образование">Образование</option>
+                    <option value="Развлечения">Развлечения</option>
+                    <option value="Технологии">Технологии</option>
+                    <option value="Спорт">Спорт</option>
+                    <option value="Влоги">Влоги</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Хештеги (через запятую)</label>
+                <input
+                  type="text"
+                  value={editHashtags}
+                  onChange={(e) => setEditHashtags(e.target.value)}
+                  className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm"
+                  placeholder="ice, tube, video"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Добавить в плейлист</label>
+                <select
+                  value={editPlaylistId}
+                  onChange={(e) => setEditPlaylistId(e.target.value)}
+                  className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm font-medium"
+                >
+                  <option value="">Без плейлиста</option>
+                  {playlists.map(p => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
