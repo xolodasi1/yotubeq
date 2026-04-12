@@ -41,6 +41,7 @@ export interface UserProfile {
   photosCount?: number;
   bio: string;
   joinedAt: any;
+  lastPostAt?: any;
   socialLinks?: {
     website?: string;
     telegram?: string;

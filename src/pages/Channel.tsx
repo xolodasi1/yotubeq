@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
+import { MeltingAvatar } from '../components/MeltingAvatar';
 import { VideoType, CommunityPost, Playlist } from '../types';
 import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff } from 'lucide-react';
 import { db } from '../lib/firebase';
@@ -51,7 +52,8 @@ export default function Channel() {
           bio: userData.bio || '',
           socialLinks: userData.socialLinks || {},
           subscribers: userData.subscribers || 0,
-          joinedAt: userData.createdAt?.toDate() || prev?.joinedAt || new Date()
+          joinedAt: userData.createdAt?.toDate() || prev?.joinedAt || new Date(),
+          lastPostAt: userData.lastPostAt
         }));
         setSubCount(userData.subscribers || 0);
       }
@@ -307,10 +309,11 @@ export default function Channel() {
       <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12">
         {/* Channel Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-10 -mt-12 md:-mt-20 mb-10 relative z-10">
-          <img
-            src={authorInfo?.photoUrl}
-            alt="Аватар канала"
-            className="w-28 h-28 md:w-44 md:h-44 rounded-full border-4 border-[var(--surface)] shadow-xl bg-[var(--surface)] object-cover"
+          <MeltingAvatar 
+            photoURL={authorInfo?.photoUrl}
+            lastPostAt={authorInfo?.lastPostAt}
+            size="xl"
+            className="border-4 border-[var(--surface)] shadow-xl bg-[var(--surface)]"
           />
           <div className="flex-1 space-y-3">
             <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight">{authorInfo?.name}</h1>

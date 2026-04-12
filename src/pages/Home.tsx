@@ -8,6 +8,8 @@ import { db } from '../lib/firebase';
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { useAuth } from '../App';
 
+import { APP_LOGO_URL } from '../constants';
+
 const CATEGORIES = ['Все', 'Игры', 'Музыка', 'Shorts', 'Фото', 'Образование', 'Развлечения', 'Технологии', 'Зимний спорт', 'Арктика', 'Релакс'];
 
 export default function Home() {
@@ -141,9 +143,24 @@ export default function Home() {
       )}
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center h-[60vh]">
-          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
-          <p className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">Загрузка контента...</p>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-6">
+          <div className="relative">
+            <img 
+              src={APP_LOGO_URL} 
+              alt="IceTube Logo" 
+              className="w-24 h-24 rounded-3xl shadow-[0_0_30px_rgba(37,99,235,0.4)] animate-pulse"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute -inset-4 border-4 border-blue-600/20 border-t-blue-600 rounded-[2.5rem] animate-spin"></div>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-2xl font-black tracking-tighter text-blue-600">IceTube</h2>
+            <div className="flex gap-1">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+            </div>
+          </div>
         </div>
       ) : filteredVideos.length === 0 && filteredUsers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">

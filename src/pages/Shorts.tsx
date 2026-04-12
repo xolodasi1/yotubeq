@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { MeltingAvatar } from '../components/MeltingAvatar';
 
 const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> = ({ short, isActive, user }) => {
   const navigate = useNavigate();
@@ -232,9 +233,14 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
         <div className="flex items-center gap-3 mb-4 pointer-events-auto">
           <div 
             onClick={() => navigate(`/channel/${short.authorId}`)}
-            className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 cursor-pointer hover:scale-105 transition-transform"
+            className="cursor-pointer hover:scale-105 transition-transform"
           >
-            <img src={authorData?.photoURL || short.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${short.authorId}`} alt={authorData?.displayName || short.authorName} />
+            <MeltingAvatar 
+              photoURL={authorData?.photoURL || short.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${short.authorId}`} 
+              lastPostAt={authorData?.lastPostAt}
+              size="md"
+              className="border-2 border-white/20"
+            />
           </div>
           <div>
             <h3 

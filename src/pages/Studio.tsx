@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic, Music as MusicIcon, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
-import { setDoc, doc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { setDoc, doc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { generateVideoTitle, generateVideoDescription, generateVideoTags } from '../services/geminiService';
 
@@ -224,6 +224,15 @@ export default function Studio() {
       };
 
       await setDoc(doc(db, 'videos', videoId), newVideoData);
+
+      // Update lastPostAt in user profile
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          lastPostAt: serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Error updating lastPostAt:", err);
+      }
 
       // Send notifications to subscribers who have notifications enabled
       try {

@@ -4,10 +4,13 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { auth, db } from '../lib/firebase';
+import { MeltingAvatar } from './MeltingAvatar';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+
+import { APP_LOGO_URL } from '../constants';
 
 export default function Navbar() {
   const { user } = useAuth();
@@ -15,6 +18,7 @@ export default function Navbar() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,6 +34,19 @@ export default function Navbar() {
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setUserProfile(null);
+      return;
+    }
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) {
+        setUserProfile(doc.data());
+      }
     });
     return () => unsubscribe();
   }, [user]);
@@ -105,10 +122,13 @@ export default function Navbar() {
           <button className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors lg:hidden">
             <Menu className="w-6 h-6 text-[var(--text-secondary)]" />
           </button>
-          <Link to="/" className="flex items-center gap-1">
-            <div className={`w-8 h-8 ${isStudio ? 'bg-blue-600' : 'bg-blue-600'} rounded flex items-center justify-center shadow-[0_0_10px_rgba(37,99,235,0.3)]`}>
-              <PlaySquare className="w-5 h-5 text-white" />
-            </div>
+          <Link to="/" className="flex items-center gap-2">
+            <img 
+              src={APP_LOGO_URL} 
+              alt="IceTube Logo" 
+              className="w-10 h-10 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] object-cover"
+              referrerPolicy="no-referrer"
+            />
             <span className="text-xl font-bold tracking-tight hidden xs:block text-[var(--text-primary)]">
               {isStudio ? 'IceStudio' : 'IceTube'}
             </span>
@@ -243,10 +263,11 @@ export default function Navbar() {
                 </div>
 
                 <Link to={`/channel/${user.uid}`}>
-                  <img
-                    src={user.photoURL || ''}
-                    alt="Profile"
-                    className="w-8 h-8 rounded-full border border-[var(--border)]"
+                  <MeltingAvatar
+                    photoURL={user.photoURL || ''}
+                    lastPostAt={userProfile?.lastPostAt}
+                    size="sm"
+                    className="border border-[var(--border)]"
                   />
                 </Link>
                 <button onClick={handleLogout} className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors hidden sm:block">

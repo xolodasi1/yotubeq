@@ -3,6 +3,7 @@ import { db } from '../lib/firebase';
 import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
 import { Loader2, Trophy, Users, Music, Play, TrendingUp, Camera, Heart, Snowflake } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { MeltingAvatar } from '../components/MeltingAvatar';
 import { VideoType } from '../types';
 
 interface TopChannel {
@@ -12,6 +13,7 @@ interface TopChannel {
   photoURL: string;
   bio?: string;
   subscribers: number;
+  lastPostAt?: any;
   totalMusicViews: number;
   musicCount: number;
   totalViews: number;
@@ -80,6 +82,7 @@ export default function TopChannels() {
           photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
           bio: user.bio || '',
           subscribers: Number(user.subscribers) || 0,
+          lastPostAt: user.lastPostAt,
           totalMusicViews: stats[user.uid]?.musicViews || 0,
           musicCount: stats[user.uid]?.musicCount || 0,
           totalViews: stats[user.uid]?.totalViews || 0,
@@ -225,10 +228,11 @@ export default function TopChannels() {
 
                 <div className="flex items-center gap-5 mb-4">
                   <div className="relative">
-                    <img 
-                      src={channel.photoURL} 
-                      alt={channel.displayName} 
-                      className="w-16 h-16 rounded-2xl border-2 border-white shadow-md group-hover:scale-105 transition-transform object-cover"
+                    <MeltingAvatar 
+                      photoURL={channel.photoURL} 
+                      lastPostAt={channel.lastPostAt}
+                      size="lg"
+                      className="rounded-2xl border-2 border-white shadow-md group-hover:scale-105 transition-transform"
                     />
                     {index < 3 && (
                       <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">

@@ -8,6 +8,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
+import { APP_LOGO_URL } from '../constants';
+
 export default function StudioDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -72,8 +74,20 @@ export default function StudioDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+        <div className="relative">
+          <img 
+            src={APP_LOGO_URL} 
+            alt="IceStudio Logo" 
+            className="w-20 h-20 rounded-2xl shadow-[0_0_20px_rgba(37,99,235,0.3)] animate-pulse"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute -inset-3 border-4 border-blue-600/20 border-t-blue-600 rounded-[1.75rem] animate-spin"></div>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <h2 className="text-xl font-black tracking-tighter text-blue-600">IceStudio</h2>
+          <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest">Загрузка данных...</p>
+        </div>
       </div>
     );
   }

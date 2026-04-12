@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare } from 'lucide-react';
+import { MeltingAvatar } from '../components/MeltingAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { auth, db } from '../lib/firebase';
@@ -76,6 +77,7 @@ export default function VideoPlayer() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [authorData, setAuthorData] = useState<any>(null);
   
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
@@ -111,6 +113,12 @@ export default function VideoPlayer() {
         } as VideoType;
         
         setVideo(data);
+
+        // Fetch author data
+        const authorSnap = await getDoc(doc(db, 'users', data.authorId));
+        if (authorSnap.exists()) {
+          setAuthorData(authorSnap.data());
+        }
 
         // Increment views
         try {
@@ -730,10 +738,11 @@ export default function VideoPlayer() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3 md:gap-4">
             <Link to={`/channel/${video.authorId}`} className="flex items-center gap-2 md:gap-3 group">
-              <img
-                src={video.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.authorId}`}
-                alt={video.authorName}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-blue-100 shadow-[0_0_10px_rgba(37,99,235,0.2)] group-hover:scale-105 transition-transform"
+              <MeltingAvatar 
+                photoURL={video.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.authorId}`}
+                lastPostAt={authorData?.lastPostAt}
+                size="lg"
+                className="border-2 border-blue-100 shadow-[0_0_10px_rgba(37,99,235,0.2)] group-hover:scale-105 transition-transform"
               />
               <div>
                 <h3 className="font-bold text-base md:text-lg group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{video.authorName}</h3>
