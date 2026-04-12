@@ -334,7 +334,7 @@ export default function Channel() {
             photoURL={authorInfo?.photoUrl}
             lastPostAt={authorInfo?.lastPostAt}
             size="xl"
-            className="border-4 border-[var(--surface)] shadow-xl bg-[var(--surface)]"
+            className="shadow-xl bg-[var(--surface)]"
           />
           <div className="flex-1 space-y-3">
             <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight">{authorInfo?.name}</h1>

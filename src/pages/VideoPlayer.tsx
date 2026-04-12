@@ -551,6 +551,7 @@ export default function VideoPlayer() {
       const commentData = {
         id: commentId,
         videoId: video.id,
+        videoAuthorId: video.authorId,
         authorId: authorId,
         authorName: authorName,
         authorPhotoUrl: authorPhotoUrl,
@@ -640,6 +641,7 @@ export default function VideoPlayer() {
       const commentData = {
         id: commentId,
         videoId: video.id,
+        videoAuthorId: video.authorId,
         authorId: authorId,
         authorName: authorName,
         authorPhotoUrl: authorPhotoUrl,

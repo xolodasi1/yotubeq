@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { Comment, VideoType } from '../types';
 import { MessageSquare, Trash2, Heart, Reply, ExternalLink, Search, MoreVertical } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 interface CommentWithVideo extends Comment {
   videoTitle?: string;
+  parentComment?: Comment;
 }
 
 export default function StudioComments() {
@@ -40,18 +41,39 @@ export default function StudioComments() {
 
         const cq = query(
           collection(db, 'comments'),
-          where('videoId', 'in', videoIds.slice(0, 10)),
+          where('videoId', 'in', videoIds.slice(0, 30)),
           orderBy('createdAt', 'desc'),
-          limit(50)
+          limit(100)
         );
         const cSnapshot = await getDocs(cq);
-        const cData = cSnapshot.docs.map(doc => {
-          const commentData = doc.data();
+        const rawComments = cSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Comment[];
+
+        // Fetch parent comments for replies
+        const parentIds = rawComments.filter(c => c.parentId).map(c => c.parentId!);
+        const parentCommentsMap: Record<string, Comment> = {};
+        
+        if (parentIds.length > 0) {
+          // Firestore 'in' query limit is 10, but we might have more. 
+          // For now let's just fetch the first 10 or do multiple batches if needed.
+          // Or just fetch them individually if it's easier for now.
+          const parentPromises = parentIds.map(pid => getDoc(doc(db, 'comments', pid)));
+          const parentSnaps = await Promise.all(parentPromises);
+          parentSnaps.forEach(snap => {
+            if (snap.exists()) {
+              parentCommentsMap[snap.id] = { id: snap.id, ...snap.data() } as Comment;
+            }
+          });
+        }
+
+        const cData = rawComments.map(commentData => {
           return {
-            id: doc.id,
             ...commentData,
             createdAt: commentData.createdAt?.toDate?.()?.toISOString() || commentData.createdAt,
-            videoTitle: videoTitlesMap[commentData.videoId]
+            videoTitle: videoTitlesMap[commentData.videoId],
+            parentComment: commentData.parentId ? parentCommentsMap[commentData.parentId] : undefined
           } as CommentWithVideo;
         });
 
@@ -150,7 +172,18 @@ export default function StudioComments() {
                     </button>
                   </div>
                 </div>
-                <div className="bg-[var(--hover)]/30 p-5 rounded-2xl border border-[var(--border)] group-hover:border-blue-500/20 transition-colors">
+                <div className="bg-[var(--hover)]/30 p-5 rounded-2xl border border-[var(--border)] group-hover:border-blue-500/20 transition-colors space-y-4">
+                  {comment.parentComment && (
+                    <div className="p-4 bg-[var(--surface)] rounded-xl border-l-4 border-blue-500 text-[11px] space-y-2 shadow-sm">
+                      <div className="flex items-center gap-2 font-black uppercase tracking-widest text-blue-600">
+                        <Reply className="w-3 h-3" />
+                        В ответ пользователю @{comment.parentComment.authorName.replace(/\s+/g, '').toLowerCase()}
+                      </div>
+                      <p className="text-[var(--text-secondary)] italic line-clamp-2 leading-relaxed">
+                        "{comment.parentComment.text}"
+                      </p>
+                    </div>
+                  )}
                   <p className="text-sm text-[var(--text-primary)] leading-relaxed font-medium">{comment.text}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-8 pt-2">

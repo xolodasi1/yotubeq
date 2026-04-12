@@ -262,7 +262,6 @@ export default function Navbar() {
                       photoURL={activeChannel?.photoURL || user.photoURL || ''}
                       lastPostAt={activeChannel?.lastPostAt}
                       size="sm"
-                      className="border border-[var(--border)]"
                     />
                   </button>
 
