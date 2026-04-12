@@ -5,11 +5,13 @@ import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
 import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { useAuth } from '../App';
 
 const CATEGORIES = ['Все', 'Игры', 'Музыка', 'Shorts', 'Фото', 'Образование', 'Развлечения', 'Технологии', 'Зимний спорт', 'Арктика', 'Релакс'];
 
 export default function Home() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
   const [activeCategory, setActiveCategory] = useState('Все');
@@ -20,9 +22,16 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        let hiddenChannelIds: string[] = [];
+        if (user) {
+          const hiddenQ = query(collection(db, 'hidden_channels'), where('userId', '==', user.uid));
+          const hiddenSnap = await getDocs(hiddenQ);
+          hiddenChannelIds = hiddenSnap.docs.map(doc => doc.data().channelId);
+        }
+
         const videosQuery = query(collection(db, 'videos'), orderBy('createdAt', 'desc'));
         const videosSnapshot = await getDocs(videosQuery);
-        const videosData = videosSnapshot.docs.map(doc => {
+        let videosData = videosSnapshot.docs.map(doc => {
           const videoData = doc.data();
           return {
             ...videoData,
@@ -30,14 +39,24 @@ export default function Home() {
             createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
           };
         }) as VideoType[];
+        
+        if (hiddenChannelIds.length > 0) {
+          videosData = videosData.filter(video => !hiddenChannelIds.includes(video.authorId));
+        }
+        
         setVideos(videosData);
 
         const usersQuery = query(collection(db, 'users'));
         const usersSnapshot = await getDocs(usersQuery);
-        const usersData = usersSnapshot.docs.map(doc => ({
+        let usersData = usersSnapshot.docs.map(doc => ({
           ...doc.data(),
           uid: doc.id
         }));
+        
+        if (hiddenChannelIds.length > 0) {
+          usersData = usersData.filter(u => !hiddenChannelIds.includes(u.uid));
+        }
+        
         setUsers(usersData);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -46,7 +65,7 @@ export default function Home() {
       }
     };
     fetchData();
-  }, []);
+  }, [user]);
 
   const filteredVideos = videos.filter(video => {
     const searchLower = searchQuery.toLowerCase();

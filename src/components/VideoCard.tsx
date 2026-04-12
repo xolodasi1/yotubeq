@@ -1,19 +1,47 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Video } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Eye, ThumbsUp, Snowflake } from 'lucide-react';
+import { Eye, ThumbsUp, Snowflake, Ban } from 'lucide-react';
+import { useAuth } from '../App';
+import { db } from '../lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 export default function VideoCard({ video }: { video: Video; key?: string }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isHiding, setIsHiding] = useState(false);
+
   const formattedDate = video.createdAt 
     ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru }) 
     : 'недавно';
 
+  const handleHideChannel = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return toast.error('Войдите, чтобы скрыть канал');
+    
+    setIsHiding(true);
+    try {
+      const hiddenId = `${user.uid}_${video.authorId}`;
+      await setDoc(doc(db, 'hidden_channels', hiddenId), {
+        id: hiddenId,
+        userId: user.uid,
+        channelId: video.authorId,
+        addedAt: serverTimestamp()
+      });
+      toast.success('Канал больше не будет рекомендоваться');
+      window.location.reload();
+    } catch (err) {
+      toast.error('Не удалось скрыть канал');
+      setIsHiding(false);
+    }
+  };
+
   return (
     <div 
-      className="bg-[var(--surface)] border border-[var(--border)] rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col"
+      className="bg-[var(--surface)] border border-[var(--border)] rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col group"
       onClick={() => navigate(`/video/${video.id}`)}
     >
       <div className="relative aspect-video">
@@ -25,6 +53,14 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
         <div className="absolute bottom-1 right-1 bg-black/80 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
           {video.duration}
         </div>
+        <button
+          onClick={handleHideChannel}
+          disabled={isHiding}
+          className="absolute top-2 right-2 bg-black/60 hover:bg-red-500/80 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+          title="Не рекомендовать канал"
+        >
+          <Ban className="w-4 h-4" />
+        </button>
       </div>
       
       <div className="p-3 flex flex-col flex-1">

@@ -17,6 +17,8 @@ export interface Video {
   isMusic?: boolean;
   isPhoto?: boolean;
   type?: 'video' | 'short' | 'music' | 'photo';
+  soundName?: string;
+  hashtags?: string[];
 }
 
 export type VideoType = Video;

@@ -89,6 +89,15 @@
         "duration": {
           "type": "string",
           "description": "Duration of the video"
+        },
+        "soundName": {
+          "type": "string",
+          "description": "Name of the sound used in the Short"
+        },
+        "hashtags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Hashtags for the video"
         }
       },
       "required": ["id", "title", "videoUrl", "thumbnailUrl", "authorId", "authorName"]
@@ -186,6 +195,18 @@
         "read": { "type": "boolean" }
       },
       "required": ["userId", "type", "fromUserId", "fromUserName", "createdAt", "read"]
+    },
+    "HiddenChannel": {
+      "title": "HiddenChannel",
+      "description": "Channels the user does not want to be recommended",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "channelId": { "type": "string" },
+        "addedAt": { "type": "timestamp" }
+      },
+      "required": ["id", "userId", "channelId"]
     }
   },
   "firestore": {
@@ -216,6 +237,10 @@
     "/favorites/{id}": {
       "schema": { "$ref": "#/entities/Favorite" },
       "description": "Favorite videos"
+    },
+    "/hidden_channels/{id}": {
+      "schema": { "$ref": "#/entities/HiddenChannel" },
+      "description": "Hidden channels"
     },
     "/notifications/{notificationId}": {
       "schema": { "$ref": "#/entities/Notification" },

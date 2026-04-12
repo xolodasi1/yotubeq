@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, where, orderBy, setDoc, doc, serverTimestamp, getDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { VideoType, Comment } from '../types';
-import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, X, Send, Snowflake } from 'lucide-react';
+import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, X, Send, Snowflake, Ban } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -145,6 +145,24 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
     toast.success('Ссылка скопирована');
   };
 
+  const handleHideChannel = async () => {
+    if (!user) return toast.error('Войдите, чтобы скрыть канал');
+    try {
+      const hiddenId = `${user.uid}_${short.authorId}`;
+      await setDoc(doc(db, 'hidden_channels', hiddenId), {
+        id: hiddenId,
+        userId: user.uid,
+        channelId: short.authorId,
+        addedAt: serverTimestamp()
+      });
+      toast.success('Канал больше не будет рекомендоваться');
+      // Ideally we'd remove it from the UI immediately, but a reload or state update is needed
+      window.location.reload();
+    } catch (err) {
+      toast.error('Не удалось скрыть канал');
+    }
+  };
+
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return toast.error('Войдите, чтобы оставить комментарий');
@@ -208,10 +226,15 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
             </button>
           </div>
         </div>
-        <p className="text-sm font-medium line-clamp-2 mb-4">{short.title}</p>
+        <p className="text-sm font-medium line-clamp-2 mb-2">{short.title}</p>
+        {short.hashtags && short.hashtags.length > 0 && (
+          <p className="text-xs text-blue-400 font-bold mb-4">
+            {short.hashtags.map(tag => `#${tag}`).join(' ')}
+          </p>
+        )}
         <div className="flex items-center gap-2 text-xs opacity-80">
           <MusicIcon className="w-3 h-3" />
-          <span>Оригинальный звук - {short.authorName}</span>
+          <span>{short.soundName || `Оригинальный звук - ${short.authorName}`}</span>
         </div>
       </div>
 
@@ -240,6 +263,12 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
             <Share2 className="w-6 h-6" />
           </div>
           <span className="text-xs font-bold shadow-black drop-shadow-md">Поделиться</span>
+        </button>
+        <button onClick={handleHideChannel} className="flex flex-col items-center gap-1 group">
+          <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-red-500/50 transition-all">
+            <Ban className="w-6 h-6" />
+          </div>
+          <span className="text-[10px] font-bold shadow-black drop-shadow-md text-center leading-tight">Не реком.</span>
         </button>
       </div>
 
@@ -317,16 +346,28 @@ export default function Shorts() {
   useEffect(() => {
     const fetchShorts = async () => {
       try {
+        let hiddenChannelIds: string[] = [];
+        if (user) {
+          const hiddenQ = query(collection(db, 'hidden_channels'), where('userId', '==', user.uid));
+          const hiddenSnap = await getDocs(hiddenQ);
+          hiddenChannelIds = hiddenSnap.docs.map(doc => doc.data().channelId);
+        }
+
         const q = query(
           collection(db, 'videos'), 
           where('isShort', '==', true),
           orderBy('createdAt', 'desc')
         );
         const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({
+        let data = querySnapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id
         })) as VideoType[];
+        
+        if (hiddenChannelIds.length > 0) {
+          data = data.filter(video => !hiddenChannelIds.includes(video.authorId));
+        }
+        
         setShorts(data);
       } catch (error) {
         console.error("Error fetching shorts:", error);
@@ -335,7 +376,7 @@ export default function Shorts() {
       }
     };
     fetchShorts();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!user || shorts.length === 0) return;

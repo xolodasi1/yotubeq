@@ -22,6 +22,8 @@ export default function Studio() {
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
   const [category, setCategory] = useState('Gaming');
+  const [soundName, setSoundName] = useState('');
+  const [hashtags, setHashtags] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [videoDuration, setVideoDuration] = useState('00:00');
@@ -202,7 +204,9 @@ export default function Studio() {
         isShort: contentType === 'short',
         isMusic: contentType === 'music',
         isPhoto: contentType === 'photo',
-        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
+        soundName: contentType === 'short' ? soundName : '',
+        hashtags: contentType === 'short' ? hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : []
       };
 
       await setDoc(doc(db, 'videos', videoId), newVideoData);
@@ -442,6 +446,31 @@ export default function Studio() {
                   <option value="Tech">Технологии</option>
                 </select>
               </div>
+
+              {contentType === 'short' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Название звука</label>
+                    <input
+                      type="text"
+                      value={soundName}
+                      onChange={(e) => setSoundName(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium transition-all"
+                      placeholder="Оригинальный звук (или название трека)"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Хештеги</label>
+                    <input
+                      type="text"
+                      value={hashtags}
+                      onChange={(e) => setHashtags(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium transition-all"
+                      placeholder="#shorts, #тренды (через запятую)"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
