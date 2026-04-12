@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, query, collection, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, updateDoc, query, collection, where, getDocs, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2 } from 'lucide-react';
+import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function StudioProfile() {
@@ -155,6 +155,88 @@ export default function StudioProfile() {
       toast.error('Ошибка при создании канала');
     } finally {
       setCreatingChannel(false);
+    }
+  };
+
+  const handleDeleteChannel = async (channelId: string, isPrimary: boolean) => {
+    if (!user) return;
+    if (isPrimary) {
+      toast.error('Нельзя удалить основной канал');
+      return;
+    }
+    if (!window.confirm('Вы уверены, что хотите удалить этот канал? Все видео и данные этого канала будут утеряны.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Delete channel document
+      await deleteDoc(doc(db, 'channels', channelId));
+
+      // Delete channel's videos
+      const videosQ = query(collection(db, 'videos'), where('authorId', '==', channelId));
+      const videosSnap = await getDocs(videosQ);
+      const deleteVideoPromises = videosSnap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deleteVideoPromises);
+
+      // Delete channel's playlists
+      const playlistsQ = query(collection(db, 'playlists'), where('authorId', '==', channelId));
+      const playlistsSnap = await getDocs(playlistsQ);
+      const deletePlaylistPromises = playlistsSnap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePlaylistPromises);
+
+      toast.success('Канал удален');
+      window.location.reload();
+    } catch (error) {
+      console.error("Error deleting channel:", error);
+      toast.error('Ошибка при удалении канала');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    if (!window.confirm('ВНИМАНИЕ: Это действие удалит ваш аккаунт и ВСЕ ваши каналы, видео, комментарии и плейлисты безвозвратно. Вы уверены?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Delete all channels
+      const channelsQ = query(collection(db, 'channels'), where('ownerId', '==', user.uid));
+      const channelsSnap = await getDocs(channelsQ);
+      const deleteChannelPromises = channelsSnap.docs.map(async (chDoc) => {
+        const channelId = chDoc.id;
+        
+        // Delete channel's videos
+        const videosQ = query(collection(db, 'videos'), where('authorId', '==', channelId));
+        const videosSnap = await getDocs(videosQ);
+        const deleteVideoPromises = videosSnap.docs.map(d => deleteDoc(d.ref));
+        await Promise.all(deleteVideoPromises);
+
+        // Delete channel's playlists
+        const playlistsQ = query(collection(db, 'playlists'), where('authorId', '==', channelId));
+        const playlistsSnap = await getDocs(playlistsQ);
+        const deletePlaylistPromises = playlistsSnap.docs.map(d => deleteDoc(d.ref));
+        await Promise.all(deletePlaylistPromises);
+
+        return deleteDoc(chDoc.ref);
+      });
+      await Promise.all(deleteChannelPromises);
+
+      // Delete user document
+      await deleteDoc(doc(db, 'users', user.uid));
+
+      toast.success('Аккаунт успешно удален');
+      await auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast.error('Ошибка при удалении аккаунта');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -410,16 +492,27 @@ export default function StudioProfile() {
                   {channel.isPrimary && <span className="text-[10px] text-blue-500 font-bold uppercase">Основной</span>}
                 </div>
               </div>
-              {activeChannel?.id === channel.id ? (
-                <CheckCircle2 className="w-5 h-5 text-blue-600" />
-              ) : (
-                <button 
-                  onClick={() => setActiveChannel(channel)}
-                  className="text-xs font-bold text-blue-600 hover:underline"
-                >
-                  Выбрать
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {activeChannel?.id === channel.id ? (
+                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <button 
+                    onClick={() => setActiveChannel(channel)}
+                    className="text-xs font-bold text-blue-600 hover:underline"
+                  >
+                    Выбрать
+                  </button>
+                )}
+                {!channel.isPrimary && (
+                  <button 
+                    onClick={() => handleDeleteChannel(channel.id, channel.isPrimary)}
+                    className="p-1.5 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors"
+                    title="Удалить канал"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
 
@@ -447,6 +540,27 @@ export default function StudioProfile() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="bg-red-50 rounded-3xl border border-red-100 p-6 md:p-8 space-y-6 shadow-sm">
+        <div>
+          <h2 className="text-xl font-bold text-red-600">Опасная зона</h2>
+          <p className="text-sm text-red-500/70">Эти действия необратимы. Будьте осторожны.</p>
+        </div>
+        
+        <div className="p-4 bg-white rounded-2xl border border-red-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="font-bold text-red-600">Удалить аккаунт</p>
+            <p className="text-xs text-red-400">Удаляет все ваши каналы, видео и данные профиля</p>
+          </div>
+          <button 
+            onClick={handleDeleteAccount}
+            className="px-6 py-2 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition-all uppercase tracking-widest"
+          >
+            Удалить всё
+          </button>
         </div>
       </div>
     </div>
