@@ -8,8 +8,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> = ({ short, isActive, user }) => {
+  const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(short.likes || 0);
   const [isIced, setIsIced] = useState(false);
@@ -19,7 +21,22 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [authorData, setAuthorData] = useState<{ displayName: string, photoURL: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const fetchAuthor = async () => {
+      try {
+        const authorSnap = await getDoc(doc(db, 'users', short.authorId));
+        if (authorSnap.exists()) {
+          setAuthorData(authorSnap.data() as any);
+        }
+      } catch (e) {
+        console.error("Error fetching author data:", e);
+      }
+    };
+    fetchAuthor();
+  }, [short.authorId]);
 
   useEffect(() => {
     if (isActive) {
@@ -92,7 +109,7 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   };
 
   const handleIce = async () => {
-    if (!user) return toast.error('Войдите, чтобы ставить льдышки');
+    if (!user) return toast.error('Войдите, чтобы ставить снежинки');
     const iceId = `${user.uid}_${short.id}`;
     const iceRef = doc(db, 'video_ices', iceId);
     const videoRef = doc(db, 'videos', short.id);
@@ -110,7 +127,7 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
         setIsIced(true);
       }
     } catch (err) {
-      toast.error('Не удалось обновить льдышку');
+      toast.error('Не удалось обновить снежинку');
     }
   };
 
@@ -213,11 +230,19 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
       {/* Overlay Info */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white z-10 pointer-events-none">
         <div className="flex items-center gap-3 mb-4 pointer-events-auto">
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20">
-            <img src={short.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${short.authorId}`} alt={short.authorName} />
+          <div 
+            onClick={() => navigate(`/channel/${short.authorId}`)}
+            className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 cursor-pointer hover:scale-105 transition-transform"
+          >
+            <img src={authorData?.photoURL || short.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${short.authorId}`} alt={authorData?.displayName || short.authorName} />
           </div>
           <div>
-            <h3 className="font-bold text-sm">@{short.authorName}</h3>
+            <h3 
+              onClick={() => navigate(`/channel/${short.authorId}`)}
+              className="font-bold text-sm cursor-pointer hover:underline"
+            >
+              @{authorData?.displayName || short.authorName}
+            </h3>
             <button 
               onClick={handleSubscribe}
               className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mt-1 transition-colors ${isSubscribed ? 'bg-white/20 text-white' : 'bg-white text-black'}`}

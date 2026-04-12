@@ -50,9 +50,11 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
           alt={video.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute bottom-1 right-1 bg-black/80 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-          {video.duration}
-        </div>
+        {!(video.isPhoto || video.type === 'photo') && video.duration && (
+          <div className="absolute bottom-1 right-1 bg-black/80 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+            {video.duration}
+          </div>
+        )}
         <button
           onClick={handleHideChannel}
           disabled={isHiding}

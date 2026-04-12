@@ -277,7 +277,7 @@ export default function VideoPlayer() {
 
   const handleIce = async () => {
     if (!user || !video) {
-      toast.error('Пожалуйста, войдите, чтобы ставить льдышки');
+      toast.error('Пожалуйста, войдите, чтобы ставить снежинки');
       return;
     }
 
@@ -299,7 +299,7 @@ export default function VideoPlayer() {
       }
     } catch (error) {
       console.error("Error toggling ice:", error);
-      toast.error('Не удалось обновить льдышку');
+      toast.error('Не удалось обновить снежинку');
     }
   };
 

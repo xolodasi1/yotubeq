@@ -189,7 +189,7 @@ export default function StudioAnalytics() {
 
             <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest">Льдышки</p>
+                <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest">Снежинки</p>
                 <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-400">
                   <Snowflake className="w-4 h-4 md:w-5 md:h-5" />
                 </div>
@@ -264,7 +264,7 @@ export default function StudioAnalytics() {
             {[...videos]
               .filter(v => {
                 if (popularTab === 'all') return true;
-                if (popularTab === 'video') return v.type === 'video' || (!v.type && !v.isShort && !v.isMusic);
+                if (popularTab === 'video') return v.type === 'video' || (!v.type && !v.isShort && !v.isMusic && !v.isPhoto);
                 if (popularTab === 'short') return v.type === 'short' || v.isShort;
                 if (popularTab === 'music') return v.type === 'music' || v.isMusic;
                 if (popularTab === 'photo') return v.type === 'photo' || v.isPhoto;

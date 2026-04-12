@@ -8,6 +8,7 @@ import { VideoType } from '../types';
 interface TopChannel {
   uid: string;
   displayName: string;
+  pseudonym?: string;
   photoURL: string;
   bio?: string;
   subscribers: number;
@@ -66,7 +67,7 @@ export default function TopChannels() {
             stats[authorId].musicViews += v;
             stats[authorId].musicCount += 1;
           }
-          if (video.isPhoto) {
+          if (video.isPhoto || video.type === 'photo') {
             stats[authorId].photoLikes += l;
             stats[authorId].photoCount += 1;
           }
@@ -75,6 +76,7 @@ export default function TopChannels() {
         const combinedData: TopChannel[] = usersData.map(user => ({
           uid: user.uid,
           displayName: user.displayName || 'User',
+          pseudonym: user.pseudonym || '',
           photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
           bio: user.bio || '',
           subscribers: Number(user.subscribers) || 0,
@@ -97,7 +99,7 @@ export default function TopChannels() {
 
         // Set top photos (by likes)
         const popularPhotos = allVideos
-          .filter(v => v.isPhoto)
+          .filter(v => v.isPhoto || v.type === 'photo')
           .sort((a, b) => (Number(b.likes) || 0) - (Number(a.likes) || 0))
           .slice(0, 50);
         setTopPhotos(popularPhotos);
@@ -187,7 +189,7 @@ export default function TopChannels() {
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border ${sortBy === 'ices' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'}`}
             >
               <Snowflake className="w-3.5 h-3.5" />
-              По льдышкам
+              По снежинкам
             </button>
             <button 
               onClick={() => setSortBy('music')}
@@ -236,6 +238,9 @@ export default function TopChannels() {
                   </div>
                   <div className="min-w-0 pr-8">
                     <h2 className="text-xl font-bold group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{channel.displayName}</h2>
+                    {channel.pseudonym && (
+                      <p className="text-sm font-medium text-[var(--studio-muted)] mb-1">{channel.pseudonym}</p>
+                    )}
                     <div className="flex flex-col gap-1 mt-1">
                       <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${sortBy === 'subscribers' ? 'text-blue-600' : 'text-[var(--studio-muted)]'}`}>
                         <Users className="w-3.5 h-3.5" />

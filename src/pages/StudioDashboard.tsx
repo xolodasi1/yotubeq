@@ -125,7 +125,7 @@ export default function StudioDashboard() {
                 <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                     <Snowflake className="w-4 h-4 text-blue-400" />
-                    <span>Льдышки</span>
+                    <span>Снежинки</span>
                   </div>
                   <span className="font-bold text-[var(--text-primary)]">{videos[0].ices?.toLocaleString() || 0}</span>
                 </div>
@@ -172,7 +172,7 @@ export default function StudioDashboard() {
                   <p className="text-lg font-bold text-[var(--text-primary)]">{stats.totalLikes.toLocaleString()}</p>
                 </div>
                 <div className="bg-[var(--hover)] p-3 rounded-xl border border-[var(--border)]">
-                  <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Льдышки</p>
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Снежинки</p>
                   <p className="text-lg font-bold text-[var(--text-primary)]">{stats.totalIces.toLocaleString()}</p>
                 </div>
               </div>

@@ -91,7 +91,7 @@ export default function StudioContent() {
     }
   };
 
-  const regularVideos = videos.filter(v => v.type === 'video' || (!v.type && !v.isShort && !v.isMusic));
+  const regularVideos = videos.filter(v => v.type === 'video' || (!v.type && !v.isShort && !v.isMusic && !v.isPhoto));
   const shortsVideos = videos.filter(v => v.type === 'short' || v.isShort);
   const musicVideos = videos.filter(v => v.type === 'music' || v.isMusic);
   const photoVideos = videos.filter(v => v.type === 'photo' || v.isPhoto);
@@ -217,7 +217,7 @@ export default function StudioContent() {
                     <th className="px-6 py-4 font-bold">Дата</th>
                     <th className="px-6 py-4 font-bold">Просмотры</th>
                     <th className="px-6 py-4 font-bold">Лайки</th>
-                    <th className="px-6 py-4 font-bold">Льдышки</th>
+                    <th className="px-6 py-4 font-bold">Снежинки</th>
                     <th className="px-6 py-4 font-bold text-right">Действия</th>
                   </tr>
                 </thead>
@@ -458,7 +458,7 @@ export default function StudioContent() {
                 <p className="text-4xl font-black text-[var(--text-primary)]">{analyticsVideo.likes?.toLocaleString() || 0}</p>
               </div>
               <div className="p-6 bg-[var(--studio-hover)] rounded-lg border border-[var(--studio-border)] flex flex-col items-center justify-center">
-                <p className="text-sm text-[var(--text-secondary)] mb-2 font-bold uppercase tracking-wider">Льдышки</p>
+                <p className="text-sm text-[var(--text-secondary)] mb-2 font-bold uppercase tracking-wider">Снежинки</p>
                 <p className="text-4xl font-black text-[var(--text-primary)]">{analyticsVideo.ices?.toLocaleString() || 0}</p>
               </div>
             </div>

@@ -97,10 +97,10 @@ export default function Home() {
     return matchesName || matchesAliases;
   });
 
-  const regularVideos = filteredVideos.filter(v => !v.isShort && !v.isMusic && !v.isPhoto);
+  const regularVideos = filteredVideos.filter(v => !v.isShort && !v.isMusic && !v.isPhoto && v.type !== 'photo');
   const shortsVideos = filteredVideos.filter(v => v.isShort);
   const musicVideos = filteredVideos.filter(v => v.isMusic);
-  const photoVideos = filteredVideos.filter(v => v.isPhoto);
+  const photoVideos = filteredVideos.filter(v => v.isPhoto || v.type === 'photo');
 
   const topVideos = [...regularVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
   const newVideos = [...regularVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
@@ -297,7 +297,7 @@ export default function Home() {
                   <Snowflake className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Топ по льдышкам</h2>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Топ по снежинкам</h2>
                   <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Самые крутые видео</p>
                 </div>
               </div>
