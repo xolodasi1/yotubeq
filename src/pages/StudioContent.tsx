@@ -17,6 +17,7 @@ export default function StudioContent() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const [activeTab, setActiveTab] = useState<'videos' | 'shorts' | 'music' | 'photos' | 'playlists'>('videos');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'views' | 'likes' | 'ices'>('newest');
   const [editingVideo, setEditingVideo] = useState<VideoType | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -157,9 +158,16 @@ export default function StudioContent() {
     activeTab === 'photos' ? photoVideos :
     [];
 
-  const filteredVideos = displayedContent.filter(v => 
-    v.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredVideos = displayedContent
+    .filter(v => v.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sortBy === 'views') return (b.views || 0) - (a.views || 0);
+      if (sortBy === 'likes') return (b.likes || 0) - (a.likes || 0);
+      if (sortBy === 'ices') return (b.ices || 0) - (a.ices || 0);
+      return 0;
+    });
 
   if (loading) {
     return (
@@ -246,7 +254,48 @@ export default function StudioContent() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
+            <button 
+              onClick={() => setSortBy('newest')}
+              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
+                sortBy === 'newest' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
+              }`}
+            >
+              Новые
+            </button>
+            <button 
+              onClick={() => setSortBy('oldest')}
+              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
+                sortBy === 'oldest' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
+              }`}
+            >
+              Старые
+            </button>
+            <button 
+              onClick={() => setSortBy('views')}
+              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
+                sortBy === 'views' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
+              }`}
+            >
+              Просмотры
+            </button>
+            <button 
+              onClick={() => setSortBy('likes')}
+              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
+                sortBy === 'likes' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
+              }`}
+            >
+              Лайки
+            </button>
+            <button 
+              onClick={() => setSortBy('ices')}
+              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
+                sortBy === 'ices' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
+              }`}
+            >
+              Снежинки
+            </button>
+            <div className="h-6 w-px bg-[var(--border)] mx-2 hidden sm:block" />
             <button className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--hover)] rounded transition-colors uppercase tracking-wider">
               <Filter className="w-4 h-4" />
               Фильтр

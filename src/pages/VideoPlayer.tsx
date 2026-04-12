@@ -193,10 +193,10 @@ export default function VideoPlayer() {
       try {
         // Add to History
         try {
-          const historyId = `${user.uid}_${id}`;
+          const historyId = `${activeChannel?.id || user.uid}_${id}`;
           await setDoc(doc(db, 'history', historyId), {
             id: historyId,
-            userId: user.uid,
+            userId: activeChannel?.id || user.uid,
             videoId: id,
             watchedAt: serverTimestamp()
           });
@@ -391,13 +391,13 @@ export default function VideoPlayer() {
   };
 
   const createPlaylist = async () => {
-    if (!user || !newPlaylistTitle.trim() || !id) return;
+    if (!user || !activeChannel || !newPlaylistTitle.trim() || !id) return;
     try {
       const playlistId = crypto.randomUUID();
       await setDoc(doc(db, 'playlists', playlistId), {
         id: playlistId,
         title: newPlaylistTitle,
-        authorId: user.uid,
+        authorId: activeChannel.id,
         videoIds: [id],
         visibility: playlistVisibility,
         createdAt: serverTimestamp(),
@@ -410,8 +410,8 @@ export default function VideoPlayer() {
   };
 
   const fetchUserPlaylists = async () => {
-    if (!user) return;
-    const q = query(collection(db, 'playlists'), where('authorId', '==', user.uid));
+    if (!user || !activeChannel) return;
+    const q = query(collection(db, 'playlists'), where('authorId', '==', activeChannel.id));
     const snap = await getDocs(q);
     setUserPlaylists(snap.docs.map(d => d.data() as Playlist));
     setShowPlaylistModal(true);

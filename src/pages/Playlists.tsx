@@ -8,18 +8,18 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export default function Playlists() {
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'video' | 'music' | 'short' | 'photo'>('video');
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeChannel) return;
 
     const fetchPlaylists = async () => {
       try {
         setLoading(true);
-        const q = query(collection(db, 'playlists'), where('authorId', '==', user.uid), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, 'playlists'), where('authorId', '==', activeChannel.id), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
         setPlaylists(snap.docs.map(d => d.data() as Playlist));
       } catch (error) {

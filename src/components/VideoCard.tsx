@@ -3,13 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Video } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Eye, ThumbsUp, Snowflake, Ban, Clock } from 'lucide-react';
+import { Eye, ThumbsUp, Snowflake, Ban, Clock, Music as MusicIcon } from 'lucide-react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { doc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
-export default function VideoCard({ video }: { video: Video; key?: string }) {
+export default function VideoCard({ video }: { video: Video; key?: React.Key }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isHiding, setIsHiding] = useState(false);
@@ -100,7 +100,8 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
       </div>
       
       <div className="p-3 flex flex-col flex-1">
-        <h3 className="font-semibold text-sm text-[var(--text-primary)] line-clamp-2 mb-1 leading-snug">
+        <h3 className="font-semibold text-sm text-[var(--text-primary)] line-clamp-2 mb-1 leading-snug flex items-center gap-1.5">
+          {video.isMusic && <MusicIcon className="w-3.5 h-3.5 text-purple-500 shrink-0" />}
           {video.title}
         </h3>
         

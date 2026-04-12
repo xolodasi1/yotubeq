@@ -10,7 +10,7 @@ import { useAuth } from '../App';
 
 import { APP_LOGO_URL } from '../constants';
 
-const CATEGORIES = ['Все', 'Игры', 'Музыка', 'Shorts', 'Фото', 'Образование', 'Развлечения', 'Технологии', 'Зимний спорт', 'Арктика', 'Релакс'];
+const CATEGORIES = ['Все', 'Музыка', 'Shorts', 'Фото', 'Игры', 'Технологии', 'Развлечения'];
 
 export default function Home() {
   const { user } = useAuth();

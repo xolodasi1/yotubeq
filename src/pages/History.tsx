@@ -10,18 +10,18 @@ import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 export default function History() {
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const [videos, setVideos] = useState<(VideoType & { watchedAt: any, historyId: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeChannel) return;
 
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        const q = query(collection(db, 'history'), where('userId', '==', user.uid), orderBy('watchedAt', 'desc'));
+        const q = query(collection(db, 'history'), where('userId', '==', activeChannel.id), orderBy('watchedAt', 'desc'));
         const snap = await getDocs(q);
         
         const videoPromises = snap.docs.map(async (d) => {
@@ -61,10 +61,10 @@ export default function History() {
   };
 
   const clearHistory = async () => {
-    if (!user) return;
+    if (!user || !activeChannel) return;
     if (!window.confirm('Очистить всю историю просмотров?')) return;
     try {
-      const q = query(collection(db, 'history'), where('userId', '==', user.uid));
+      const q = query(collection(db, 'history'), where('userId', '==', activeChannel.id));
       const snap = await getDocs(q);
       const deletePromises = snap.docs.map(d => deleteDoc(d.ref));
       await Promise.all(deletePromises);

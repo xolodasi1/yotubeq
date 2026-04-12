@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video } from '../types';
 
-export default function ShortCard({ video }: { video: Video }) {
+export default function ShortCard({ video }: { video: Video; key?: React.Key }) {
   const navigate = useNavigate();
 
   return (

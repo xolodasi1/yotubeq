@@ -5,14 +5,14 @@ import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { VideoType, CommunityPost, Playlist } from '../types';
-import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff } from 'lucide-react';
+import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff, Camera } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
-type TabType = 'videos' | 'playlists' | 'community' | 'about';
+type TabType = 'videos' | 'shorts' | 'music' | 'photos' | 'playlists' | 'community' | 'about';
 
 export default function Channel() {
   const { id } = useParams<{ id: string }>();
@@ -305,8 +305,10 @@ export default function Channel() {
     );
   }
 
-  const regularVideos = videos.filter(v => !v.isShort);
+  const regularVideos = videos.filter(v => !v.isShort && !v.isMusic && !v.isPhoto);
   const shortsVideos = videos.filter(v => v.isShort);
+  const musicVideos = videos.filter(v => v.isMusic);
+  const photosVideos = videos.filter(v => v.isPhoto);
   const canPostCommunity = subCount >= 10;
 
   return (
@@ -395,7 +397,7 @@ export default function Channel() {
 
         {/* Navigation Tabs */}
         <div className="flex gap-8 border-b border-[var(--border)] mb-10 overflow-x-auto scrollbar-hide bg-[var(--surface)]/50 backdrop-blur-sm sticky top-14 z-20 px-4 -mx-4 md:px-0 md:mx-0">
-          {(['videos', 'playlists', 'community', 'about'] as TabType[]).map((tab) => (
+          {(['videos', 'shorts', 'music', 'photos', 'playlists', 'community', 'about'] as TabType[]).map((tab) => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -406,6 +408,9 @@ export default function Channel() {
               }`}
             >
               {tab === 'videos' ? 'Видео' : 
+               tab === 'shorts' ? 'Shorts' :
+               tab === 'music' ? 'Музыка' :
+               tab === 'photos' ? 'Фото' :
                tab === 'playlists' ? 'Плейлисты' : 
                tab === 'community' ? 'Сообщество' : 'О канале'}
             </button>
@@ -415,45 +420,61 @@ export default function Channel() {
         {/* Tab Content */}
         <div className="min-h-[40vh]">
           {activeTab === 'videos' && (
-            videos.length === 0 ? (
+            regularVideos.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">
                 <PlaySquare className="w-16 h-16 mb-4 opacity-10" />
                 <p className="text-lg font-bold">На канале пока нет видео</p>
               </div>
             ) : (
-              <div className="space-y-16">
-                {shortsVideos.length > 0 && (
-                  <section>
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100/20">
-                        <Smartphone className="w-5 h-5" />
-                      </div>
-                      <h2 className="text-xl font-bold text-[var(--text-primary)]">Shorts</h2>
-                    </div>
-                    <div className="flex gap-5 overflow-x-auto pb-8 scrollbar-hide snap-x">
-                      {shortsVideos.map((video) => (
-                        <div key={video.id} className="snap-start shrink-0">
-                          <ShortCard video={video as any} />
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-                {regularVideos.length > 0 && (
-                  <section>
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100/20">
-                        <PlaySquare className="w-5 h-5" />
-                      </div>
-                      <h2 className="text-xl font-bold text-[var(--text-primary)]">Видео</h2>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
-                      {regularVideos.map((video) => (
-                        <VideoCard key={video.id} video={video as any} />
-                      ))}
-                    </div>
-                  </section>
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
+                {regularVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            )
+          )}
+
+          {activeTab === 'shorts' && (
+            shortsVideos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">
+                <Smartphone className="w-16 h-16 mb-4 opacity-10" />
+                <p className="text-lg font-bold">На канале пока нет Shorts</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {shortsVideos.map((video) => (
+                  <ShortCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            )
+          )}
+
+          {activeTab === 'music' && (
+            musicVideos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">
+                <Snowflake className="w-16 h-16 mb-4 opacity-10" />
+                <p className="text-lg font-bold">На канале пока нет музыки</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
+                {musicVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            )
+          )}
+
+          {activeTab === 'photos' && (
+            photosVideos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">
+                <Camera className="w-16 h-16 mb-4 opacity-10" />
+                <p className="text-lg font-bold">На канале пока нет фото</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
+                {photosVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
               </div>
             )
           )}
