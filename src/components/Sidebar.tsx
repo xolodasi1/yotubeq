@@ -144,7 +144,7 @@ export default function Sidebar() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] z-50 pb-safe">
-        <div className="flex items-center justify-around p-1">
+        <div className="flex items-center justify-around p-1 overflow-x-auto scrollbar-hide">
           {(isStudio ? studioItems : mainItems).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -152,9 +152,9 @@ export default function Sidebar() {
             
             if (isLocked) {
               return (
-                <div key={item.label} className="flex flex-col items-center gap-1 p-2 min-w-[60px] opacity-30">
+                <div key={item.label} className="flex flex-col items-center gap-1 p-2 min-w-[60px] opacity-30 shrink-0">
                   <Icon className="w-5 h-5" />
-                  <span className="text-[9px] font-medium">{item.label}</span>
+                  <span className="text-[9px] font-medium whitespace-nowrap">{item.label}</span>
                 </div>
               );
             }
@@ -163,12 +163,12 @@ export default function Sidebar() {
               <Link
                 key={item.label}
                 to={item.path}
-                className={`flex flex-col items-center gap-1 p-2 min-w-[60px] rounded-lg transition-colors ${
+                className={`flex flex-col items-center gap-1 p-2 min-w-[60px] rounded-lg transition-colors shrink-0 ${
                   isActive ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-blue-400'
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-[9px] font-medium">{item.label}</span>
+                <span className="text-[9px] font-medium whitespace-nowrap">{item.label}</span>
               </Link>
             );
           })}

@@ -24,6 +24,14 @@ export default function Studio() {
   const [category, setCategory] = useState('Gaming');
   const [soundName, setSoundName] = useState('');
   const [hashtags, setHashtags] = useState('');
+  const [musicMetadata, setMusicMetadata] = useState({
+    author: '',
+    composer: '',
+    performer: '',
+    otherParticipants: '',
+    album: '',
+    releaseYear: ''
+  });
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [videoDuration, setVideoDuration] = useState('00:00');
@@ -177,10 +185,15 @@ export default function Studio() {
       });
 
       let thumbnailUrl = contentType === 'photo' ? videoUrl : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
+      
       if (thumbnailFile && contentType !== 'photo') {
         thumbnailUrl = await uploadFile(thumbnailFile, 'thumbnails', (progress) => {
           setUploadProgress(80 + Math.round(progress * 0.1));
         });
+      } else if (!thumbnailFile && (contentType === 'video' || contentType === 'short')) {
+        // Generate automatic thumbnail from video for Cloudinary
+        // By replacing extension with .jpg and adding so_auto transformation
+        thumbnailUrl = videoUrl.replace('/upload/', '/upload/so_auto/').replace(/\.[^/.]+$/, ".jpg");
       }
 
       setUploadProgress(95);
@@ -206,7 +219,8 @@ export default function Studio() {
         isPhoto: contentType === 'photo',
         tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
         soundName: contentType === 'short' ? soundName : '',
-        hashtags: contentType === 'short' ? hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : []
+        hashtags: contentType === 'short' ? hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [],
+        musicMetadata: contentType === 'music' ? musicMetadata : undefined
       };
 
       await setDoc(doc(db, 'videos', videoId), newVideoData);
@@ -446,6 +460,35 @@ export default function Studio() {
                   <option value="Tech">Технологии</option>
                 </select>
               </div>
+
+              {contentType === 'music' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Автор</label>
+                    <input type="text" value={musicMetadata.author} onChange={(e) => setMusicMetadata({...musicMetadata, author: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Автор" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Композитор</label>
+                    <input type="text" value={musicMetadata.composer} onChange={(e) => setMusicMetadata({...musicMetadata, composer: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Композитор" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Исполнитель</label>
+                    <input type="text" value={musicMetadata.performer} onChange={(e) => setMusicMetadata({...musicMetadata, performer: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Исполнитель" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Другие участники</label>
+                    <input type="text" value={musicMetadata.otherParticipants} onChange={(e) => setMusicMetadata({...musicMetadata, otherParticipants: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Другие участники" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Альбом</label>
+                    <input type="text" value={musicMetadata.album} onChange={(e) => setMusicMetadata({...musicMetadata, album: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Альбом" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Год выпуска</label>
+                    <input type="text" value={musicMetadata.releaseYear} onChange={(e) => setMusicMetadata({...musicMetadata, releaseYear: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Год выпуска" />
+                  </div>
+                </div>
+              )}
 
               {contentType === 'short' && (
                 <>

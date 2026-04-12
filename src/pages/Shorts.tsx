@@ -241,8 +241,16 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
               onClick={() => navigate(`/channel/${short.authorId}`)}
               className="font-bold text-sm cursor-pointer hover:underline"
             >
-              @{authorData?.displayName || short.authorName}
+              {authorData?.displayName || short.authorName}
             </h3>
+            {authorData?.pseudonym && (
+              <p 
+                onClick={() => navigate(`/channel/${short.authorId}`)}
+                className="text-xs text-white/70 cursor-pointer hover:underline"
+              >
+                @{authorData.pseudonym}
+              </p>
+            )}
             <button 
               onClick={handleSubscribe}
               className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mt-1 transition-colors ${isSubscribed ? 'bg-white/20 text-white' : 'bg-white text-black'}`}

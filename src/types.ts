@@ -19,6 +19,14 @@ export interface Video {
   type?: 'video' | 'short' | 'music' | 'photo';
   soundName?: string;
   hashtags?: string[];
+  musicMetadata?: {
+    author?: string;
+    composer?: string;
+    performer?: string;
+    otherParticipants?: string;
+    album?: string;
+    releaseYear?: string;
+  };
 }
 
 export type VideoType = Video;
