@@ -22,19 +22,19 @@ export default defineConfig(({mode}) => {
           display: 'standalone',
           icons: [
             {
-              src: 'https://picsum.photos/seed/icetube/192/192',
+              src: 'https://firebasestorage.googleapis.com/v0/b/file-extract.appspot.com/o/60824637609258679%2F1744458896027_logo.jpg?alt=media&token=7e3d6e1b-6b8e-4b7e-9b7e-9b7e9b7e9b7e',
               sizes: '192x192',
-              type: 'image/png'
+              type: 'image/jpeg'
             },
             {
-              src: 'https://picsum.photos/seed/icetube/512/512',
+              src: 'https://firebasestorage.googleapis.com/v0/b/file-extract.appspot.com/o/60824637609258679%2F1744458896027_logo.jpg?alt=media&token=7e3d6e1b-6b8e-4b7e-9b7e-9b7e9b7e9b7e',
               sizes: '512x512',
-              type: 'image/png'
+              type: 'image/jpeg'
             },
             {
-              src: 'https://picsum.photos/seed/icetube/512/512',
+              src: 'https://firebasestorage.googleapis.com/v0/b/file-extract.appspot.com/o/60824637609258679%2F1744458896027_logo.jpg?alt=media&token=7e3d6e1b-6b8e-4b7e-9b7e-9b7e9b7e9b7e',
               sizes: '512x512',
-              type: 'image/png',
+              type: 'image/jpeg',
               purpose: 'any maskable'
             }
           ]

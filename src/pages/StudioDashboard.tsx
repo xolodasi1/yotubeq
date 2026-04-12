@@ -79,8 +79,8 @@ export default function StudioDashboard() {
           <img 
             src={APP_LOGO_URL} 
             alt="IceStudio Logo" 
-            className="w-20 h-20 rounded-2xl shadow-[0_0_20px_rgba(37,99,235,0.3)] animate-pulse"
-            referrerPolicy="no-referrer"
+            className="w-20 h-20 rounded-2xl shadow-[0_0_20px_rgba(37,99,235,0.3)] animate-pulse object-contain"
+            crossOrigin="anonymous"
           />
           <div className="absolute -inset-3 border-4 border-blue-600/20 border-t-blue-600 rounded-[1.75rem] animate-spin"></div>
         </div>

@@ -130,8 +130,8 @@ export default function App() {
           <img 
             src={APP_LOGO_URL} 
             alt="IceTube Logo" 
-            className="w-24 h-24 rounded-3xl shadow-[0_0_30px_rgba(37,99,235,0.4)] animate-pulse"
-            referrerPolicy="no-referrer"
+            className="w-24 h-24 rounded-3xl shadow-[0_0_30px_rgba(37,99,235,0.4)] animate-pulse object-contain"
+            crossOrigin="anonymous"
           />
           <div className="absolute -inset-4 border-4 border-blue-600/20 border-t-blue-600 rounded-[2.5rem] animate-spin"></div>
         </div>
