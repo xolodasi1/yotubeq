@@ -7,7 +7,7 @@ import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter } from 'lucide
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
-const CATEGORIES = ['Все', 'Игры', 'Музыка', 'Образование', 'Развлечения', 'Технологии', 'Зимний спорт', 'Арктика', 'Релакс'];
+const CATEGORIES = ['Все', 'Игры', 'Музыка', 'Shorts', 'Фото', 'Образование', 'Развлечения', 'Технологии', 'Зимний спорт', 'Арктика', 'Релакс'];
 
 export default function Home() {
   const [searchParams] = useSearchParams();
@@ -40,9 +40,24 @@ export default function Home() {
   }, []);
 
   const filteredVideos = videos.filter(video => {
-    const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         video.authorName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'Все' || video.category === activeCategory;
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = video.title.toLowerCase().includes(searchLower) ||
+                         video.authorName.toLowerCase().includes(searchLower) ||
+                         video.category?.toLowerCase().includes(searchLower);
+    
+    let matchesCategory = false;
+    if (activeCategory === 'Все') {
+      matchesCategory = true;
+    } else if (activeCategory === 'Музыка') {
+      matchesCategory = !!video.isMusic || video.category?.toLowerCase() === 'музыка';
+    } else if (activeCategory === 'Shorts') {
+      matchesCategory = !!video.isShort;
+    } else if (activeCategory === 'Фото') {
+      matchesCategory = !!video.isPhoto || video.type === 'photo';
+    } else {
+      matchesCategory = video.category?.toLowerCase() === activeCategory.toLowerCase();
+    }
+    
     return matchesSearch && matchesCategory;
   });
 

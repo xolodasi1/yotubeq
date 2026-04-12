@@ -45,9 +45,11 @@ export default function Channel() {
         setAuthorInfo(prev => ({
           ...prev,
           name: userData.displayName || 'Ice Creator',
+          pseudonym: userData.pseudonym || '',
           photoUrl: userData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
           bannerUrl: userData.bannerUrl || null,
           bio: userData.bio || '',
+          socialLinks: userData.socialLinks || {},
           subscribers: userData.subscribers || 0,
           joinedAt: userData.createdAt?.toDate() || prev?.joinedAt || new Date()
         }));
@@ -313,7 +315,7 @@ export default function Channel() {
           <div className="flex-1 space-y-3">
             <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight">{authorInfo?.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">
-              <span>@user-{id?.substring(0, 8)}</span>
+              <span>{authorInfo?.pseudonym || `@user-${id?.substring(0, 8)}`}</span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
               <span>{subCount} подписчиков</span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
@@ -322,6 +324,20 @@ export default function Channel() {
             {authorInfo?.bio && (
               <p className="text-sm text-[var(--text-secondary)] max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
             )}
+            
+            {/* Social Links in Header */}
+            {authorInfo?.socialLinks && Object.values(authorInfo.socialLinks).some(link => link) && (
+              <div className="flex flex-wrap gap-3 pt-2">
+                {authorInfo.socialLinks.website && <a href={authorInfo.socialLinks.website} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-600"><Globe className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.telegram && <a href={`https://t.me/${authorInfo.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-400"><Smartphone className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.telegramGroup && <a href={authorInfo.socialLinks.telegramGroup.startsWith('http') ? authorInfo.socialLinks.telegramGroup : `https://${authorInfo.socialLinks.telegramGroup}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-400"><Smartphone className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.rutube && <a href={authorInfo.socialLinks.rutube.startsWith('http') ? authorInfo.socialLinks.rutube : `https://${authorInfo.socialLinks.rutube}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-600"><Globe className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.youtube && <a href={authorInfo.socialLinks.youtube.startsWith('http') ? authorInfo.socialLinks.youtube : `https://${authorInfo.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-red-600"><PlaySquare className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.vk && <a href={authorInfo.socialLinks.vk.startsWith('http') ? authorInfo.socialLinks.vk : `https://vk.com/${authorInfo.socialLinks.vk}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-500"><Globe className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.instagram && <a href={`https://instagram.com/${authorInfo.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-pink-500"><Instagram className="w-5 h-5" /></a>}
+              </div>
+            )}
+
             <div className="pt-2 flex flex-wrap gap-3 items-center">
               {user?.uid === id ? (
                 <Link to="/studio" className="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold text-sm transition-all hover:bg-blue-700 shadow-lg shadow-blue-100/20">
@@ -621,6 +637,24 @@ export default function Channel() {
                         <a href={`https://t.me/${authorInfo.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--hover)] rounded-xl border border-[var(--border)] hover:border-blue-600 transition-all group">
                           <Smartphone className="w-5 h-5 text-blue-400" />
                           <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-600">Telegram</span>
+                        </a>
+                      )}
+                      {authorInfo.socialLinks.telegramGroup && (
+                        <a href={authorInfo.socialLinks.telegramGroup.startsWith('http') ? authorInfo.socialLinks.telegramGroup : `https://${authorInfo.socialLinks.telegramGroup}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--hover)] rounded-xl border border-[var(--border)] hover:border-blue-600 transition-all group">
+                          <Smartphone className="w-5 h-5 text-blue-400" />
+                          <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-600">Telegram Group</span>
+                        </a>
+                      )}
+                      {authorInfo.socialLinks.rutube && (
+                        <a href={authorInfo.socialLinks.rutube.startsWith('http') ? authorInfo.socialLinks.rutube : `https://${authorInfo.socialLinks.rutube}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--hover)] rounded-xl border border-[var(--border)] hover:border-blue-600 transition-all group">
+                          <Globe className="w-5 h-5 text-blue-600" />
+                          <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-600">Rutube</span>
+                        </a>
+                      )}
+                      {authorInfo.socialLinks.youtube && (
+                        <a href={authorInfo.socialLinks.youtube.startsWith('http') ? authorInfo.socialLinks.youtube : `https://${authorInfo.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[var(--hover)] rounded-xl border border-[var(--border)] hover:border-blue-600 transition-all group">
+                          <PlaySquare className="w-5 h-5 text-red-600" />
+                          <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-600">YouTube</span>
                         </a>
                       )}
                       {authorInfo.socialLinks.vk && (

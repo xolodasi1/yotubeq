@@ -16,6 +16,9 @@ export default function StudioProfile() {
   const [socialLinks, setSocialLinks] = useState({
     website: '',
     telegram: '',
+    telegramGroup: '',
+    rutube: '',
+    youtube: '',
     vk: '',
     instagram: ''
   });
@@ -37,6 +40,9 @@ export default function StudioProfile() {
             setSocialLinks({
               website: data.socialLinks.website || '',
               telegram: data.socialLinks.telegram || '',
+              telegramGroup: data.socialLinks.telegramGroup || '',
+              rutube: data.socialLinks.rutube || '',
+              youtube: data.socialLinks.youtube || '',
               vk: data.socialLinks.vk || '',
               instagram: data.socialLinks.instagram || ''
             });
@@ -194,6 +200,42 @@ export default function StudioProfile() {
           <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--studio-muted)]">Ссылки на социальные сети</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
+                <Smartphone className="w-3.5 h-3.5" /> Telegram Group
+              </label>
+              <input 
+                type="text" 
+                value={socialLinks.telegramGroup}
+                onChange={(e) => setSocialLinks({...socialLinks, telegramGroup: e.target.value})}
+                placeholder="t.me/..."
+                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5" /> Rutube
+              </label>
+              <input 
+                type="text" 
+                value={socialLinks.rutube}
+                onChange={(e) => setSocialLinks({...socialLinks, rutube: e.target.value})}
+                placeholder="rutube.ru/..."
+                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5" /> YouTube
+              </label>
+              <input 
+                type="text" 
+                value={socialLinks.youtube}
+                onChange={(e) => setSocialLinks({...socialLinks, youtube: e.target.value})}
+                placeholder="youtube.com/..."
+                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
+              />
+            </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
                 <Globe className="w-3.5 h-3.5" /> Веб-сайт

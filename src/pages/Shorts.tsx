@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../App';
 import { db } from '../lib/firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { VideoType } from '../types';
 import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Shorts() {
+  const { user } = useAuth();
   const [shorts, setShorts] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -33,6 +35,28 @@ export default function Shorts() {
     };
     fetchShorts();
   }, []);
+
+  useEffect(() => {
+    if (!user || shorts.length === 0) return;
+    
+    const currentShort = shorts[currentIndex];
+    if (!currentShort) return;
+
+    const addToHistory = async () => {
+      try {
+        const historyId = `${user.uid}_${currentShort.id}`;
+        await setDoc(doc(db, 'history', historyId), {
+          id: historyId,
+          userId: user.uid,
+          videoId: currentShort.id,
+          watchedAt: serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Failed to add short to history:", err);
+      }
+    };
+    addToHistory();
+  }, [currentIndex, user, shorts]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollPos = e.currentTarget.scrollTop;

@@ -184,12 +184,14 @@ export default function VideoPlayer() {
         // Add to History
         try {
           const historyId = `${user.uid}_${id}`;
+          console.log("Attempting to add to history:", { historyId, userId: user.uid, videoId: id });
           await setDoc(doc(db, 'history', historyId), {
             id: historyId,
             userId: user.uid,
             videoId: id,
             watchedAt: serverTimestamp()
           });
+          console.log("Added to history successfully for:", historyId);
         } catch (err) {
           console.error("Failed to add to history:", err);
         }
