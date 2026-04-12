@@ -125,32 +125,39 @@ export default function App() {
           const channelsSnap = await getDocs(q);
           let userChannels: ChannelType[] = channelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ChannelType));
 
-          if (userChannels.length === 0) {
-            // Create primary channel
-            const channelId = typeof crypto.randomUUID === 'function' 
-              ? crypto.randomUUID() 
-              : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            
+          // Ensure there is a channel with ID == uid (for backward compatibility with old videos)
+          const hasUidChannel = userChannels.some(c => c.id === firebaseUser.uid);
+          
+          if (!hasUidChannel) {
             const primaryChannel: ChannelType = {
-              id: channelId,
+              id: firebaseUser.uid,
               ownerId: firebaseUser.uid,
               displayName: userData.displayName,
               photoURL: userData.photoURL,
               isPrimary: true,
-              subscribers: 0
+              subscribers: userData.subscribers || 0
             };
-            await setDoc(doc(db, 'channels', channelId), {
+            await setDoc(doc(db, 'channels', firebaseUser.uid), {
               ...primaryChannel,
               bio: '',
               createdAt: new Date()
             });
-            await updateDoc(userRef, { primaryChannelId: channelId });
-            userChannels = [primaryChannel];
-            userData.primaryChannelId = channelId;
+            
+            // Demote any other primary channels
+            for (const ch of userChannels) {
+              if (ch.isPrimary) {
+                await updateDoc(doc(db, 'channels', ch.id), { isPrimary: false });
+                ch.isPrimary = false;
+              }
+            }
+            
+            userChannels.push(primaryChannel);
+            await updateDoc(userRef, { primaryChannelId: firebaseUser.uid });
+            userData.primaryChannelId = firebaseUser.uid;
           }
 
           setChannels(userChannels);
-          const primary = userChannels.find(c => c.isPrimary) || userChannels[0];
+          const primary = userChannels.find(c => c.isPrimary) || userChannels.find(c => c.id === firebaseUser.uid) || userChannels[0];
           setActiveChannel(primary);
           setUser({
             ...userData,
