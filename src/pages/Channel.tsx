@@ -47,7 +47,7 @@ export default function Channel() {
           id: channelDoc.id,
           ownerId: channelData.ownerId,
           name: channelData.displayName || 'Ice Creator',
-          pseudonym: channelData.pseudonym || '',
+          pseudonym: channelData.pseudonym || channelData.pseudonim || '',
           photoUrl: channelData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
           bannerUrl: channelData.bannerUrl || null,
           bio: channelData.bio || '',
@@ -336,7 +336,7 @@ export default function Channel() {
           <div className="flex-1 space-y-3">
             <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight">{authorInfo?.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">
-              <span>{authorInfo?.pseudonym || `@user-${id?.substring(0, 8)}`}</span>
+              <span>{authorInfo?.pseudonym || authorInfo?.pseudonim || `@user-${id?.substring(0, 8)}`}</span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
               <span>{subCount} подписчиков</span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
