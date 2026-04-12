@@ -26,8 +26,10 @@ export default function TopChannels() {
   const [channels, setChannels] = useState<TopChannel[]>([]);
   const [topTracks, setTopTracks] = useState<VideoType[]>([]);
   const [topPhotos, setTopPhotos] = useState<VideoType[]>([]);
+  const [topVideos, setTopVideos] = useState<VideoType[]>([]);
+  const [topShorts, setTopShorts] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [topType, setTopType] = useState<'authors' | 'tracks' | 'photos'>('authors');
+  const [topType, setTopType] = useState<'authors' | 'tracks' | 'photos' | 'videos' | 'shorts'>('authors');
   const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views' | 'photos' | 'ices'>('subscribers');
 
   useEffect(() => {
@@ -107,6 +109,20 @@ export default function TopChannels() {
           .slice(0, 50);
         setTopPhotos(popularPhotos);
 
+        // Set top videos (regular videos)
+        const popularVideos = allVideos
+          .filter(v => !v.isShort && !v.isMusic && !v.isPhoto && v.type !== 'photo')
+          .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
+          .slice(0, 50);
+        setTopVideos(popularVideos);
+
+        // Set top shorts
+        const popularShorts = allVideos
+          .filter(v => v.isShort || v.type === 'short')
+          .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
+          .slice(0, 50);
+        setTopShorts(popularShorts);
+
       } catch (error) {
         console.error("Error in TopChannels snapshot:", error);
       } finally {
@@ -160,6 +176,18 @@ export default function TopChannels() {
             className={`px-6 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wider ${topType === 'tracks' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
           >
             Треки
+          </button>
+          <button 
+            onClick={() => setTopType('videos')}
+            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wider ${topType === 'videos' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
+          >
+            Видео
+          </button>
+          <button 
+            onClick={() => setTopType('shorts')}
+            className={`px-6 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wider ${topType === 'shorts' ? 'bg-blue-600 text-white shadow-md' : 'text-[var(--studio-muted)] hover:text-[var(--studio-text)]'}`}
+          >
+            Shorts
           </button>
           <button 
             onClick={() => setTopType('photos')}
@@ -316,6 +344,61 @@ export default function TopChannels() {
             </Link>
           ))}
         </div>
+      ) : topType === 'videos' ? (
+        <div className="space-y-4">
+          {topVideos.map((video, index) => (
+            <Link 
+              key={video.id} 
+              to={`/video/${video.id}`}
+              className="flex items-center gap-4 bg-[var(--studio-sidebar)] p-4 rounded-2xl border border-[var(--studio-border)] hover:border-blue-300 hover:shadow-lg transition-all group"
+            >
+              <div className="w-12 text-center font-black text-2xl italic text-[var(--studio-muted)] group-hover:text-blue-600 transition-colors">
+                {index + 1}
+              </div>
+              <div className="relative w-24 md:w-32 aspect-video rounded-xl overflow-hidden shadow-sm">
+                <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Play className="w-8 h-8 text-white fill-current" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-[var(--studio-text)] group-hover:text-blue-600 transition-colors line-clamp-1">{video.title}</h3>
+                <p className="text-sm text-[var(--studio-muted)] font-medium">{video.authorName}</p>
+              </div>
+              <div className="text-right hidden sm:block">
+                <div className="flex items-center justify-end gap-2 text-blue-600 font-black text-lg">
+                  <Play className="w-4 h-4" />
+                  {video.views.toLocaleString()}
+                </div>
+                <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest">Просмотров</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : topType === 'shorts' ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {topShorts.map((short, index) => (
+            <Link 
+              key={short.id} 
+              to={`/video/${short.id}`}
+              className="bg-[var(--studio-sidebar)] rounded-2xl overflow-hidden border border-[var(--studio-border)] hover:border-blue-300 hover:shadow-xl transition-all group relative"
+            >
+              <div className="aspect-[9/16] overflow-hidden">
+                <img src={short.thumbnailUrl} alt={short.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              </div>
+              <div className="absolute top-2 left-2 w-8 h-8 bg-black/50 backdrop-blur-md rounded-lg flex items-center justify-center text-white text-sm font-black italic">
+                #{index + 1}
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                <h3 className="text-white text-xs font-bold line-clamp-2">{short.title}</h3>
+                <div className="flex items-center gap-1 mt-1 text-blue-400 font-bold text-[10px]">
+                  <Play className="w-3 h-3" />
+                  {short.views.toLocaleString()}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {topPhotos.map((photo, index) => (
@@ -345,7 +428,11 @@ export default function TopChannels() {
         </div>
       )}
 
-      {((topType === 'authors' && channels.length === 0) || (topType === 'tracks' && topTracks.length === 0) || (topType === 'photos' && topPhotos.length === 0)) && (
+      {((topType === 'authors' && channels.length === 0) || 
+        (topType === 'tracks' && topTracks.length === 0) || 
+        (topType === 'videos' && topVideos.length === 0) || 
+        (topType === 'shorts' && topShorts.length === 0) || 
+        (topType === 'photos' && topPhotos.length === 0)) && (
         <div className="text-center py-20 text-[var(--studio-muted)]">
           <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-10" />
           <h2 className="text-2xl font-bold">Чарты пока пусты</h2>

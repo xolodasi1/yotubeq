@@ -13,13 +13,14 @@ import { ru } from 'date-fns/locale';
 import { APP_LOGO_URL } from '../constants';
 
 export default function Navbar() {
-  const { user } = useAuth();
+  const { user, channels, activeChannel, setActiveChannel } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const isStudio = location.pathname.startsWith('/studio');
@@ -39,22 +40,12 @@ export default function Navbar() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) {
-      setUserProfile(null);
-      return;
-    }
-    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-      if (doc.exists()) {
-        setUserProfile(doc.data());
-      }
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -262,17 +253,82 @@ export default function Navbar() {
                   )}
                 </div>
 
-                <Link to={`/channel/${user.uid}`}>
-                  <MeltingAvatar
-                    photoURL={user.photoURL || ''}
-                    lastPostAt={userProfile?.lastPostAt}
-                    size="sm"
-                    className="border border-[var(--border)]"
-                  />
-                </Link>
-                <button onClick={handleLogout} className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors hidden sm:block">
-                  <LogOut className="w-5 h-5 text-[var(--text-secondary)]" />
-                </button>
+                <div className="relative" ref={userMenuRef}>
+                  <button 
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center"
+                  >
+                    <MeltingAvatar
+                      photoURL={activeChannel?.photoURL || user.photoURL || ''}
+                      lastPostAt={activeChannel?.lastPostAt}
+                      size="sm"
+                      className="border border-[var(--border)]"
+                    />
+                  </button>
+
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-64 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-xl overflow-hidden z-50">
+                      <div className="p-4 border-b border-[var(--border)] bg-[var(--hover)]/30">
+                        <div className="flex items-center gap-3 mb-3">
+                          <img src={activeChannel?.photoURL || user.photoURL} className="w-10 h-10 rounded-full object-cover" alt="" />
+                          <div className="overflow-hidden">
+                            <p className="font-bold text-sm text-[var(--text-primary)] truncate">{activeChannel?.displayName || user.displayName}</p>
+                            <p className="text-xs text-[var(--text-secondary)] truncate">{user.email}</p>
+                          </div>
+                        </div>
+                        <Link 
+                          to={`/channel/${activeChannel?.id || user.uid}`}
+                          className="text-xs font-bold text-blue-600 hover:underline"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          Мой канал
+                        </Link>
+                      </div>
+
+                      {channels.length > 1 && (
+                        <div className="p-2 border-b border-[var(--border)]">
+                          <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest px-2 mb-2">Сменить канал</p>
+                          <div className="space-y-1">
+                            {channels.map(channel => (
+                              <button
+                                key={channel.id}
+                                onClick={() => {
+                                  setActiveChannel(channel);
+                                  setShowUserMenu(false);
+                                  toast.success(`Переключено на ${channel.displayName}`);
+                                }}
+                                className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${activeChannel?.id === channel.id ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--hover)]'}`}
+                              >
+                                <img src={channel.photoURL} className="w-6 h-6 rounded-full object-cover" alt="" />
+                                <span className="text-xs font-medium truncate">{channel.displayName}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-1">
+                        <button 
+                          onClick={() => {
+                            navigate('/studio/profile');
+                            setShowUserMenu(false);
+                          }}
+                          className="w-full flex items-center gap-3 p-2 hover:bg-[var(--hover)] rounded-md transition-colors text-sm text-[var(--text-primary)]"
+                        >
+                          <Settings className="w-4 h-4" />
+                          <span>Настройки канала</span>
+                        </button>
+                        <button 
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-3 p-2 hover:bg-[var(--hover)] rounded-md transition-colors text-sm text-red-500"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Выйти</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           ) : (

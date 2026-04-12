@@ -63,13 +63,14 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 export default function VideoPlayer() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const [video, setVideo] = useState<VideoType | null>(null);
   const [relatedVideos, setRelatedVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Real interactions state
   const [isLiked, setIsLiked] = useState(false);
+  const [isDisliked, setIsDisliked] = useState(false);
   const [isIced, setIsIced] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isWatchLater, setIsWatchLater] = useState(false);
@@ -193,22 +194,27 @@ export default function VideoPlayer() {
         // Add to History
         try {
           const historyId = `${user.uid}_${id}`;
-          console.log("Attempting to add to history:", { historyId, userId: user.uid, videoId: id });
           await setDoc(doc(db, 'history', historyId), {
             id: historyId,
             userId: user.uid,
             videoId: id,
             watchedAt: serverTimestamp()
           });
-          console.log("Added to history successfully for:", historyId);
         } catch (err) {
           console.error("Failed to add to history:", err);
         }
 
-        // Check like
+        // Check like/dislike
         const likeId = `${user.uid}_${id}`;
         const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
-        setIsLiked(likeSnap.exists() && likeSnap.data().type === 'like');
+        if (likeSnap.exists()) {
+          const type = likeSnap.data().type;
+          setIsLiked(type === 'like');
+          setIsDisliked(type === 'dislike');
+        } else {
+          setIsLiked(false);
+          setIsDisliked(false);
+        }
 
         // Check ice
         const iceId = `${user.uid}_${id}`;
@@ -235,51 +241,72 @@ export default function VideoPlayer() {
     fetchInteractions();
   }, [id, user, video?.authorId]);
 
-  const handleLike = async () => {
+  const handleLike = async (type: 'like' | 'dislike') => {
     if (!user || !video) {
-      toast.error('Пожалуйста, войдите, чтобы ставить лайки');
+      toast.error('Пожалуйста, войдите, чтобы взаимодействовать с видео');
       return;
     }
 
+    // Restriction: Only primary channel can interact
+    if (!activeChannel?.isPrimary) {
+      toast.error('Взаимодействовать с контентом можно только с основного канала');
+      return;
+    }
+    
     const likeId = `${user.uid}_${video.id}`;
     const likeRef = doc(db, 'video_likes', likeId);
     const videoRef = doc(db, 'videos', video.id);
 
     try {
-      if (isLiked) {
+      const currentType = isLiked ? 'like' : isDisliked ? 'dislike' : null;
+
+      if (currentType === type) {
+        // Remove interaction
         await deleteDoc(likeRef);
-        await updateDoc(videoRef, { likes: Math.max(0, video.likes - 1) });
-        setVideo({ ...video, likes: Math.max(0, video.likes - 1) });
-        setIsLiked(false);
+        await updateDoc(videoRef, { [type === 'like' ? 'likes' : 'dislikes']: increment(-1) });
+        setVideo({ ...video, [type === 'like' ? 'likes' : 'dislikes']: Math.max(0, (video[type === 'like' ? 'likes' : 'dislikes'] || 0) - 1) });
+        if (type === 'like') setIsLiked(false);
+        else setIsDisliked(false);
+      } else if (currentType) {
+        // Switch interaction
+        await updateDoc(likeRef, { type });
+        await updateDoc(videoRef, { 
+          [type === 'like' ? 'likes' : 'dislikes']: increment(1),
+          [currentType === 'like' ? 'likes' : 'dislikes']: increment(-1)
+        });
+        setVideo({ 
+          ...video, 
+          [type === 'like' ? 'likes' : 'dislikes']: (video[type === 'like' ? 'likes' : 'dislikes'] || 0) + 1,
+          [currentType === 'like' ? 'likes' : 'dislikes']: Math.max(0, (video[currentType === 'like' ? 'likes' : 'dislikes'] || 0) - 1)
+        });
+        setIsLiked(type === 'like');
+        setIsDisliked(type === 'dislike');
       } else {
-        await setDoc(likeRef, { id: likeId, userId: user.uid, videoId: video.id, type: 'like' });
-        await updateDoc(videoRef, { likes: video.likes + 1 });
+        // New interaction
+        await setDoc(likeRef, { id: likeId, userId: user.uid, videoId: video.id, type });
+        await updateDoc(videoRef, { [type === 'like' ? 'likes' : 'dislikes']: increment(1) });
         
-        // Add notification
-        if (video.authorId !== user.uid) {
-          try {
-            await addDoc(collection(db, 'notifications'), {
-              userId: video.authorId,
-              type: 'like',
-              videoId: video.id,
-              videoTitle: video.title,
-              fromUserId: user.uid,
-              fromUserName: user.displayName,
-              fromUserAvatar: user.photoURL,
-              createdAt: new Date(),
-              read: false
-            });
-          } catch (err) {
-            console.error("Error adding notification:", err);
-          }
+        if (type === 'like' && video.authorId !== user.uid) {
+          await addDoc(collection(db, 'notifications'), {
+            userId: video.authorId,
+            type: 'like',
+            videoId: video.id,
+            videoTitle: video.title,
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserAvatar: user.photoURL,
+            createdAt: new Date(),
+            read: false
+          });
         }
 
-        setVideo({ ...video, likes: video.likes + 1 });
-        setIsLiked(true);
+        setVideo({ ...video, [type === 'like' ? 'likes' : 'dislikes']: (video[type === 'like' ? 'likes' : 'dislikes'] || 0) + 1 });
+        setIsLiked(type === 'like');
+        setIsDisliked(type === 'dislike');
       }
     } catch (error) {
-      console.error("Error toggling like:", error);
-      toast.error('Не удалось обновить лайк');
+      console.error("Error toggling like/dislike:", error);
+      toast.error('Не удалось обновить реакцию');
     }
   };
 
@@ -391,12 +418,20 @@ export default function VideoPlayer() {
   };
 
   const handleSubscribe = async () => {
-    if (!user || !video) {
+    if (!user || !video || !authorData) {
       toast.error('Пожалуйста, войдите, чтобы подписаться');
       return;
     }
-    if (user.uid === video.authorId) {
-      toast.error("Вы не можете подписаться на самого себя");
+
+    // Restriction: Only primary channel can interact
+    if (!activeChannel?.isPrimary) {
+      toast.error('Подписываться можно только с основного канала');
+      return;
+    }
+
+    // Restriction: Cannot subscribe to own channels
+    if (user.uid === authorData.ownerId || user.uid === video.authorId) {
+      toast.error("Вы не можете подписаться на свои каналы");
       return;
     }
 
@@ -446,6 +481,11 @@ export default function VideoPlayer() {
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!video || !newComment.trim()) return;
+
+    if (user && !activeChannel?.isPrimary) {
+      toast.error('Оставлять комментарии можно только с основного канала');
+      return;
+    }
 
     setSubmittingComment(true);
     try {
@@ -764,11 +804,19 @@ export default function VideoPlayer() {
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
             <div className="flex items-center bg-[var(--studio-hover)] rounded-full border border-[var(--studio-border)]">
               <button 
-                onClick={handleLike}
+                onClick={() => handleLike('like')}
                 className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-[var(--hover)] rounded-l-full transition-colors ${isLiked ? 'text-blue-600' : 'text-[var(--studio-text)]'}`}
               >
                 <ThumbsUp className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-current' : ''}`} />
                 <span className="font-medium text-sm md:text-base">{video.likes}</span>
+              </button>
+              <div className="w-px h-5 md:h-6 bg-[var(--studio-border)]"></div>
+              <button 
+                onClick={() => handleLike('dislike')}
+                className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 hover:bg-[var(--hover)] transition-colors ${isDisliked ? 'text-red-500' : 'text-[var(--studio-text)]'}`}
+              >
+                <ThumbsDown className={`w-4 h-4 md:w-5 md:h-5 ${isDisliked ? 'fill-current' : ''}`} />
+                <span className="font-medium text-sm md:text-base">{video.dislikes || 0}</span>
               </button>
               <div className="w-px h-5 md:h-6 bg-[var(--studio-border)]"></div>
               <button 

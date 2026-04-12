@@ -66,11 +66,15 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
       className="bg-[var(--surface)] border border-[var(--border)] rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col group"
       onClick={() => navigate(`/video/${video.id}`)}
     >
-      <div className="relative aspect-video">
+      <div className={`relative overflow-hidden ${
+        video.isShort || video.type === 'short' ? 'aspect-[9/16]' :
+        video.isMusic || video.isPhoto || video.type === 'photo' ? 'aspect-square' :
+        'aspect-video'
+      }`}>
         <img
           src={video.thumbnailUrl}
           alt={video.title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         {!(video.isPhoto || video.type === 'photo') && video.duration && (
           <div className="absolute bottom-1 right-1 bg-black/80 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">

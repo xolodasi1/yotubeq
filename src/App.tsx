@@ -27,7 +27,7 @@ import Studio from './pages/Studio';
 import Photos from './pages/Photos';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 
 import { APP_LOGO_URL } from './constants';
 
@@ -38,10 +38,23 @@ interface User {
   pseudonym?: string;
   photoURL: string;
   subscribers: number;
+  primaryChannelId?: string;
+}
+
+interface ChannelType {
+  id: string;
+  ownerId: string;
+  displayName: string;
+  photoURL: string;
+  isPrimary: boolean;
+  subscribers: number;
 }
 
 interface AuthContextType {
   user: User | null;
+  channels: ChannelType[];
+  activeChannel: ChannelType | null;
+  setActiveChannel: (channel: ChannelType) => void;
   loading: boolean;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
@@ -49,6 +62,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  channels: [],
+  activeChannel: null,
+  setActiveChannel: () => {},
   loading: true,
   theme: 'light',
   toggleTheme: () => {},
@@ -58,6 +74,8 @@ export const useAuth = () => useContext(AuthContext);
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [channels, setChannels] = useState<ChannelType[]>([]);
+  const [activeChannel, setActiveChannel] = useState<ChannelType | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -81,17 +99,15 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        let subscribers = 0;
-        let pseudonym = '';
         try {
           const userRef = doc(db, 'users', firebaseUser.uid);
           const userSnap = await getDoc(userRef);
+          let userData: any;
+
           if (userSnap.exists()) {
-            const data = userSnap.data();
-            subscribers = data.subscribers || 0;
-            pseudonym = data.pseudonym || '';
+            userData = userSnap.data();
           } else {
-            await setDoc(userRef, {
+            userData = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -99,23 +115,51 @@ export default function App() {
               photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
               subscribers: 0,
               createdAt: new Date()
-            });
+            };
+            await setDoc(userRef, userData);
           }
+
+          // Fetch or create channels
+          const channelsRef = collection(db, 'channels');
+          const q = query(channelsRef, where('ownerId', '==', firebaseUser.uid));
+          const channelsSnap = await getDocs(q);
+          let userChannels: ChannelType[] = channelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ChannelType));
+
+          if (userChannels.length === 0) {
+            // Create primary channel
+            const channelId = crypto.randomUUID();
+            const primaryChannel: ChannelType = {
+              id: channelId,
+              ownerId: firebaseUser.uid,
+              displayName: userData.displayName,
+              photoURL: userData.photoURL,
+              isPrimary: true,
+              subscribers: 0
+            };
+            await setDoc(doc(db, 'channels', channelId), {
+              ...primaryChannel,
+              bio: '',
+              createdAt: new Date()
+            });
+            await updateDoc(userRef, { primaryChannelId: channelId });
+            userChannels = [primaryChannel];
+            userData.primaryChannelId = channelId;
+          }
+
+          setChannels(userChannels);
+          const primary = userChannels.find(c => c.isPrimary) || userChannels[0];
+          setActiveChannel(primary);
+          setUser({
+            ...userData,
+            uid: firebaseUser.uid
+          });
         } catch (error) {
           console.error("Error fetching/saving user:", error);
         }
-
-        const userData: User = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          pseudonym: pseudonym,
-          photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
-          subscribers: subscribers
-        };
-        setUser(userData);
       } else {
         setUser(null);
+        setChannels([]);
+        setActiveChannel(null);
       }
       setLoading(false);
     });
@@ -148,7 +192,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, theme, toggleTheme }}>
+    <AuthContext.Provider value={{ user, channels, activeChannel, setActiveChannel, loading, theme, toggleTheme }}>
       <Router>
         <div className={`min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col transition-colors duration-300`}>
           <Navbar />

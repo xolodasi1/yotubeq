@@ -16,7 +16,7 @@ type TabType = 'videos' | 'playlists' | 'community' | 'about';
 
 export default function Channel() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [authorInfo, setAuthorInfo] = useState<any>(null);
@@ -39,23 +39,24 @@ export default function Channel() {
   useEffect(() => {
     if (!id) return;
     
-    // Real-time user info (subscribers)
-    const unsubscribeUser = onSnapshot(doc(db, 'users', id), (userDoc) => {
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setAuthorInfo(prev => ({
-          ...prev,
-          name: userData.displayName || 'Ice Creator',
-          pseudonym: userData.pseudonym || '',
-          photoUrl: userData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
-          bannerUrl: userData.bannerUrl || null,
-          bio: userData.bio || '',
-          socialLinks: userData.socialLinks || {},
-          subscribers: userData.subscribers || 0,
-          joinedAt: userData.createdAt?.toDate() || prev?.joinedAt || new Date(),
-          lastPostAt: userData.lastPostAt
-        }));
-        setSubCount(userData.subscribers || 0);
+    // Real-time channel info
+    const unsubscribeChannel = onSnapshot(doc(db, 'channels', id), (channelDoc) => {
+      if (channelDoc.exists()) {
+        const channelData = channelDoc.data();
+        setAuthorInfo({
+          id: channelDoc.id,
+          ownerId: channelData.ownerId,
+          name: channelData.displayName || 'Ice Creator',
+          pseudonym: channelData.pseudonym || '',
+          photoUrl: channelData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
+          bannerUrl: channelData.bannerUrl || null,
+          bio: channelData.bio || '',
+          socialLinks: channelData.socialLinks || {},
+          subscribers: channelData.subscribers || 0,
+          joinedAt: channelData.createdAt?.toDate() || new Date(),
+          lastPostAt: channelData.lastPostAt
+        });
+        setSubCount(channelData.subscribers || 0);
       }
     });
 
@@ -99,7 +100,7 @@ export default function Channel() {
     };
 
     fetchChannelVideos();
-    return () => unsubscribeUser();
+    return () => unsubscribeChannel();
   }, [id, user]);
 
   // Real-time Community Posts
@@ -158,18 +159,26 @@ export default function Channel() {
   };
 
   const handleSubscribe = async () => {
-    if (!user || !id) {
+    if (!user || !id || !authorInfo) {
       toast.error('Пожалуйста, войдите, чтобы подписаться');
       return;
     }
-    if (user.uid === id) {
-      toast.error("Вы не можете подписаться на самого себя");
+
+    // Restriction: Only primary channel can interact
+    if (!activeChannel?.isPrimary) {
+      toast.error('Подписываться можно только с основного канала');
+      return;
+    }
+
+    // Restriction: Cannot subscribe to own channels
+    if (user.uid === authorInfo.ownerId || user.uid === id) {
+      toast.error("Вы не можете подписаться на свои каналы");
       return;
     }
 
     const subId = `${user.uid}_${id}`;
     const subRef = doc(db, 'subscriptions', subId);
-    const channelRef = doc(db, 'users', id);
+    const channelRef = doc(db, 'channels', id);
 
     try {
       if (isSubscribed) {
@@ -219,16 +228,23 @@ export default function Channel() {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newPostText.trim() || isPosting) return;
+    if (!user || !activeChannel || !newPostText.trim() || isPosting) return;
+
+    // Restriction: Community posts are per-channel, but user said interactions are primary only.
+    // However, posting on your own channel should be allowed from that channel.
+    if (activeChannel.id !== id) {
+      toast.error('Вы можете публиковать посты только от имени этого канала');
+      return;
+    }
 
     setIsPosting(true);
     try {
       const postId = crypto.randomUUID();
       const postData: CommunityPost = {
         id: postId,
-        authorId: user.uid,
-        authorName: user.displayName,
-        authorPhotoUrl: user.photoURL,
+        authorId: activeChannel.id,
+        authorName: activeChannel.displayName,
+        authorPhotoUrl: activeChannel.photoURL,
         text: newPostText,
         type: postType,
         createdAt: new Date(),
@@ -342,8 +358,8 @@ export default function Channel() {
             )}
 
             <div className="pt-2 flex flex-wrap gap-3 items-center">
-              {user?.uid === id ? (
-                <Link to="/studio" className="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold text-sm transition-all hover:bg-blue-700 shadow-lg shadow-blue-100/20">
+              {user?.uid === authorInfo?.ownerId ? (
+                <Link to="/studio/profile" className="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold text-sm transition-all hover:bg-blue-700 shadow-lg shadow-blue-100/20">
                   Настроить канал
                 </Link>
               ) : (
@@ -480,11 +496,11 @@ export default function Channel() {
                 </div>
               )}
 
-              {canPostCommunity && user?.uid === id && (
+              {canPostCommunity && user?.uid === authorInfo?.ownerId && activeChannel?.id === id && (
                 <div className="bg-[var(--studio-sidebar)] p-8 rounded-2xl border border-[var(--studio-border)] shadow-sm">
                   <form onSubmit={handleCreatePost} className="space-y-6">
                     <div className="flex gap-4">
-                      <img src={user.photoURL || ''} className="w-10 h-10 rounded-full shrink-0" alt="" />
+                      <img src={activeChannel?.photoURL || ''} className="w-10 h-10 rounded-full shrink-0" alt="" />
                       <textarea
                         value={newPostText}
                         onChange={(e) => setNewPostText(e.target.value)}

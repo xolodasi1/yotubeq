@@ -4,11 +4,12 @@ export interface Video {
   description: string;
   thumbnailUrl: string;
   videoUrl: string;
-  authorId: string;
+  authorId: string; // This will now be the channelId
   authorName: string;
   authorPhotoUrl: string;
   views: number;
   likes: number;
+  dislikes: number;
   ices?: number;
   createdAt: any; // Timestamp
   category: string;
@@ -31,13 +32,26 @@ export interface Video {
 
 export type VideoType = Video;
 
+export interface Channel {
+  id: string;
+  ownerId: string; // The user's UID
+  displayName: string;
+  photoURL: string;
+  bannerUrl?: string;
+  subscribers: number;
+  bio: string;
+  isPrimary: boolean;
+  createdAt: any;
+  pseudonym?: string;
+}
+
 export interface UserProfile {
   uid: string;
   displayName: string;
   email: string;
   photoURL: string;
   bannerUrl?: string;
-  subscribers: number;
+  subscribers: number; // For backward compatibility or if we treat the user as a channel too
   photosCount?: number;
   bio: string;
   joinedAt: any;
@@ -48,6 +62,7 @@ export interface UserProfile {
     vk?: string;
     instagram?: string;
   };
+  primaryChannelId?: string;
 }
 
 export type UserType = UserProfile;

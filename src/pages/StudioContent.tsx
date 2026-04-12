@@ -10,7 +10,7 @@ import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 export default function StudioContent() {
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const navigate = useNavigate();
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,13 +29,13 @@ export default function StudioContent() {
   const [analyticsVideo, setAnalyticsVideo] = useState<VideoType | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeChannel) return;
 
     const fetchVideos = async () => {
       try {
         const q = query(
           collection(db, 'videos'),
-          where('authorId', '==', user.uid),
+          where('authorId', '==', activeChannel.id),
           orderBy('createdAt', 'desc')
         );
         const snapshot = await getDocs(q);
@@ -56,7 +56,7 @@ export default function StudioContent() {
     };
 
     fetchVideos();
-  }, [user]);
+  }, [user, activeChannel]);
 
   const handleDelete = async (videoId: string) => {
     if (!window.confirm('Вы уверены, что хотите удалить это видео?')) return;
@@ -71,11 +71,11 @@ export default function StudioContent() {
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeChannel) return;
 
     const fetchPlaylists = async () => {
       try {
-        const q = query(collection(db, 'playlists'), where('authorId', '==', user.uid));
+        const q = query(collection(db, 'playlists'), where('authorId', '==', activeChannel.id));
         const snap = await getDocs(q);
         setPlaylists(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       } catch (error) {
@@ -84,7 +84,7 @@ export default function StudioContent() {
     };
 
     fetchPlaylists();
-  }, [user]);
+  }, [user, activeChannel]);
 
   const handleEditClick = (video: VideoType) => {
     setEditingVideo(video);

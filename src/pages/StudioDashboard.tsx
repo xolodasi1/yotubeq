@@ -11,7 +11,7 @@ import { ru } from 'date-fns/locale';
 import { APP_LOGO_URL } from '../constants';
 
 export default function StudioDashboard() {
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const navigate = useNavigate();
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,13 +23,13 @@ export default function StudioDashboard() {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeChannel) return;
 
     const fetchStudioData = async () => {
       try {
         const vq = query(
           collection(db, 'videos'),
-          where('authorId', '==', user.uid),
+          where('authorId', '==', activeChannel.id),
           orderBy('createdAt', 'desc'),
           limit(5)
         );
@@ -44,7 +44,7 @@ export default function StudioDashboard() {
         });
         setVideos(vData);
 
-        const allVq = query(collection(db, 'videos'), where('authorId', '==', user.uid));
+        const allVq = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
         const allVSnapshot = await getDocs(allVq);
         let views = 0;
         let likes = 0;
@@ -60,7 +60,7 @@ export default function StudioDashboard() {
           totalViews: views,
           totalLikes: likes,
           totalIces: ices,
-          subscribers: user.subscribers || 0
+          subscribers: activeChannel.subscribers || 0
         });
       } catch (error) {
         console.error("Error fetching studio data:", error);
@@ -70,7 +70,7 @@ export default function StudioDashboard() {
     };
 
     fetchStudioData();
-  }, [user]);
+  }, [user, activeChannel]);
 
   if (loading) {
     return (

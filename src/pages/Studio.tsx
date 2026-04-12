@@ -12,7 +12,7 @@ const CLOUDINARY_CLOUD_NAME = 'du6zw4m8g';
 const CLOUDINARY_UPLOAD_PRESET = 'icetube_uploads';
 
 export default function Studio() {
-  const { user } = useAuth();
+  const { user, channels, activeChannel, setActiveChannel } = useAuth();
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -203,11 +203,12 @@ export default function Studio() {
         category,
         videoUrl,
         thumbnailUrl,
-        authorId: user.uid,
-        authorName: user.displayName,
-        authorPhotoUrl: user.photoURL,
+        authorId: activeChannel?.id || user.uid,
+        authorName: activeChannel?.displayName || user.displayName,
+        authorPhotoUrl: activeChannel?.photoURL || user.photoURL,
         views: 0,
         likes: 0,
+        dislikes: 0,
         createdAt: new Date().toISOString(),
         duration: videoDuration,
         type: contentType,
@@ -229,20 +230,26 @@ export default function Studio() {
 
       await setDoc(doc(db, 'videos', videoId), newVideoData);
 
-      // Update lastPostAt in user profile
+      // Update lastPostAt in user profile and channel
       try {
         await updateDoc(doc(db, 'users', user.uid), {
           lastPostAt: serverTimestamp()
         });
+        if (activeChannel) {
+          await updateDoc(doc(db, 'channels', activeChannel.id), {
+            lastPostAt: serverTimestamp()
+          });
+        }
       } catch (err) {
         console.error("Error updating lastPostAt:", err);
       }
 
       // Send notifications to subscribers who have notifications enabled
       try {
+        const targetId = activeChannel?.id || user.uid;
         const subsQuery = query(
           collection(db, 'subscriptions'),
-          where('channelId', '==', user.uid),
+          where('channelId', '==', targetId),
           where('notificationsEnabled', '==', true)
         );
         const subsSnap = await getDocs(subsQuery);
@@ -255,9 +262,9 @@ export default function Studio() {
             contentType: contentType,
             videoId: videoId,
             videoTitle: title,
-            fromUserId: user.uid,
-            fromUserName: user.displayName,
-            fromUserAvatar: user.photoURL,
+            fromUserId: targetId,
+            fromUserName: activeChannel?.displayName || user.displayName,
+            fromUserAvatar: activeChannel?.photoURL || user.photoURL,
             createdAt: new Date(),
             read: false
           });
@@ -301,6 +308,33 @@ export default function Studio() {
         </div>
 
         <form onSubmit={handleUpload} className="p-8 space-y-10">
+          {/* Channel Selection */}
+          {channels.length > 1 && (
+            <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+              <label className="block text-xs font-bold text-blue-600 uppercase tracking-widest mb-4">Выберите канал для публикации</label>
+              <div className="flex flex-wrap gap-4">
+                {channels.map(channel => (
+                  <button
+                    key={channel.id}
+                    type="button"
+                    onClick={() => setActiveChannel(channel)}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                      activeChannel?.id === channel.id 
+                        ? 'border-blue-600 bg-white shadow-md' 
+                        : 'border-transparent bg-white/50 hover:bg-white'
+                    }`}
+                  >
+                    <img src={channel.photoURL} alt={channel.displayName} className="w-8 h-8 rounded-full object-cover" />
+                    <div className="text-left">
+                      <p className="text-sm font-bold line-clamp-1">{channel.displayName}</p>
+                      {channel.isPrimary && <span className="text-[10px] text-blue-500 font-bold uppercase">Основной</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             <div className="space-y-8">
               {/* Video Upload Area */}

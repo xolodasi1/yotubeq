@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, query, collection, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save } from 'lucide-react';
+import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function StudioProfile() {
-  const { user } = useAuth();
+  const { user, channels, activeChannel, setActiveChannel } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [pseudonym, setPseudonym] = useState('');
@@ -25,12 +25,14 @@ export default function StudioProfile() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [creatingChannel, setCreatingChannel] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
 
   useEffect(() => {
-    if (!user) return;
-    const fetchUser = async () => {
+    if (!activeChannel) return;
+    const fetchChannel = async () => {
       try {
-        const snap = await getDoc(doc(db, 'users', user.uid));
+        const snap = await getDoc(doc(db, 'channels', activeChannel.id));
         if (snap.exists()) {
           const data = snap.data();
           setDisplayName(data.displayName || '');
@@ -54,17 +56,18 @@ export default function StudioProfile() {
         setLoading(false);
       }
     };
-    fetchUser();
-  }, [user]);
+    fetchChannel();
+  }, [activeChannel]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !activeChannel) return;
     setSaving(true);
     try {
-      // Update user profile
       const aliasesArray = searchAliases.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-      await updateDoc(doc(db, 'users', user.uid), {
+      
+      // Update channel document
+      await updateDoc(doc(db, 'channels', activeChannel.id), {
         displayName,
         pseudonym,
         searchAliases: aliasesArray,
@@ -73,8 +76,20 @@ export default function StudioProfile() {
         socialLinks
       });
 
-      // Propagate changes to all user's videos/tracks/photos
-      const q = query(collection(db, 'videos'), where('authorId', '==', user.uid));
+      // If it's the primary channel, also update the user document for legacy support
+      if (activeChannel.isPrimary) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          displayName,
+          pseudonym,
+          searchAliases: aliasesArray,
+          photoURL,
+          bio,
+          socialLinks
+        });
+      }
+
+      // Propagate changes to all channel's videos
+      const q = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
       const snapshot = await getDocs(q);
       
       const updatePromises = snapshot.docs.map(videoDoc => 
@@ -84,8 +99,9 @@ export default function StudioProfile() {
         })
       );
 
-      // Propagate to comments
-      const commentsQ = query(collection(db, 'comments'), where('authorId', '==', user.uid));
+      // Propagate to comments (comments are still linked to userId for interactions, but authorId for display)
+      // Actually, comments should probably use channelId now too.
+      const commentsQ = query(collection(db, 'comments'), where('authorId', '==', activeChannel.id));
       const commentsSnapshot = await getDocs(commentsQ);
       const commentUpdatePromises = commentsSnapshot.docs.map(commentDoc =>
         updateDoc(doc(db, 'comments', commentDoc.id), {
@@ -96,12 +112,49 @@ export default function StudioProfile() {
       
       await Promise.all([...updatePromises, ...commentUpdatePromises]);
 
-      toast.success('Профиль и контент обновлены');
+      toast.success('Настройки канала обновлены');
+      window.location.reload(); // Refresh to update context
     } catch (error) {
       console.error("Error saving profile:", error);
       toast.error('Ошибка при сохранении');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCreateChannel = async () => {
+    if (!user) return;
+    if (channels.length >= 5) {
+      toast.error('Вы не можете создать более 5 каналов');
+      return;
+    }
+    if (!newChannelName.trim()) {
+      toast.error('Введите название канала');
+      return;
+    }
+
+    setCreatingChannel(true);
+    try {
+      const channelId = crypto.randomUUID();
+      const newChannel = {
+        id: channelId,
+        ownerId: user.uid,
+        displayName: newChannelName,
+        photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${channelId}`,
+        isPrimary: false,
+        subscribers: 0,
+        createdAt: serverTimestamp(),
+        bio: '',
+        socialLinks: {}
+      };
+      await setDoc(doc(db, 'channels', channelId), newChannel);
+      toast.success('Новый канал создан!');
+      setNewChannelName('');
+      window.location.reload();
+    } catch (error) {
+      toast.error('Ошибка при создании канала');
+    } finally {
+      setCreatingChannel(false);
     }
   };
 
@@ -311,7 +364,7 @@ export default function StudioProfile() {
             className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-blue-600/20 uppercase tracking-widest text-xs"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            Опубликовать изменения
+            Сохранить настройки канала
           </button>
           
           <div className="flex gap-4">
@@ -320,11 +373,11 @@ export default function StudioProfile() {
               onClick={() => window.location.reload()}
               className="flex-1 bg-[var(--studio-hover)] text-[var(--studio-text)] font-bold py-4 rounded-2xl hover:bg-[var(--studio-border)] transition-all"
             >
-              Отменить все изменения
+              Отменить
             </button>
             <button 
               type="button"
-              onClick={() => navigate(`/channel/${user.uid}`)}
+              onClick={() => navigate(`/channel/${activeChannel?.id}`)}
               className="flex-1 bg-[var(--studio-hover)] text-[var(--studio-text)] font-bold py-4 rounded-2xl hover:bg-[var(--studio-border)] transition-all"
             >
               Перейти на канал
@@ -332,6 +385,70 @@ export default function StudioProfile() {
           </div>
         </div>
       </form>
+
+      {/* Manage Channels Section */}
+      <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 space-y-8 shadow-sm">
+        <div>
+          <h2 className="text-xl font-bold text-[var(--studio-text)]">Ваши каналы</h2>
+          <p className="text-sm text-[var(--studio-muted)]">Вы можете создать до 5 каналов на один аккаунт</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {channels.map(channel => (
+            <div 
+              key={channel.id}
+              className={`p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${
+                activeChannel?.id === channel.id 
+                  ? 'border-blue-600 bg-blue-50/50' 
+                  : 'border-[var(--studio-border)] bg-[var(--studio-hover)]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <img src={channel.photoURL} className="w-10 h-10 rounded-full object-cover" alt="" />
+                <div>
+                  <p className="font-bold text-sm text-[var(--studio-text)] line-clamp-1">{channel.displayName}</p>
+                  {channel.isPrimary && <span className="text-[10px] text-blue-500 font-bold uppercase">Основной</span>}
+                </div>
+              </div>
+              {activeChannel?.id === channel.id ? (
+                <CheckCircle2 className="w-5 h-5 text-blue-600" />
+              ) : (
+                <button 
+                  onClick={() => setActiveChannel(channel)}
+                  className="text-xs font-bold text-blue-600 hover:underline"
+                >
+                  Выбрать
+                </button>
+              )}
+            </div>
+          ))}
+
+          {channels.length < 5 && (
+            <div className="p-4 rounded-2xl border-2 border-dashed border-[var(--studio-border)] flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Plus className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-bold text-[var(--studio-text)]">Новый канал</span>
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  placeholder="Название..."
+                  className="flex-1 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-600"
+                />
+                <button 
+                  onClick={handleCreateChannel}
+                  disabled={creatingChannel || !newChannelName.trim()}
+                  className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {creatingChannel ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Создать'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
