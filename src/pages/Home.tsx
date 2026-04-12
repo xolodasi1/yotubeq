@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
-import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users } from 'lucide-react';
+import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users, Music as MusicIcon, Camera } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { useAuth } from '../App';
@@ -97,8 +97,10 @@ export default function Home() {
     return matchesName || matchesAliases;
   });
 
-  const regularVideos = filteredVideos.filter(v => !v.isShort);
+  const regularVideos = filteredVideos.filter(v => !v.isShort && !v.isMusic && !v.isPhoto);
   const shortsVideos = filteredVideos.filter(v => v.isShort);
+  const musicVideos = filteredVideos.filter(v => v.isMusic);
+  const photoVideos = filteredVideos.filter(v => v.isPhoto);
 
   const topVideos = [...regularVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
   const newVideos = [...regularVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
@@ -199,6 +201,46 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
                 {regularVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Music Section */}
+          {musicVideos.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-500">
+                  <MusicIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Музыка</h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Треки и клипы</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
+                {musicVideos.map((video) => (
+                  <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Photos Section */}
+          {photoVideos.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 bg-green-900/20 rounded-xl flex items-center justify-center text-green-500">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Фото</h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Изображения</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
+                {photoVideos.map((video) => (
                   <VideoCard key={video.id} video={video as any} />
                 ))}
               </div>
