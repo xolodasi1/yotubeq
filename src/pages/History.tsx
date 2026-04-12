@@ -18,10 +18,13 @@ export default function History() {
     const fetchHistory = async () => {
       try {
         setLoading(true);
+        console.log("Fetching history for user:", user.uid);
         const q = query(collection(db, 'history'), where('userId', '==', user.uid), orderBy('watchedAt', 'desc'));
         const snap = await getDocs(q);
+        console.log("History documents found:", snap.docs.length);
         
         const videoPromises = snap.docs.map(async (d) => {
+          console.log("Fetching video for history item:", d.data().videoId);
           const videoDoc = await getDoc(doc(db, 'videos', d.data().videoId));
           if (videoDoc.exists()) {
             return {
@@ -30,6 +33,7 @@ export default function History() {
               historyId: d.id
             } as VideoType & { historyId: string };
           }
+          console.log("Video not found for:", d.data().videoId);
           return null;
         });
 

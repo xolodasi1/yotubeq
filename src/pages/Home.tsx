@@ -61,13 +61,8 @@ export default function Home() {
     return matchesSearch && matchesCategory;
   });
 
-  const regularVideos = filteredVideos.filter(v => !v.isShort && !v.isMusic && !v.isPhoto);
-  const shortsVideos = filteredVideos.filter(v => v.isShort);
-  const musicVideos = filteredVideos.filter(v => v.isMusic);
-  const photoContent = filteredVideos.filter(v => v.isPhoto);
-
-  const topVideos = [...regularVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
-  const newVideos = regularVideos.slice(0, 8);
+  const topVideos = [...filteredVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
+  const newVideos = [...filteredVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
 
   return (
     <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto pb-24 md:pb-10 bg-[var(--bg)] min-h-screen">
@@ -118,7 +113,7 @@ export default function Home() {
         </div>
       ) : (
         <div className="flex flex-col gap-16">
-          {/* Recommendations Section */}
+          {/* Main Content Section */}
           <section>
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
@@ -126,20 +121,24 @@ export default function Home() {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Рекомендации</h2>
-                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">Специально для вас</p>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">
+                    {activeCategory !== 'Все' ? activeCategory : 'Рекомендации'}
+                  </h2>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">
+                    {searchQuery ? 'Результаты поиска' : 'Контент'}
+                  </p>
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
-              {regularVideos.map((video) => (
+              {filteredVideos.map((video) => (
                 <VideoCard key={video.id} video={video as any} />
               ))}
             </div>
           </section>
 
-          {/* Top by Views Section */}
-          {topVideos.length > 0 && !searchQuery && activeCategory === 'Все' && (
+          {/* Top by Views Section - Only show if not searching and in 'Все' */}
+          {!searchQuery && activeCategory === 'Все' && topVideos.length > 0 && (
             <section>
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 bg-orange-900/20 rounded-xl flex items-center justify-center text-orange-500">
@@ -158,8 +157,8 @@ export default function Home() {
             </section>
           )}
 
-          {/* New Videos Section */}
-          {newVideos.length > 0 && !searchQuery && activeCategory === 'Все' && (
+          {/* New Videos Section - Only show if not searching and in 'Все' */}
+          {!searchQuery && activeCategory === 'Все' && newVideos.length > 0 && (
             <section>
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-500">
