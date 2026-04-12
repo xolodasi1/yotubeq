@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare, ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -91,6 +91,7 @@ export default function VideoPlayer() {
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
   const [playlistVisibility, setPlaylistVisibility] = useState<'public' | 'private'>('public');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -143,20 +144,28 @@ export default function VideoPlayer() {
           console.error("Failed to increment views:", err);
         }
 
-        // Fetch related videos of the same type
+        // Fetch related videos of the same type and category
         let relatedQ;
         if (data.isShort) {
-          relatedQ = query(collection(db, 'videos'), where('isShort', '==', true), limit(12));
+          relatedQ = query(collection(db, 'videos'), where('isShort', '==', true), limit(20));
         } else if (data.isMusic) {
-          relatedQ = query(collection(db, 'videos'), where('isMusic', '==', true), limit(12));
+          relatedQ = query(collection(db, 'videos'), where('isMusic', '==', true), limit(20));
         } else if (data.isPhoto || data.type === 'photo') {
-          relatedQ = query(collection(db, 'videos'), where('type', '==', 'photo'), limit(12));
+          relatedQ = query(collection(db, 'videos'), where('type', '==', 'photo'), limit(20));
         } else {
-          relatedQ = query(collection(db, 'videos'), where('isShort', '==', false), where('isMusic', '==', false), where('type', '!=', 'photo'), limit(12));
+          // Try to get videos from the same category first
+          relatedQ = query(
+            collection(db, 'videos'), 
+            where('category', '==', data.category),
+            where('isShort', '==', false),
+            where('isMusic', '==', false),
+            where('type', '!=', 'photo'),
+            limit(20)
+          );
         }
 
         const relatedSnap = await getDocs(relatedQ);
-        const relatedData = relatedSnap.docs
+        let relatedData = relatedSnap.docs
           .map(d => {
             const vData = d.data();
             return {
@@ -167,6 +176,30 @@ export default function VideoPlayer() {
           })
           .filter((v: any) => v.id !== id) as VideoType[];
           
+        // If not enough related videos from same category, fetch some general ones
+        if (relatedData.length < 5 && !data.isShort && !data.isMusic && !data.isPhoto && data.type !== 'photo') {
+          const generalQ = query(
+            collection(db, 'videos'),
+            where('isShort', '==', false),
+            where('isMusic', '==', false),
+            where('type', '!=', 'photo'),
+            limit(20)
+          );
+          const generalSnap = await getDocs(generalQ);
+          const generalData = generalSnap.docs
+            .map(d => {
+              const vData = d.data();
+              return {
+                id: d.id,
+                ...(vData as any),
+                createdAt: (vData as any).createdAt?.toDate?.()?.toISOString() || (vData as any).createdAt
+              };
+            })
+            .filter((v: any) => v.id !== id && !relatedData.find(rv => rv.id === v.id)) as VideoType[];
+          
+          relatedData = [...relatedData, ...generalData].slice(0, 15);
+        }
+
         setRelatedVideos(relatedData);
 
         // Fetch comments
@@ -937,13 +970,28 @@ export default function VideoPlayer() {
           </div>
         )}
 
-        <div className="mt-4 p-3 md:p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)]">
+        <div className="mt-4 p-3 md:p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] group/desc cursor-pointer" onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}>
           <div className="flex items-center gap-3 text-xs md:text-sm font-bold mb-2 text-[var(--studio-text)]">
             <span>{video.views.toLocaleString()} просмотров</span>
             <span>{formattedDate}</span>
             <span className="text-blue-600">#{video.category.replace(/\s+/g, '')}</span>
           </div>
-          <p className="text-xs md:text-sm whitespace-pre-wrap text-[var(--studio-text)]/90">{video.description}</p>
+          <div className={`relative overflow-hidden transition-all duration-300 ${isDescriptionExpanded ? 'max-h-[2000px]' : 'max-h-12 md:max-h-16'}`}>
+            <p className="text-xs md:text-sm whitespace-pre-wrap text-[var(--studio-text)]/90">{video.description}</p>
+            {!isDescriptionExpanded && (
+              <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[var(--studio-hover)] to-transparent" />
+            )}
+          </div>
+          
+          <button 
+            className="mt-2 text-[10px] md:text-xs font-black text-blue-600 uppercase tracking-widest flex items-center gap-1 hover:underline"
+          >
+            {isDescriptionExpanded ? (
+              <>Свернуть <ChevronUp className="w-3 h-3" /></>
+            ) : (
+              <>Развернуть <ChevronDown className="w-3 h-3" /></>
+            )}
+          </button>
           
           {video.timestamps && video.timestamps.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[var(--studio-border)]">
@@ -1108,27 +1156,45 @@ export default function VideoPlayer() {
 
       {/* Related Content */}
       <div className="xl:w-[400px] shrink-0">
-        <h3 className="text-lg font-bold mb-4 text-[var(--studio-text)]">
-          {video.isShort ? 'Похожие Shorts' : video.isMusic ? 'Похожие треки' : video.isPhoto ? 'Похожие фото' : 'Похожие видео'}
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-black text-[var(--studio-text)] uppercase tracking-tight">
+            {video.isShort ? 'Похожие Shorts' : video.isMusic ? 'Похожие треки' : video.isPhoto ? 'Похожие фото' : 'Рекомендации'}
+          </h3>
+          <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Следующее</span>
+        </div>
         <div className="flex flex-col gap-4">
           {relatedVideos.map((v) => (
-            <Link key={v.id} to={`/video/${v.id}`} className="flex gap-3 group">
-              <div className="w-32 md:w-40 aspect-video rounded-xl overflow-hidden shrink-0 border border-[var(--studio-border)] relative">
-                <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-medium text-white">
+            <Link key={v.id} to={`/video/${v.id}`} className="flex gap-4 group p-2 hover:bg-[var(--studio-hover)] rounded-2xl transition-all border border-transparent hover:border-[var(--studio-border)]">
+              <div className={`shrink-0 rounded-xl overflow-hidden border border-[var(--studio-border)] relative shadow-sm group-hover:scale-105 transition-transform ${v.isShort ? 'w-20 aspect-[9/16]' : 'w-36 aspect-video'}`}>
+                <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                <div className="absolute bottom-1.5 right-1.5 bg-black/80 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold text-white">
                   {v.duration}
                 </div>
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Play className="w-6 h-6 text-white fill-current" />
+                </div>
               </div>
-              <div className="flex flex-col py-0.5 md:py-1">
-                <h4 className="font-bold text-xs md:text-sm line-clamp-2 group-hover:text-blue-600 transition-colors leading-tight mb-1 text-[var(--studio-text)]">
+              <div className="flex flex-col py-1 min-w-0">
+                <h4 className="font-black text-xs md:text-sm line-clamp-2 group-hover:text-blue-600 transition-colors leading-tight mb-2 text-[var(--studio-text)] uppercase tracking-tight">
                   {v.title}
                 </h4>
-                <span className="text-[10px] md:text-xs text-[var(--studio-muted)]">{v.authorName}</span>
-                <span className="text-[10px] md:text-xs text-[var(--studio-muted)]">{v.views} просмотров • {v.createdAt ? formatDistanceToNow(new Date(v.createdAt), { locale: ru }) : 'недавно'}</span>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest block truncate">{v.authorName}</span>
+                  <div className="flex items-center gap-2 text-[9px] font-black text-[var(--studio-muted)] uppercase tracking-widest">
+                    <span>{v.views.toLocaleString()} просмотров</span>
+                    <span className="w-1 h-1 bg-[var(--studio-muted)] rounded-full opacity-30" />
+                    <span>{v.createdAt ? formatDistanceToNow(new Date(v.createdAt), { locale: ru }) : 'недавно'}</span>
+                  </div>
+                </div>
               </div>
             </Link>
           ))}
+          {relatedVideos.length === 0 && (
+            <div className="py-20 text-center space-y-3 opacity-20">
+              <Play className="w-12 h-12 mx-auto" />
+              <p className="text-[10px] font-black uppercase tracking-widest">Нет рекомендаций</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

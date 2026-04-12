@@ -9,6 +9,9 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 
+const CLOUDINARY_CLOUD_NAME = 'du6zw4m8g';
+const CLOUDINARY_UPLOAD_PRESET = 'icetube_uploads';
+
 export default function StudioContent() {
   const { user, activeChannel } = useAuth();
   const navigate = useNavigate();
@@ -28,6 +31,8 @@ export default function StudioContent() {
   const [editVisibility, setEditVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
   const [editPlaylistId, setEditPlaylistId] = useState('');
   const [editTimestamps, setEditTimestamps] = useState<{ time: string; label: string }[]>([]);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [analyticsVideo, setAnalyticsVideo] = useState<VideoType | null>(null);
@@ -106,17 +111,53 @@ export default function StudioContent() {
     setEditPlaylistId(currentPlaylist?.id || '');
   };
 
+  const uploadFile = async (file: File, folder: string): Promise<string> => {
+    const resourceType = file.type.startsWith('image/') ? 'image' : 'video';
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('folder', `icetube/${folder}`);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Загрузка не удалась');
+      }
+
+      const data = await response.json();
+      return data.secure_url;
+    } catch (error: any) {
+      console.error("Cloudinary upload error:", error);
+      throw new Error(error.message || 'Ошибка при загрузке на сервер хранения');
+    }
+  };
+
   const handleSaveEdit = async () => {
     if (!editingVideo) return;
     setIsSaving(true);
     try {
+      let thumbnailUrl = editThumbnail;
+
+      if (thumbnailFile) {
+        setUploadingThumbnail(true);
+        thumbnailUrl = await uploadFile(thumbnailFile, 'thumbnails');
+        setUploadingThumbnail(false);
+      }
+
       const videoRef = doc(db, 'videos', editingVideo.id);
       const hashtagsArray = editHashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
       
       const updateData: any = {
         title: editTitle,
         description: editDescription,
-        thumbnailUrl: editThumbnail,
+        thumbnailUrl,
         category: editCategory,
         hashtags: hashtagsArray,
         audience: editAudience,
@@ -147,6 +188,7 @@ export default function StudioContent() {
       } : v));
       toast.success('Видео успешно обновлено');
       setEditingVideo(null);
+      setThumbnailFile(null);
     } catch (error) {
       console.error("Error updating video:", error);
       toast.error('Ошибка при обновлении видео');
@@ -518,33 +560,68 @@ export default function StudioContent() {
                   className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] resize-none font-medium"
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Ссылка на превью</label>
-                  <input
-                    type="text"
-                    value={editThumbnail}
-                    onChange={(e) => setEditThumbnail(e.target.value)}
-                    className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm"
-                    placeholder="https://example.com/image.jpg"
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Значок (превью)</label>
+                  <div className="relative group aspect-video rounded-xl overflow-hidden border-2 border-dashed border-[var(--border)] hover:border-blue-500 transition-all cursor-pointer bg-[var(--hover)]">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    {thumbnailFile ? (
+                      <img src={URL.createObjectURL(thumbnailFile)} alt="Preview" className="w-full h-full object-cover" />
+                    ) : editThumbnail ? (
+                      <img src={editThumbnail} alt="Current" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-secondary)]">
+                        <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Загрузить фото</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                      <Edit className="w-6 h-6" />
+                    </div>
+                    {uploadingThumbnail && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 text-white animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-widest text-center mt-1">Нажмите, чтобы изменить</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Категория</label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                    className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm font-medium"
-                  >
-                    <option value="">Выберите категорию</option>
-                    <option value="Игры">Игры</option>
-                    <option value="Музыка">Музыка</option>
-                    <option value="Образование">Образование</option>
-                    <option value="Развлечения">Развлечения</option>
-                    <option value="Технологии">Технологии</option>
-                    <option value="Спорт">Спорт</option>
-                    <option value="Влоги">Влоги</option>
-                  </select>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Категория</label>
+                    <select
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                      className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm font-medium"
+                    >
+                      <option value="">Выберите категорию</option>
+                      <option value="Игры">Игры</option>
+                      <option value="Музыка">Музыка</option>
+                      <option value="Образование">Образование</option>
+                      <option value="Развлечения">Развлечения</option>
+                      <option value="Технологии">Технологии</option>
+                      <option value="Спорт">Спорт</option>
+                      <option value="Влоги">Влоги</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Плейлист</label>
+                    <select
+                      value={editPlaylistId}
+                      onChange={(e) => setEditPlaylistId(e.target.value)}
+                      className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm font-medium"
+                    >
+                      <option value="">Без плейлиста</option>
+                      {playlists.map(p => (
+                        <option key={p.id} value={p.id}>{p.title}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
               <div>
