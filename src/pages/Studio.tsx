@@ -131,41 +131,38 @@ export default function Studio() {
     if (!title) setTitle(file.name.replace(/\.[^/.]+$/, ""));
   };
 
-  const uploadFile = (file: File, folder: string, onProgress?: (progress: number) => void): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const isVideo = file.type.startsWith('video/');
-      const isAudio = file.type.startsWith('audio/');
-      const isImage = file.type.startsWith('image/');
-      const resourceType = (isVideo || isAudio) ? 'video' : 'image';
-      const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+  const uploadFile = async (file: File, folder: string, onProgress?: (progress: number) => void): Promise<string> => {
+    const isVideo = file.type.startsWith('video/');
+    const isAudio = file.type.startsWith('audio/');
+    const resourceType = (isVideo || isAudio) ? 'video' : 'image';
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-      formData.append('folder', `icetube/${folder}`);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('folder', `icetube/${folder}`);
 
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', url, true);
+    try {
+      // For progress tracking, we still need XHR or a specialized library, 
+      // but let's try a clean fetch first to see if it resolves the CORS issue.
+      // If CORS persists with fetch, it's definitely a Cloudinary config issue.
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
 
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable && onProgress) {
-          const progress = (e.loaded / e.total) * 100;
-          onProgress(progress);
-        }
-      };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Загрузка не удалась');
+      }
 
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText);
-          resolve(response.secure_url);
-        } else {
-          reject(new Error('Загрузка не удалась'));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('Загрузка не удалась из-за сетевой ошибки'));
-      xhr.send(formData);
-    });
+      const data = await response.json();
+      return data.secure_url;
+    } catch (error: any) {
+      console.error("Cloudinary upload error:", error);
+      throw new Error(error.message || 'Ошибка при загрузке на сервер хранения');
+    }
   };
 
   const handleUpload = async (e: React.FormEvent) => {
