@@ -305,10 +305,10 @@ export default function Channel() {
     );
   }
 
-  const regularVideos = videos.filter(v => !v.isShort && !v.isMusic && !v.isPhoto);
-  const shortsVideos = videos.filter(v => v.isShort);
-  const musicVideos = videos.filter(v => v.isMusic);
-  const photosVideos = videos.filter(v => v.isPhoto);
+  const regularVideos = videos.filter(v => v.type === 'video' || (!v.type && !v.isShort && !v.isMusic && !v.isPhoto));
+  const shortsVideos = videos.filter(v => v.type === 'short' || v.isShort);
+  const musicVideos = videos.filter(v => v.type === 'music' || v.isMusic);
+  const photosVideos = videos.filter(v => v.type === 'photo' || v.isPhoto);
   const canPostCommunity = subCount >= 10;
 
   return (

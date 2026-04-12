@@ -8,7 +8,7 @@ export default function ShortCard({ video }: { video: Video; key?: React.Key }) 
   return (
     <div 
       className="group flex flex-col gap-2 cursor-pointer w-40 md:w-48 shrink-0" 
-      onClick={() => navigate(`/shorts`)}
+      onClick={() => navigate(`/shorts?v=${video.id}`)}
     >
       <div className="relative aspect-[9/16] rounded-xl overflow-hidden border border-gray-200 group-hover:border-red-600 transition-all duration-300 shadow-sm">
         <img
