@@ -223,6 +223,13 @@ export default function Studio() {
         musicMetadata: contentType === 'music' ? musicMetadata : undefined
       };
 
+      // Remove undefined fields to prevent Firestore errors
+      Object.keys(newVideoData).forEach(key => {
+        if ((newVideoData as any)[key] === undefined) {
+          delete (newVideoData as any)[key];
+        }
+      });
+
       await setDoc(doc(db, 'videos', videoId), newVideoData);
 
       // Update lastPostAt in user profile

@@ -306,122 +306,130 @@ export default function StudioAnalytics() {
       )}
 
       {activeMainTab === 'audience' && (
-        <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Subscriber Growth */}
-            <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-500" /> Статистика подписчиков
-              </h3>
-              <div className="space-y-6">
-                <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
-                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Всего подписчиков</p>
-                  <p className="text-2xl font-bold text-[var(--studio-text)]">{stats.subscribers.toLocaleString()}</p>
-                </div>
-                <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
-                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Новые (28 дн.)</p>
-                  <p className="text-2xl font-bold text-green-500">+{Math.round(stats.subscribers * 0.15)}</p>
-                </div>
-                <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
-                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Просмотры на подписчика</p>
-                  <p className="text-2xl font-bold text-[var(--studio-text)]">{(stats.totalViews / (stats.subscribers || 1)).toFixed(1)}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Demographics */}
-            <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-blue-500" /> Демография (Оценка)
-              </h3>
-              <div className="space-y-6">
-                <div>
-                  <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Возраст аудитории</p>
-                  <div className="space-y-4">
-                    {[
-                      { range: '13-17', val: 15 },
-                      { range: '18-24', val: 40 },
-                      { range: '25-34', val: 30 },
-                      { range: '35-44', val: 10 },
-                      { range: '45+', val: 5 }
-                    ].map(item => (
-                      <div key={item.range} className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-bold">
-                          <span className="text-[var(--studio-text)]">{item.range}</span>
-                          <span className="text-[var(--studio-muted)]">{item.val}%</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[var(--studio-hover)] rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${item.val}%` }} />
-                        </div>
-                      </div>
-                    ))}
+        stats.totalViews < 50 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-[var(--studio-muted)] animate-in fade-in duration-500 bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl">
+            <Users className="w-16 h-16 mb-4 opacity-20" />
+            <h3 className="text-lg font-bold text-[var(--studio-text)] mb-2">Недостаточно данных</h3>
+            <p className="text-sm max-w-sm text-center px-4">Для отображения подробной аналитики аудитории необходимо больше просмотров и подписчиков. Продолжайте публиковать контент!</p>
+          </div>
+        ) : (
+          <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Subscriber Growth */}
+              <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-green-500" /> Статистика подписчиков
+                </h3>
+                <div className="space-y-6">
+                  <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
+                    <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Всего подписчиков</p>
+                    <p className="text-2xl font-bold text-[var(--studio-text)]">{stats.subscribers.toLocaleString()}</p>
                   </div>
-                </div>
-                <div className="pt-4 border-t border-[var(--studio-border)]">
-                  <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Пол</p>
-                  <div className="flex gap-4">
-                    <div className="flex-1 text-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
-                      <p className="text-xs font-bold text-blue-600">Мужчины</p>
-                      <p className="text-lg font-bold text-blue-600">58%</p>
-                    </div>
-                    <div className="flex-1 text-center p-3 bg-pink-50 dark:bg-pink-900/10 rounded-xl border border-pink-100 dark:border-pink-900/20">
-                      <p className="text-xs font-bold text-pink-600">Женщины</p>
-                      <p className="text-lg font-bold text-pink-600">42%</p>
-                    </div>
+                  <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
+                    <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Новые (28 дн.)</p>
+                    <p className="text-2xl font-bold text-green-500">+{Math.round(stats.subscribers * 0.15)}</p>
+                  </div>
+                  <div className="p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
+                    <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mb-1">Просмотры на подписчика</p>
+                    <p className="text-2xl font-bold text-[var(--studio-text)]">{(stats.totalViews / (stats.subscribers || 1)).toFixed(1)}</p>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Geography & Subscription */}
-            <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <Globe className="w-5 h-5 text-purple-500" /> География и подписки
-              </h3>
-              <div className="space-y-8">
-                <div>
-                  <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Топ регионов</p>
-                  <div className="space-y-4">
-                    {[
-                      { name: 'Россия', val: 75 },
-                      { name: 'Украина', val: 12 },
-                      { name: 'Казахстан', val: 8 },
-                      { name: 'Другие', val: 5 }
-                    ].map(item => (
-                      <div key={item.name} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3 h-3 text-[var(--studio-muted)]" />
-                          <span className="font-medium text-[var(--studio-text)]">{item.name}</span>
+              {/* Demographics */}
+              <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <PieChart className="w-5 h-5 text-blue-500" /> Демография (Оценка)
+                </h3>
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Возраст аудитории</p>
+                    <div className="space-y-4">
+                      {[
+                        { range: '13-17', val: 15 },
+                        { range: '18-24', val: 40 },
+                        { range: '25-34', val: 30 },
+                        { range: '35-44', val: 10 },
+                        { range: '45+', val: 5 }
+                      ].map(item => (
+                        <div key={item.range} className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-bold">
+                            <span className="text-[var(--studio-text)]">{item.range}</span>
+                            <span className="text-[var(--studio-muted)]">{item.val}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-[var(--studio-hover)] rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${item.val}%` }} />
+                          </div>
                         </div>
-                        <span className="font-bold text-[var(--studio-muted)]">{item.val}%</span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="pt-6 border-t border-[var(--studio-border)] space-y-4">
-                  <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Источник просмотров</p>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-[var(--studio-text)] flex items-center gap-1.5">
-                          <UserMinus className="w-3.5 h-3.5 text-red-500" /> Без подписки
-                        </span>
-                        <span className="text-[var(--studio-muted)]">65%</span>
+                  <div className="pt-4 border-t border-[var(--studio-border)]">
+                    <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Пол</p>
+                    <div className="flex gap-4">
+                      <div className="flex-1 text-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
+                        <p className="text-xs font-bold text-blue-600">Мужчины</p>
+                        <p className="text-lg font-bold text-blue-600">58%</p>
                       </div>
-                      <div className="w-full h-2 bg-[var(--studio-hover)] rounded-full overflow-hidden">
-                        <div className="h-full bg-red-500 rounded-full" style={{ width: '65%' }} />
+                      <div className="flex-1 text-center p-3 bg-pink-50 dark:bg-pink-900/10 rounded-xl border border-pink-100 dark:border-pink-900/20">
+                        <p className="text-xs font-bold text-pink-600">Женщины</p>
+                        <p className="text-lg font-bold text-pink-600">42%</p>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-[var(--studio-text)] flex items-center gap-1.5">
-                          <UserCheck className="w-3.5 h-3.5 text-green-500" /> С подпиской
-                        </span>
-                        <span className="text-[var(--studio-muted)]">35%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Geography & Subscription */}
+              <div className="bg-[var(--studio-sidebar)] border border-[var(--studio-border)] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-purple-500" /> География и подписки
+                </h3>
+                <div className="space-y-8">
+                  <div>
+                    <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Топ регионов</p>
+                    <div className="space-y-4">
+                      {[
+                        { name: 'Россия', val: 75 },
+                        { name: 'Украина', val: 12 },
+                        { name: 'Казахстан', val: 8 },
+                        { name: 'Другие', val: 5 }
+                      ].map(item => (
+                        <div key={item.name} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3 h-3 text-[var(--studio-muted)]" />
+                            <span className="font-medium text-[var(--studio-text)]">{item.name}</span>
+                          </div>
+                          <span className="font-bold text-[var(--studio-muted)]">{item.val}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="pt-6 border-t border-[var(--studio-border)] space-y-4">
+                    <p className="text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-4">Источник просмотров</p>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-bold">
+                          <span className="text-[var(--studio-text)] flex items-center gap-1.5">
+                            <UserMinus className="w-3.5 h-3.5 text-red-500" /> Без подписки
+                          </span>
+                          <span className="text-[var(--studio-muted)]">65%</span>
+                        </div>
+                        <div className="w-full h-2 bg-[var(--studio-hover)] rounded-full overflow-hidden">
+                          <div className="h-full bg-red-500 rounded-full" style={{ width: '65%' }} />
+                        </div>
                       </div>
-                      <div className="w-full h-2 bg-[var(--studio-hover)] rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500 rounded-full" style={{ width: '35%' }} />
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-bold">
+                          <span className="text-[var(--studio-text)] flex items-center gap-1.5">
+                            <UserCheck className="w-3.5 h-3.5 text-green-500" /> С подпиской
+                          </span>
+                          <span className="text-[var(--studio-muted)]">35%</span>
+                        </div>
+                        <div className="w-full h-2 bg-[var(--studio-hover)] rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full" style={{ width: '35%' }} />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -429,7 +437,7 @@ export default function StudioAnalytics() {
               </div>
             </div>
           </div>
-        </div>
+        )
       )}
     </div>
   );

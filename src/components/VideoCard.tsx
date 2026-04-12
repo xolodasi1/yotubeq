@@ -3,16 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Video } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Eye, ThumbsUp, Snowflake, Ban } from 'lucide-react';
+import { Eye, ThumbsUp, Snowflake, Ban, Clock } from 'lucide-react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 export default function VideoCard({ video }: { video: Video; key?: string }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isHiding, setIsHiding] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   const formattedDate = video.createdAt 
     ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru }) 
@@ -39,6 +40,27 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
     }
   };
 
+  const handleWatchLater = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return toast.error('Войдите, чтобы добавить в "Смотреть позже"');
+    
+    setIsAdding(true);
+    try {
+      const watchLaterId = `${user.uid}_${video.id}`;
+      await setDoc(doc(db, 'watch_later', watchLaterId), {
+        id: watchLaterId,
+        userId: user.uid,
+        videoId: video.id,
+        addedAt: serverTimestamp()
+      });
+      toast.success('Добавлено в "Смотреть позже"');
+    } catch (err) {
+      toast.error('Не удалось добавить');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   return (
     <div 
       className="bg-[var(--surface)] border border-[var(--border)] rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col group"
@@ -55,6 +77,14 @@ export default function VideoCard({ video }: { video: Video; key?: string }) {
             {video.duration}
           </div>
         )}
+        <button
+          onClick={handleWatchLater}
+          disabled={isAdding}
+          className="absolute top-2 left-2 bg-black/60 hover:bg-blue-500/80 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+          title="Смотреть позже"
+        >
+          <Clock className="w-4 h-4" />
+        </button>
         <button
           onClick={handleHideChannel}
           disabled={isHiding}
