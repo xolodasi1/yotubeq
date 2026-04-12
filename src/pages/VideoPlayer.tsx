@@ -94,6 +94,19 @@ export default function VideoPlayer() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const seekTo = (time: string) => {
+    if (!videoRef.current) return;
+    const parts = time.split(':').map(Number);
+    let seconds = 0;
+    if (parts.length === 2) {
+      seconds = parts[0] * 60 + parts[1];
+    } else if (parts.length === 3) {
+      seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    videoRef.current.currentTime = seconds;
+    videoRef.current.play();
+  };
+
   useEffect(() => {
     if (!id) return;
     
@@ -931,6 +944,24 @@ export default function VideoPlayer() {
             <span className="text-blue-600">#{video.category.replace(/\s+/g, '')}</span>
           </div>
           <p className="text-xs md:text-sm whitespace-pre-wrap text-[var(--studio-text)]/90">{video.description}</p>
+          
+          {video.timestamps && video.timestamps.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-[var(--studio-border)]">
+              <h4 className="text-xs font-black uppercase tracking-widest text-blue-600 mb-3">Эпизоды</h4>
+              <div className="flex flex-wrap gap-2">
+                {video.timestamps.map((ts, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => seekTo(ts.time)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-[var(--hover)] hover:bg-blue-500/10 rounded-lg border border-[var(--studio-border)] hover:border-blue-500/30 transition-all group"
+                  >
+                    <span className="text-[10px] font-mono font-black text-blue-600">{ts.time}</span>
+                    <span className="text-[10px] font-bold text-[var(--studio-text)] uppercase tracking-tight">{ts.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Comments Section */}

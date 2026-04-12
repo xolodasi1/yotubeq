@@ -92,20 +92,23 @@ export default function StudioComments() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)]">Комментарии к видео</h1>
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 pb-24">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)]">Комментарии</h1>
+          <p className="text-sm font-medium text-[var(--text-secondary)] uppercase tracking-widest">Управление обратной связью от зрителей</p>
+        </div>
       </div>
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-[var(--border)] bg-[var(--surface)]">
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <div className="p-6 border-b border-[var(--border)] bg-[var(--surface)]">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
             <input
               type="text"
-              placeholder="Поиск по комментариям"
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              placeholder="Поиск по комментариям или авторам..."
+              className="w-full pl-12 pr-6 py-3.5 bg-[var(--hover)] border border-[var(--border)] rounded-2xl text-sm font-black focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-[var(--text-primary)] uppercase tracking-tight"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -115,53 +118,63 @@ export default function StudioComments() {
         {/* List */}
         <div className="divide-y divide-[var(--border)]">
           {filteredComments.map((comment) => (
-            <div key={comment.id} className="p-6 hover:bg-[var(--hover)] transition-colors group flex gap-5">
-              <img src={comment.authorPhotoUrl} className="w-10 h-10 rounded-full border border-[var(--border)] shrink-0 shadow-sm" alt="" />
-              <div className="flex-1 space-y-3">
+            <div key={comment.id} className="p-8 hover:bg-[var(--hover)]/50 transition-all group flex gap-8">
+              <div className="relative shrink-0">
+                <img src={comment.authorPhotoUrl} className="w-14 h-14 rounded-2xl border-2 border-[var(--border)] object-cover shadow-sm group-hover:scale-105 transition-transform" alt="" referrerPolicy="no-referrer" />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 rounded-lg border-2 border-[var(--surface)] flex items-center justify-center">
+                  <MessageSquare className="w-2.5 h-2.5 text-white" />
+                </div>
+              </div>
+              <div className="flex-1 space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-[var(--text-primary)]">{comment.authorName}</span>
-                    <span className="text-[10px] text-[var(--text-secondary)] font-medium">
+                  <div className="flex items-center gap-4">
+                    <span className="font-black text-sm text-[var(--text-primary)] uppercase tracking-tight">{comment.authorName}</span>
+                    <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest bg-[var(--hover)] px-2 py-1 rounded-lg">
                       {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: ru }) : 'недавно'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
                     <button 
                       onClick={() => navigate(`/video/${comment.videoId}`)}
-                      className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
+                      className="p-3 hover:bg-blue-500/10 rounded-xl text-blue-600 transition-all border border-transparent hover:border-blue-500/20"
                       title="Перейти к видео"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => handleDelete(comment.id)}
-                      className="p-2 hover:bg-red-500/10 rounded-full text-red-500 transition-colors"
+                      className="p-3 hover:bg-red-500/10 rounded-xl text-red-600 transition-all border border-transparent hover:border-red-500/20"
                       title="Удалить"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <p className="text-sm text-[var(--text-primary)] leading-relaxed">{comment.text}</p>
-                <div className="flex items-center gap-6 pt-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
-                    <Heart className={`w-3.5 h-3.5 ${comment.authorHearted ? 'fill-red-500 text-red-500' : 'text-gray-300'}`} />
-                    <span className={comment.authorHearted ? 'text-red-600' : 'text-gray-400'}>
+                <div className="bg-[var(--hover)]/30 p-5 rounded-2xl border border-[var(--border)] group-hover:border-blue-500/20 transition-colors">
+                  <p className="text-sm text-[var(--text-primary)] leading-relaxed font-medium">{comment.text}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-8 pt-2">
+                  <div className="flex items-center gap-2.5 text-[10px] font-black uppercase tracking-[0.15em]">
+                    <Heart className={`w-4 h-4 ${comment.authorHearted ? 'fill-red-500 text-red-500' : 'text-[var(--text-secondary)]/30'}`} />
+                    <span className={comment.authorHearted ? 'text-red-600' : 'text-[var(--text-secondary)]'}>
                       {comment.authorHearted ? 'Отмечено автором' : 'Без отметки'}
                     </span>
                   </div>
-                  <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
-                    Видео: <span className="hover:underline cursor-pointer">{comment.videoTitle}</span>
+                  <div className="text-[10px] font-black text-blue-600 uppercase tracking-[0.15em] flex items-center gap-2">
+                    <div className="w-1 h-1 bg-blue-600 rounded-full" />
+                    Видео: <span onClick={() => navigate(`/video/${comment.videoId}`)} className="hover:underline cursor-pointer text-[var(--text-primary)]">{comment.videoTitle}</span>
                   </div>
                 </div>
               </div>
             </div>
           ))}
           {filteredComments.length === 0 && (
-            <div className="py-32 text-center">
-              <div className="flex flex-col items-center justify-center text-gray-400">
-                <MessageSquare className="w-12 h-12 mb-4 opacity-10" />
-                <p className="text-sm italic">Комментарии не найдены</p>
+            <div className="py-40 text-center bg-[var(--hover)]/10">
+              <div className="flex flex-col items-center justify-center text-[var(--text-secondary)]">
+                <div className="w-24 h-24 bg-[var(--surface)] rounded-[2rem] flex items-center justify-center mb-8 shadow-sm border border-[var(--border)]">
+                  <MessageSquare className="w-10 h-10 opacity-10" />
+                </div>
+                <p className="text-sm font-black uppercase tracking-[0.2em]">Комментарии не найдены</p>
               </div>
             </div>
           )}

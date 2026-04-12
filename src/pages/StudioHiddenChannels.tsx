@@ -97,42 +97,47 @@ export default function StudioHiddenChannels() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 pb-24">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-red-600/10 rounded-2xl flex items-center justify-center text-red-600">
-          <Ban className="w-6 h-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--studio-text)]">Скрытые каналы</h1>
-          <p className="text-sm text-[var(--studio-muted)]">Каналы, которые вы попросили не рекомендовать</p>
+    <div className="p-4 md:p-8 max-w-[1000px] mx-auto space-y-10 pb-24">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)]">Скрытые каналы</h1>
+          <p className="text-sm font-medium text-[var(--text-secondary)] uppercase tracking-widest">Управление списком исключений из рекомендаций</p>
         </div>
       </div>
 
       {hiddenChannels.length === 0 ? (
-        <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-12 text-center shadow-sm">
-          <Ban className="w-16 h-16 mx-auto mb-4 text-[var(--studio-muted)] opacity-20" />
-          <h3 className="text-xl font-bold text-[var(--studio-text)] mb-2">Список пуст</h3>
-          <p className="text-[var(--studio-muted)]">Вы еще не скрывали каналы из рекомендаций.</p>
+        <div className="bg-[var(--surface)] rounded-[2.5rem] border border-[var(--border)] p-20 text-center shadow-sm">
+          <div className="w-24 h-24 bg-[var(--hover)] rounded-[2rem] flex items-center justify-center mb-8 mx-auto shadow-sm">
+            <Ban className="w-10 h-10 text-[var(--text-secondary)] opacity-10" />
+          </div>
+          <h3 className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] mb-3">Список пуст</h3>
+          <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-widest">Вы еще не скрывали каналы из рекомендаций</p>
         </div>
       ) : (
-        <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] overflow-hidden shadow-sm">
-          <div className="divide-y divide-[var(--studio-border)]">
+        <div className="bg-[var(--surface)] rounded-[2.5rem] border border-[var(--border)] overflow-hidden shadow-sm">
+          <div className="divide-y divide-[var(--border)]">
             {hiddenChannels.map((channel) => (
-              <div key={channel.id} className="p-4 md:p-6 flex items-center justify-between gap-4 hover:bg-[var(--studio-hover)] transition-colors">
-                <div className="flex items-center gap-4 min-w-0">
-                  <img 
-                    src={channel.photoURL} 
-                    alt={channel.displayName} 
-                    className="w-12 h-12 rounded-full border border-[var(--studio-border)] object-cover"
-                  />
+              <div key={channel.id} className="p-6 md:p-8 flex items-center justify-between gap-6 hover:bg-[var(--hover)]/50 transition-all group">
+                <div className="flex items-center gap-6 min-w-0">
+                  <div className="relative">
+                    <img 
+                      src={channel.photoURL} 
+                      alt={channel.displayName} 
+                      className="w-14 h-14 rounded-2xl border-2 border-[var(--border)] object-cover shadow-sm group-hover:scale-105 transition-transform"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-600 rounded-lg border-2 border-[var(--surface)] flex items-center justify-center">
+                      <Ban className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  </div>
                   <div className="min-w-0">
-                    <h3 className="font-bold text-[var(--studio-text)] truncate">{channel.displayName}</h3>
-                    <p className="text-xs text-[var(--studio-muted)] truncate">Скрыт из рекомендаций</p>
+                    <h3 className="font-black text-sm text-[var(--text-primary)] uppercase tracking-tight truncate">{channel.displayName}</h3>
+                    <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest mt-1">Скрыт из рекомендаций</p>
                   </div>
                 </div>
                 <button
                   onClick={() => handleRestore(channel.id, channel.displayName)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl font-bold text-sm transition-all shrink-0"
+                  className="flex items-center gap-3 px-6 py-3 bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-600/20 hover:border-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shrink-0 active:scale-95"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <span className="hidden sm:inline">Восстановить</span>

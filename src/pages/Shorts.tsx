@@ -432,8 +432,13 @@ export default function Shorts() {
           videoId: currentShort.id,
           watchedAt: serverTimestamp()
         });
+        
+        // Increment views
+        await updateDoc(doc(db, 'videos', currentShort.id), {
+          views: increment(1)
+        });
       } catch (err) {
-        console.error("Failed to add short to history:", err);
+        console.error("Failed to add short to history or increment views:", err);
       }
     };
     addToHistory();

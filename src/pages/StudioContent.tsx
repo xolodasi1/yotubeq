@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Trash2, Edit, ExternalLink, Search, Filter, MoreVertical, BarChart2, X, Save, Snowflake } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Trash2, Edit, ExternalLink, Search, Filter, MoreVertical, BarChart2, X, Save, Snowflake, Plus, Loader2, Sparkles, AlertCircle, Layout, Video as VideoIcon, Image as ImageIcon, Music as MusicIcon, Smartphone, Clock, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -27,6 +27,7 @@ export default function StudioContent() {
   const [editAudience, setEditAudience] = useState<'kids' | 'not-kids'>('not-kids');
   const [editVisibility, setEditVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
   const [editPlaylistId, setEditPlaylistId] = useState('');
+  const [editTimestamps, setEditTimestamps] = useState<{ time: string; label: string }[]>([]);
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [analyticsVideo, setAnalyticsVideo] = useState<VideoType | null>(null);
@@ -98,6 +99,7 @@ export default function StudioContent() {
     setEditCategory(video.category || '');
     setEditAudience(video.audience || 'not-kids');
     setEditVisibility(video.visibility || 'public');
+    setEditTimestamps(video.timestamps || []);
     
     // Find if video is in any playlist
     const currentPlaylist = playlists.find(p => p.videoIds?.includes(video.id));
@@ -118,7 +120,8 @@ export default function StudioContent() {
         category: editCategory,
         hashtags: hashtagsArray,
         audience: editAudience,
-        visibility: editVisibility
+        visibility: editVisibility,
+        timestamps: editTimestamps
       };
 
       await updateDoc(videoRef, updateData);
@@ -184,127 +187,83 @@ export default function StudioContent() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)]">Контент на канале</h1>
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8 pb-24">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)]">Контент канала</h1>
+          <p className="text-sm font-medium text-[var(--text-secondary)] uppercase tracking-widest">Управление публикациями и плейлистами</p>
+        </div>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => navigate('/studio/upload')}
+            className="flex-1 md:flex-none bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 active:scale-95"
+          >
+            <Plus className="w-5 h-5" />
+            Добавить контент
+          </button>
+        </div>
       </div>
 
-      <div className="flex gap-4 md:gap-6 border-b border-[var(--border)] overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => setActiveTab('videos')}
-          className={`pb-4 text-sm font-bold transition-colors relative ${
-            activeTab === 'videos' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-          }`}
-        >
-          Видео
-          {activeTab === 'videos' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('shorts')}
-          className={`pb-4 text-sm font-bold transition-colors relative ${
-            activeTab === 'shorts' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-          }`}
-        >
-          Shorts
-          {activeTab === 'shorts' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('music')}
-          className={`pb-4 text-sm font-bold transition-colors relative ${
-            activeTab === 'music' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-          }`}
-        >
-          Музыка
-          {activeTab === 'music' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('photos')}
-          className={`pb-4 text-sm font-bold transition-colors relative ${
-            activeTab === 'photos' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-          }`}
-        >
-          Фото
-          {activeTab === 'photos' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('playlists')}
-          className={`pb-4 text-sm font-bold transition-colors relative ${
-            activeTab === 'playlists' ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-          }`}
-        >
-          Плейлисты
-          {activeTab === 'playlists' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
-          )}
-        </button>
+      <div className="flex gap-8 border-b border-[var(--border)] overflow-x-auto no-scrollbar">
+        {[
+          { id: 'videos', label: 'Видео' },
+          { id: 'shorts', label: 'Shorts' },
+          { id: 'music', label: 'Музыка' },
+          { id: 'photos', label: 'Фото' },
+          { id: 'playlists', label: 'Плейлисты' }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`pb-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all relative ${
+              activeTab === tab.id ? 'text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            {tab.label}
+            {activeTab === tab.id && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-t-full" />
+            )}
+          </button>
+        ))}
       </div>
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-[var(--border)] flex flex-col sm:flex-row gap-4 items-center justify-between bg-[var(--surface)]">
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+        <div className="p-6 border-b border-[var(--border)] flex flex-col lg:flex-row gap-6 items-center justify-between bg-[var(--surface)]">
+          <div className="relative w-full lg:w-96 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] group-focus-within:text-blue-600 transition-colors" />
             <input
               type="text"
-              placeholder="Поиск по контенту"
-              className="w-full pl-10 pr-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-md text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[var(--text-primary)]"
+              placeholder="Поиск по названию или описанию..."
+              className="w-full pl-12 pr-4 py-3 bg-[var(--hover)] border border-[var(--border)] rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-[var(--text-primary)]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
-            <button 
-              onClick={() => setSortBy('newest')}
-              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
-                sortBy === 'newest' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
-              }`}
-            >
-              Новые
-            </button>
-            <button 
-              onClick={() => setSortBy('oldest')}
-              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
-                sortBy === 'oldest' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
-              }`}
-            >
-              Старые
-            </button>
-            <button 
-              onClick={() => setSortBy('views')}
-              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
-                sortBy === 'views' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
-              }`}
-            >
-              Просмотры
-            </button>
-            <button 
-              onClick={() => setSortBy('likes')}
-              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
-                sortBy === 'likes' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
-              }`}
-            >
-              Лайки
-            </button>
-            <button 
-              onClick={() => setSortBy('ices')}
-              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wider whitespace-nowrap ${
-                sortBy === 'ices' ? 'bg-blue-600 text-white border-blue-600' : 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--hover)]'
-              }`}
-            >
-              Снежинки
-            </button>
-            <div className="h-6 w-px bg-[var(--border)] mx-2 hidden sm:block" />
-            <button className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--hover)] rounded transition-colors uppercase tracking-wider">
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 lg:pb-0 no-scrollbar w-full lg:w-auto">
+            <div className="flex items-center gap-1.5 bg-[var(--hover)] p-1 rounded-xl border border-[var(--border)]">
+              {[
+                { id: 'newest', label: 'Новые' },
+                { id: 'oldest', label: 'Старые' },
+                { id: 'views', label: 'Просмотры' },
+                { id: 'likes', label: 'Лайки' },
+                { id: 'ices', label: 'Снежинки' }
+              ].map((s) => (
+                <button 
+                  key={s.id}
+                  onClick={() => setSortBy(s.id as any)}
+                  className={`px-4 py-2 text-[10px] font-black rounded-lg transition-all uppercase tracking-wider whitespace-nowrap ${
+                    sortBy === s.id ? 'bg-[var(--surface)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <div className="h-8 w-px bg-[var(--border)] mx-2 hidden lg:block" />
+            <button className="flex items-center gap-2 px-5 py-2.5 text-[10px] font-black text-[var(--text-secondary)] hover:bg-[var(--hover)] hover:text-[var(--text-primary)] rounded-xl transition-all uppercase tracking-widest border border-transparent hover:border-[var(--border)]">
               <Filter className="w-4 h-4" />
-              Фильтр
+              Фильтры
             </button>
           </div>
         </div>
@@ -312,83 +271,119 @@ export default function StudioContent() {
         {/* Table/Card List */}
         <div className="overflow-x-auto">
           {activeTab === 'playlists' ? (
-            <div className="p-12 text-center text-[var(--text-secondary)]">
-              <p className="text-lg font-bold text-[var(--text-primary)]">Плейлисты в разработке</p>
-              <p className="text-sm mt-2">Скоро вы сможете создавать и управлять плейлистами.</p>
+            <div className="p-24 text-center space-y-4">
+              <div className="w-20 h-20 bg-[var(--hover)] rounded-3xl flex items-center justify-center mx-auto border border-[var(--border)]">
+                <MoreVertical className="w-10 h-10 opacity-20" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-lg font-black text-[var(--text-primary)] uppercase tracking-tighter">Плейлисты в разработке</p>
+                <p className="text-xs font-medium text-[var(--text-secondary)]">Скоро вы сможете создавать и управлять плейлистами.</p>
+              </div>
             </div>
           ) : (
             <>
               {/* Desktop Table */}
               <table className="w-full text-left border-collapse hidden md:table">
-                <thead className="bg-[var(--hover)] border-b border-[var(--border)] text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">
+                <thead className="bg-[var(--hover)] border-b border-[var(--border)] text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.15em]">
                   <tr>
-                    <th className="px-6 py-4 font-bold">{activeTab === 'photos' ? 'Фото' : activeTab === 'music' ? 'Трек' : 'Видео'}</th>
-                    <th className="px-6 py-4 font-bold">Дата</th>
-                    <th className="px-6 py-4 font-bold">Просмотры</th>
-                    <th className="px-6 py-4 font-bold">Лайки</th>
-                    <th className="px-6 py-4 font-bold">Снежинки</th>
-                    <th className="px-6 py-4 font-bold text-right">Действия</th>
+                    <th className="px-8 py-5 font-black">{activeTab === 'photos' ? 'Фото' : activeTab === 'music' ? 'Трек' : 'Контент'}</th>
+                    <th className="px-8 py-5 font-black">Параметры</th>
+                    <th className="px-8 py-5 font-black">Дата</th>
+                    <th className="px-8 py-5 font-black">Статистика</th>
+                    <th className="px-8 py-5 font-black text-right">Действия</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {filteredVideos.map((video) => (
                     <tr key={video.id} className="hover:bg-[var(--hover)] transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="flex gap-4 items-center min-w-[350px]">
-                          <div className={`relative ${activeTab === 'shorts' ? 'w-16 aspect-[9/16]' : activeTab === 'photos' ? 'w-24 aspect-square' : 'w-32 aspect-video'} rounded overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
-                            <img src={video.thumbnailUrl} className="w-full h-full object-cover" alt="" />
+                      <td className="px-8 py-6">
+                        <div className="flex gap-6 items-center min-w-[400px]">
+                          <div className={`relative ${activeTab === 'shorts' ? 'w-20 aspect-[9/16]' : activeTab === 'photos' ? 'w-28 aspect-square' : 'w-40 aspect-video'} rounded-xl overflow-hidden border border-[var(--border)] shrink-0 shadow-sm group-hover:shadow-md transition-shadow`}>
+                            <img src={video.thumbnailUrl} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="" />
                             {activeTab !== 'photos' && (
-                              <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-bold">
+                              <span className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">
                                 {video.duration}
                               </span>
                             )}
                           </div>
-                          <div className="min-w-0">
-                            <h4 className="font-bold text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(`/video/${video.id}`)}>
+                          <div className="min-w-0 space-y-1">
+                            <h4 className="font-black text-sm text-[var(--text-primary)] truncate group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(`/video/${video.id}`)}>
                               {video.title}
                             </h4>
-                            <p className="text-xs text-[var(--text-secondary)] line-clamp-1 mt-1">{video.description || 'Нет описания'}</p>
+                            <p className="text-xs font-medium text-[var(--text-secondary)] line-clamp-1 leading-relaxed">{video.description || 'Без описания'}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              {video.hashtags?.slice(0, 3).map(tag => (
+                                <span key={tag} className="text-[9px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">#{tag}</span>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)] whitespace-nowrap">
-                        {video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}
+                      <td className="px-8 py-6">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${video.visibility === 'public' ? 'bg-green-500' : video.visibility === 'unlisted' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)]">
+                              {video.visibility === 'public' ? 'Открытый' : video.visibility === 'unlisted' ? 'По ссылке' : 'Ограниченный'}
+                            </span>
+                          </div>
+                          <p className="text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">
+                            {video.audience === 'kids' ? 'Для детей' : 'Не для детей'}
+                          </p>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
-                        {video.views?.toLocaleString() || 0}
+                      <td className="px-8 py-6">
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-bold text-[var(--text-primary)]">{video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}</p>
+                          <p className="text-[9px] font-mono text-[var(--text-secondary)] uppercase">Опубликовано</p>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
-                        {video.likes?.toLocaleString() || 0}
+                      <td className="px-8 py-6">
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 min-w-[150px]">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                            <span className="font-mono text-xs font-bold text-[var(--text-primary)]">{video.views?.toLocaleString() || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ThumbsUp className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                            <span className="font-mono text-xs font-bold text-[var(--text-primary)]">{video.likes?.toLocaleString() || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Snowflake className="w-3.5 h-3.5 text-blue-400" />
+                            <span className="font-mono text-xs font-bold text-[var(--text-primary)]">{video.ices?.toLocaleString() || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                            <span className="font-mono text-xs font-bold text-[var(--text-primary)]">0</span>
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-[var(--studio-text)]">
-                        {video.ices?.toLocaleString() || 0}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                           <button 
                             onClick={() => navigate(`/video/${video.id}`)}
-                            className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
+                            className="p-2.5 bg-[var(--hover)] hover:bg-blue-600 hover:text-white rounded-xl text-[var(--text-secondary)] transition-all shadow-sm"
                             title="Открыть"
                           >
                             <ExternalLink className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleEditClick(video)}
-                            className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
+                            className="p-2.5 bg-[var(--hover)] hover:bg-blue-600 hover:text-white rounded-xl text-[var(--text-secondary)] transition-all shadow-sm"
                             title="Редактировать"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => setAnalyticsVideo(video)}
-                            className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors"
+                            className="p-2.5 bg-[var(--hover)] hover:bg-blue-600 hover:text-white rounded-xl text-[var(--text-secondary)] transition-all shadow-sm"
                             title="Аналитика"
                           >
                             <BarChart2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleDelete(video.id)}
-                            className="p-2 hover:bg-red-500/10 rounded-full text-red-500 transition-colors"
+                            className="p-2.5 bg-red-500/10 hover:bg-red-500 hover:text-white rounded-xl text-red-500 transition-all shadow-sm"
                             title="Удалить"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -403,60 +398,71 @@ export default function StudioContent() {
               {/* Mobile Card List */}
               <div className="md:hidden divide-y divide-[var(--border)]">
                 {filteredVideos.map((video) => (
-                  <div key={video.id} className="p-4 space-y-4">
-                    <div className="flex gap-4">
-                      <div className={`relative ${activeTab === 'shorts' ? 'w-20 aspect-[9/16]' : activeTab === 'photos' ? 'w-24 aspect-square' : 'w-32 aspect-video'} rounded-lg overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
+                  <div key={video.id} className="p-6 space-y-6 hover:bg-[var(--hover)] transition-colors">
+                    <div className="flex gap-5">
+                      <div className={`relative ${activeTab === 'shorts' ? 'w-24 aspect-[9/16]' : activeTab === 'photos' ? 'w-28 aspect-square' : 'w-36 aspect-video'} rounded-xl overflow-hidden border border-[var(--border)] shrink-0 shadow-sm`}>
                         <img src={video.thumbnailUrl} className="w-full h-full object-cover" alt="" />
                         {activeTab !== 'photos' && (
-                          <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-bold">
+                          <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
                             {video.duration}
                           </span>
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-sm text-[var(--text-primary)] line-clamp-2">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <h4 className="font-black text-sm text-[var(--text-primary)] line-clamp-2 leading-tight">
                           {video.title}
                         </h4>
-                        <p className="text-[10px] text-[var(--text-secondary)] mt-1">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${video.visibility === 'public' ? 'bg-green-500' : video.visibility === 'unlisted' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                          <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-secondary)]">
+                            {video.visibility === 'public' ? 'Открытый' : video.visibility === 'unlisted' ? 'По ссылке' : 'Ограниченный'}
+                          </span>
+                        </div>
+                        <p className="text-[9px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                           {video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}
                         </p>
-                        <div className="flex items-center gap-3 mt-2">
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-secondary)]">
-                            <Eye className="w-3 h-3" /> {video.views?.toLocaleString() || 0}
-                          </div>
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-secondary)]">
-                            <ThumbsUp className="w-3 h-3" /> {video.likes?.toLocaleString() || 0}
-                          </div>
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-secondary)]">
-                            <Snowflake className="w-3 h-3 text-blue-400" /> {video.ices?.toLocaleString() || 0}
-                          </div>
-                        </div>
                       </div>
                     </div>
+                    
+                    <div className="grid grid-cols-3 gap-4 p-4 bg-[var(--hover)] rounded-2xl border border-[var(--border)]">
+                      <div className="flex flex-col items-center gap-1">
+                        <Eye className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                        <span className="font-mono text-xs font-black text-[var(--text-primary)]">{video.views?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <ThumbsUp className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                        <span className="font-mono text-xs font-black text-[var(--text-primary)]">{video.likes?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <Snowflake className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="font-mono text-xs font-black text-[var(--text-primary)]">{video.ices?.toLocaleString() || 0}</span>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between pt-2">
-                      <div className="flex gap-1">
+                      <div className="flex gap-2">
                         <button 
                           onClick={() => navigate(activeTab === 'photos' ? '/photos' : `/video/${video.id}`)}
-                          className="p-2.5 bg-[var(--hover)] rounded-xl text-[var(--text-secondary)]"
+                          className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] shadow-sm active:scale-95 transition-transform"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => handleEditClick(video)}
-                          className="p-2.5 bg-[var(--hover)] rounded-xl text-[var(--text-secondary)]"
+                          className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] shadow-sm active:scale-95 transition-transform"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => setAnalyticsVideo(video)}
-                          className="p-2.5 bg-[var(--hover)] rounded-xl text-[var(--text-secondary)]"
+                          className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] shadow-sm active:scale-95 transition-transform"
                         >
                           <BarChart2 className="w-4 h-4" />
                         </button>
                       </div>
                       <button 
                         onClick={() => handleDelete(video.id)}
-                        className="p-2.5 bg-red-500/10 rounded-xl text-red-500"
+                        className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 shadow-sm active:scale-95 transition-transform"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -466,10 +472,13 @@ export default function StudioContent() {
               </div>
 
               {filteredVideos.length === 0 && (
-                <div className="px-6 py-24 text-center">
-                  <div className="flex flex-col items-center justify-center text-[var(--text-secondary)]">
-                    <Search className="w-12 h-12 mb-4 opacity-10" />
-                    <p className="text-sm italic">Контент не найден</p>
+                <div className="px-8 py-32 text-center space-y-4">
+                  <div className="w-20 h-20 bg-[var(--hover)] rounded-3xl flex items-center justify-center mx-auto border border-[var(--border)]">
+                    <Search className="w-10 h-10 opacity-10" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-black text-[var(--text-primary)] uppercase tracking-widest italic">Контент не найден</p>
+                    <p className="text-[10px] font-medium text-[var(--text-secondary)]">Попробуйте изменить параметры поиска или фильтры</p>
                   </div>
                 </div>
               )}
@@ -547,6 +556,55 @@ export default function StudioContent() {
                   className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm"
                   placeholder="ice, tube, video"
                 />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider">Таймкоды</label>
+                  <button 
+                    onClick={() => setEditTimestamps([...editTimestamps, { time: '', label: '' }])}
+                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                  >
+                    + Добавить
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {editTimestamps.map((ts, idx) => (
+                    <div key={idx} className="flex gap-3 items-center">
+                      <input
+                        type="text"
+                        value={ts.time}
+                        onChange={(e) => {
+                          const newTs = [...editTimestamps];
+                          newTs[idx].time = e.target.value;
+                          setEditTimestamps(newTs);
+                        }}
+                        placeholder="00:00"
+                        className="w-24 px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-xs font-mono"
+                      />
+                      <input
+                        type="text"
+                        value={ts.label}
+                        onChange={(e) => {
+                          const newTs = [...editTimestamps];
+                          newTs[idx].label = e.target.value;
+                          setEditTimestamps(newTs);
+                        }}
+                        placeholder="Название эпизода"
+                        className="flex-1 px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-xs font-medium"
+                      />
+                      <button 
+                        onClick={() => setEditTimestamps(editTimestamps.filter((_, i) => i !== idx))}
+                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {editTimestamps.length === 0 && (
+                    <p className="text-[10px] text-[var(--text-secondary)] italic">Таймкоды не добавлены</p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--border)]">

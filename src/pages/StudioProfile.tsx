@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, updateDoc, query, collection, where, getDocs, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2, Trash2, Layout, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2, Trash2, Layout, ArrowUp, ArrowDown, Search, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function StudioProfile() {
@@ -276,279 +276,217 @@ export default function StudioProfile() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-8 pb-24">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600">
-            <User className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--studio-text)]">Настройка канала</h1>
-            <p className="text-sm text-[var(--studio-muted)]">Персонализируйте свой канал для зрителей</p>
-          </div>
+    <div className="p-4 md:p-8 max-w-[1000px] mx-auto space-y-10 pb-24">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)]">Настройка канала</h1>
+          <p className="text-sm font-medium text-[var(--text-secondary)] uppercase tracking-widest">Персонализация и управление структурой контента</p>
         </div>
       </div>
 
       {/* Sub Tabs */}
-      <div className="flex gap-4 border-b border-[var(--studio-border)]">
+      <div className="flex gap-8 border-b border-[var(--border)]">
         <button 
           onClick={() => setActiveSubTab('profile')}
-          className={`pb-4 px-2 text-sm font-bold uppercase tracking-widest transition-all border-b-2 ${
-            activeSubTab === 'profile' ? 'border-blue-600 text-blue-600' : 'border-transparent text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+          className={`pb-4 px-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all border-b-2 relative ${
+            activeSubTab === 'profile' ? 'border-blue-600 text-blue-600' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           Профиль
+          {activeSubTab === 'profile' && <div className="absolute -bottom-[2px] left-0 right-0 h-0.5 bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]" />}
         </button>
         <button 
           onClick={() => setActiveSubTab('layout')}
-          className={`pb-4 px-2 text-sm font-bold uppercase tracking-widest transition-all border-b-2 ${
-            activeSubTab === 'layout' ? 'border-blue-600 text-blue-600' : 'border-transparent text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+          className={`pb-4 px-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all border-b-2 relative ${
+            activeSubTab === 'layout' ? 'border-blue-600 text-blue-600' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           Главная страница
+          {activeSubTab === 'layout' && <div className="absolute -bottom-[2px] left-0 right-0 h-0.5 bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]" />}
         </button>
       </div>
 
       {activeSubTab === 'profile' ? (
-        <form onSubmit={handleSave} className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 space-y-8 shadow-sm">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-          <div className="relative group shrink-0">
-            <img 
-              src={photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`} 
-              className="w-32 h-32 rounded-full border-4 border-blue-600 shadow-xl object-cover" 
-              alt="Profile" 
-            />
-            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-              <Camera className="w-8 h-8 text-white" />
+        <form onSubmit={handleSave} className="space-y-10">
+          <div className="bg-[var(--surface)] rounded-[2.5rem] border border-[var(--border)] p-8 md:p-12 shadow-sm space-y-12">
+            <div className="flex flex-col md:flex-row gap-12 items-start">
+              <div className="relative group shrink-0">
+                <div className="absolute -inset-1 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-[2.5rem] opacity-20 group-hover:opacity-40 transition-opacity blur-sm" />
+                <img 
+                  src={photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`} 
+                  className="w-40 h-40 rounded-[2rem] border-4 border-[var(--surface)] shadow-2xl object-cover relative z-10" 
+                  alt="Profile" 
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-black/60 rounded-[2rem] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-20 backdrop-blur-sm scale-95 group-hover:scale-100">
+                  <Camera className="w-8 h-8 text-white mb-2" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Изменить</span>
+                </div>
+              </div>
+              
+              <div className="flex-1 w-full grid grid-cols-1 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-blue-600" /> Имя канала
+                  </label>
+                  <input 
+                    type="text" 
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Введите название канала"
+                    className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-[var(--text-primary)] font-black uppercase tracking-tight"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                    <Globe className="w-3.5 h-3.5 text-blue-600" /> Псевдоним (@handle)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] font-black">@</span>
+                    <input 
+                      type="text" 
+                      value={pseudonym.replace('@', '')}
+                      onChange={(e) => setPseudonym('@' + e.target.value)}
+                      placeholder="mychannel"
+                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl pl-10 pr-6 py-4 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-[var(--text-primary)] font-black uppercase tracking-tight"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Search className="w-3.5 h-3.5 text-blue-600" /> Теги для поиска (через запятую)
+                </label>
+                <input 
+                  type="text" 
+                  value={searchAliases}
+                  onChange={(e) => setSearchAliases(e.target.value)}
+                  placeholder="напр. my channel, мой канал, май ченел"
+                  className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all text-[var(--text-primary)] font-medium"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Camera className="w-3.5 h-3.5 text-blue-600" /> URL аватара
+                </label>
+                <input 
+                  type="text" 
+                  value={photoURL}
+                  onChange={(e) => setPhotoURL(e.target.value)}
+                  placeholder="https://example.com/photo.jpg"
+                  className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all text-[var(--text-primary)] text-sm font-mono"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Описание канала
+                </label>
+                <textarea 
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Расскажите зрителям о своем канале, о чем ваши видео..."
+                  className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl px-6 py-5 focus:outline-none focus:border-blue-500 transition-all text-[var(--text-primary)] min-h-[180px] resize-none leading-relaxed font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="pt-12 border-t border-[var(--border)] space-y-8">
+              <div className="flex items-center gap-4">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-secondary)]">Социальные сети</h3>
+                <div className="h-px bg-[var(--border)] flex-1" />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {[
+                  { id: 'telegramGroup', label: 'Telegram Group', icon: Smartphone, placeholder: 't.me/...' },
+                  { id: 'rutube', label: 'Rutube', icon: Globe, placeholder: 'rutube.ru/...' },
+                  { id: 'youtube', label: 'YouTube', icon: Globe, placeholder: 'youtube.com/...' },
+                  { id: 'website', label: 'Веб-сайт', icon: Globe, placeholder: 'https://...' },
+                  { id: 'telegram', label: 'Telegram', icon: Smartphone, placeholder: '@username' },
+                  { id: 'vk', label: 'VK', icon: Globe, placeholder: 'vk.com/...' },
+                  { id: 'instagram', label: 'Instagram', icon: Instagram, placeholder: '@username' }
+                ].map((social) => (
+                  <div key={social.id} className="space-y-3">
+                    <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest flex items-center gap-2">
+                      <social.icon className="w-3.5 h-3.5 text-blue-600" /> {social.label}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={(socialLinks as any)[social.id]}
+                      onChange={(e) => setSocialLinks({...socialLinks, [social.id]: e.target.value})}
+                      placeholder={social.placeholder}
+                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 text-[var(--text-primary)] font-medium"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          
-          <div className="flex-1 w-full space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest flex items-center gap-2">
-                <User className="w-3.5 h-3.5" /> Имя канала
-              </label>
-              <input 
-                type="text" 
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Введите название канала"
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-blue-600 transition-all text-[var(--studio-text)] font-medium"
-              />
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5" /> Псевдоним (@handle)
-              </label>
-              <input 
-                type="text" 
-                value={pseudonym}
-                onChange={(e) => setPseudonym(e.target.value)}
-                placeholder="@mychannel"
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-blue-600 transition-all text-[var(--studio-text)] font-medium"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5" /> Альтернативные имена для поиска (через запятую)
-              </label>
-              <input 
-                type="text" 
-                value={searchAliases}
-                onChange={(e) => setSearchAliases(e.target.value)}
-                placeholder="напр. my channel, мой канал, май ченел"
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-blue-600 transition-all text-[var(--studio-text)] font-medium"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest flex items-center gap-2">
-                <Camera className="w-3.5 h-3.5" /> URL аватара
-              </label>
-              <input 
-                type="text" 
-                value={photoURL}
-                onChange={(e) => setPhotoURL(e.target.value)}
-                placeholder="https://example.com/photo.jpg"
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-blue-600 transition-all text-[var(--studio-text)] text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest flex items-center gap-2">
-            <MessageSquare className="w-3.5 h-3.5" /> Описание канала
-          </label>
-          <textarea 
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="Расскажите зрителям о своем канале, о чем ваши видео..."
-            className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-blue-600 transition-all text-[var(--studio-text)] min-h-[150px] resize-none leading-relaxed"
-          />
-        </div>
-
-        <div className="pt-6 border-t border-[var(--studio-border)] space-y-6">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--studio-muted)]">Ссылки на социальные сети</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
-                <Smartphone className="w-3.5 h-3.5" /> Telegram Group
-              </label>
-              <input 
-                type="text" 
-                value={socialLinks.telegramGroup}
-                onChange={(e) => setSocialLinks({...socialLinks, telegramGroup: e.target.value})}
-                placeholder="t.me/..."
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5" /> Rutube
-              </label>
-              <input 
-                type="text" 
-                value={socialLinks.rutube}
-                onChange={(e) => setSocialLinks({...socialLinks, rutube: e.target.value})}
-                placeholder="rutube.ru/..."
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5" /> YouTube
-              </label>
-              <input 
-                type="text" 
-                value={socialLinks.youtube}
-                onChange={(e) => setSocialLinks({...socialLinks, youtube: e.target.value})}
-                placeholder="youtube.com/..."
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5" /> Веб-сайт
-              </label>
-              <input 
-                type="text" 
-                value={socialLinks.website}
-                onChange={(e) => setSocialLinks({...socialLinks, website: e.target.value})}
-                placeholder="https://your-site.com"
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
-                <Smartphone className="w-3.5 h-3.5" /> Telegram
-              </label>
-              <input 
-                type="text" 
-                value={socialLinks.telegram}
-                onChange={(e) => setSocialLinks({...socialLinks, telegram: e.target.value})}
-                placeholder="@username"
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5" /> VK
-              </label>
-              <input 
-                type="text" 
-                value={socialLinks.vk}
-                onChange={(e) => setSocialLinks({...socialLinks, vk: e.target.value})}
-                placeholder="vk.com/username"
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--studio-muted)] uppercase flex items-center gap-1.5">
-                <Instagram className="w-3.5 h-3.5" /> Instagram
-              </label>
-              <input 
-                type="text" 
-                value={socialLinks.instagram}
-                onChange={(e) => setSocialLinks({...socialLinks, instagram: e.target.value})}
-                placeholder="@username"
-                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600 text-[var(--studio-text)]"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-8 flex flex-col gap-4">
-          <button 
-            type="submit" 
-            disabled={saving}
-            className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-blue-600/20 uppercase tracking-widest text-xs"
-          >
-            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            Сохранить настройки канала
-          </button>
-          
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-6">
             <button 
-              type="button"
-              onClick={() => window.location.reload()}
-              className="flex-1 bg-[var(--studio-hover)] text-[var(--studio-text)] font-bold py-4 rounded-2xl hover:bg-[var(--studio-border)] transition-all"
+              type="submit" 
+              disabled={saving}
+              className="flex-1 bg-blue-600 text-white font-black py-5 rounded-[2rem] hover:bg-blue-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl shadow-blue-600/20 uppercase tracking-[0.2em] text-[11px] active:scale-95"
             >
-              Отменить
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Сохранить изменения
             </button>
             <button 
               type="button"
               onClick={() => navigate(`/channel/${activeChannel?.id}`)}
-              className="flex-1 bg-[var(--studio-hover)] text-[var(--studio-text)] font-bold py-4 rounded-2xl hover:bg-[var(--studio-border)] transition-all"
+              className="flex-1 bg-[var(--surface)] text-[var(--text-primary)] font-black py-5 rounded-[2rem] border border-[var(--border)] hover:bg-[var(--hover)] transition-all uppercase tracking-[0.2em] text-[11px] active:scale-95"
             >
-              Перейти на канал
+              Просмотр канала
             </button>
           </div>
-        </div>
-      </form>
+        </form>
       ) : (
-        <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 space-y-8 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-600">
-              <Layout className="w-5 h-5" />
+        <div className="bg-[var(--surface)] rounded-[2.5rem] border border-[var(--border)] p-8 md:p-12 shadow-sm space-y-10">
+          <div className="flex items-center gap-6">
+            <div className="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600">
+              <Layout className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[var(--studio-text)]">Порядок разделов</h2>
-              <p className="text-sm text-[var(--studio-muted)]">Настройте, в каком порядке будут отображаться категории на вкладке "Общая"</p>
+              <h2 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight">Структура главной страницы</h2>
+              <p className="text-sm font-medium text-[var(--text-secondary)]">Настройте порядок отображения контента во вкладке "Общая"</p>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-4">
             {homeLayout.map((item, index) => (
               <div 
                 key={item}
-                className="flex items-center justify-between p-4 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-2xl group"
+                className="flex items-center justify-between p-6 bg-[var(--hover)]/50 border border-[var(--border)] rounded-3xl group hover:border-blue-500/30 transition-all"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 bg-[var(--studio-border)] rounded-lg flex items-center justify-center text-[var(--studio-muted)] font-bold text-xs">
+                <div className="flex items-center gap-6">
+                  <div className="w-10 h-10 bg-[var(--surface)] border border-[var(--border)] rounded-xl flex items-center justify-center text-blue-600 font-black text-xs shadow-sm">
                     {index + 1}
                   </div>
-                  <span className="font-bold text-[var(--studio-text)] capitalize">
+                  <span className="font-black text-sm text-[var(--text-primary)] uppercase tracking-widest">
                     {item === 'videos' ? 'Видео' : 
                      item === 'shorts' ? 'Shorts' : 
                      item === 'music' ? 'Музыка' : 'Фото'}
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <button 
                     onClick={() => moveLayoutItem(index, 'up')}
                     disabled={index === 0}
-                    className="p-2 hover:bg-blue-600/10 rounded-lg text-blue-600 disabled:opacity-20 transition-all"
+                    className="p-3 hover:bg-blue-500/10 rounded-xl text-blue-600 disabled:opacity-20 transition-all border border-transparent hover:border-blue-500/20"
                   >
                     <ArrowUp className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => moveLayoutItem(index, 'down')}
                     disabled={index === homeLayout.length - 1}
-                    className="p-2 hover:bg-blue-600/10 rounded-lg text-blue-600 disabled:opacity-20 transition-all"
+                    className="p-3 hover:bg-blue-500/10 rounded-xl text-blue-600 disabled:opacity-20 transition-all border border-transparent hover:border-blue-500/20"
                   >
                     <ArrowDown className="w-4 h-4" />
                   </button>
@@ -557,50 +495,59 @@ export default function StudioProfile() {
             ))}
           </div>
 
-          <div className="pt-6 border-t border-[var(--studio-border)]">
+          <div className="pt-8 border-t border-[var(--border)]">
             <button 
               onClick={handleSave}
               disabled={saving}
-              className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-blue-600/20 uppercase tracking-widest text-xs"
+              className="w-full bg-blue-600 text-white font-black py-5 rounded-[2rem] hover:bg-blue-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl shadow-blue-600/20 uppercase tracking-[0.2em] text-[11px] active:scale-95"
             >
               {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-              Сохранить порядок разделов
+              Сохранить структуру
             </button>
           </div>
         </div>
       )}
 
       {/* Manage Channels Section */}
-      <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 space-y-8 shadow-sm">
-        <div>
-          <h2 className="text-xl font-bold text-[var(--studio-text)]">Ваши каналы</h2>
-          <p className="text-sm text-[var(--studio-muted)]">Вы можете создать до 5 каналов на один аккаунт</p>
+      <div className="bg-[var(--surface)] rounded-[2.5rem] border border-[var(--border)] p-8 md:p-12 shadow-sm space-y-10">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h2 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight">Управление каналами</h2>
+            <p className="text-sm font-medium text-[var(--text-secondary)]">До 5 независимых каналов на одну учетную запись</p>
+          </div>
+          <div className="hidden sm:block text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg uppercase tracking-widest">
+            {channels.length} / 5
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {channels.map(channel => (
             <div 
               key={channel.id}
-              className={`p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${
+              className={`p-6 rounded-[2rem] border-2 flex items-center justify-between transition-all relative overflow-hidden group ${
                 activeChannel?.id === channel.id 
-                  ? 'border-blue-600 bg-blue-50/50' 
-                  : 'border-[var(--studio-border)] bg-[var(--studio-hover)]'
+                  ? 'border-blue-600 bg-blue-50/30' 
+                  : 'border-[var(--border)] bg-[var(--hover)]/30'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <img src={channel.photoURL} className="w-10 h-10 rounded-full object-cover" alt="" />
+              <div className="flex items-center gap-4 relative z-10">
+                <img src={channel.photoURL} className="w-14 h-14 rounded-2xl object-cover border-2 border-[var(--surface)] shadow-sm" alt="" referrerPolicy="no-referrer" />
                 <div>
-                  <p className="font-bold text-sm text-[var(--studio-text)] line-clamp-1">{channel.displayName}</p>
-                  {channel.isPrimary && <span className="text-[10px] text-blue-500 font-bold uppercase">Основной</span>}
+                  <p className="font-black text-sm text-[var(--text-primary)] uppercase tracking-tight line-clamp-1">{channel.displayName}</p>
+                  {channel.isPrimary ? (
+                    <span className="text-[9px] text-blue-600 font-black uppercase tracking-widest bg-blue-100 px-2 py-0.5 rounded-md">Основной</span>
+                  ) : (
+                    <span className="text-[9px] text-[var(--text-secondary)] font-black uppercase tracking-widest">Дополнительный</span>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 relative z-10">
                 {activeChannel?.id === channel.id ? (
-                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                  <CheckCircle2 className="w-6 h-6 text-blue-600" />
                 ) : (
                   <button 
                     onClick={() => setActiveChannel(channel)}
-                    className="text-xs font-bold text-blue-600 hover:underline"
+                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline px-3 py-2"
                   >
                     Выбрать
                   </button>
@@ -608,7 +555,7 @@ export default function StudioProfile() {
                 {!channel.isPrimary && (
                   <button 
                     onClick={() => handleDeleteChannel(channel.id, channel.isPrimary)}
-                    className="p-1.5 hover:bg-red-500/10 rounded-lg text-red-500 transition-colors"
+                    className="p-3 hover:bg-red-500/10 rounded-xl text-red-500 transition-all border border-transparent hover:border-red-500/20"
                     title="Удалить канал"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -619,23 +566,25 @@ export default function StudioProfile() {
           ))}
 
           {channels.length < 5 && (
-            <div className="p-4 rounded-2xl border-2 border-dashed border-[var(--studio-border)] flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <Plus className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-bold text-[var(--studio-text)]">Новый канал</span>
+            <div className="p-6 rounded-[2rem] border-2 border-dashed border-[var(--border)] flex flex-col gap-4 bg-[var(--hover)]/10 hover:bg-[var(--hover)]/20 transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-600/10 rounded-lg flex items-center justify-center text-blue-600">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest">Новый канал</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <input 
                   type="text" 
                   value={newChannelName}
                   onChange={(e) => setNewChannelName(e.target.value)}
                   placeholder="Название..."
-                  className="flex-1 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-600"
+                  className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-blue-600"
                 />
                 <button 
                   onClick={handleCreateChannel}
                   disabled={creatingChannel || !newChannelName.trim()}
-                  className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 disabled:opacity-50"
+                  className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-600/10"
                 >
                   {creatingChannel ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Создать'}
                 </button>
@@ -646,20 +595,27 @@ export default function StudioProfile() {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-red-50 rounded-3xl border border-red-100 p-6 md:p-8 space-y-6 shadow-sm">
-        <div>
-          <h2 className="text-xl font-bold text-red-600">Опасная зона</h2>
-          <p className="text-sm text-red-500/70">Эти действия необратимы. Будьте осторожны.</p>
+      <div className="bg-red-500/5 rounded-[2.5rem] border border-red-500/20 p-8 md:p-12 space-y-8">
+        <div className="flex items-center gap-6">
+          <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-600">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-red-600 uppercase tracking-tight">Опасная зона</h2>
+            <p className="text-sm font-medium text-red-600/60 uppercase tracking-widest">Критические действия с аккаунтом</p>
+          </div>
         </div>
         
-        <div className="p-4 bg-white rounded-2xl border border-red-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <p className="font-bold text-red-600">Удалить аккаунт</p>
-            <p className="text-xs text-red-400">Удаляет все ваши каналы, видео и данные профиля</p>
+        <div className="p-8 bg-[var(--surface)] rounded-[2rem] border border-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-8 shadow-sm">
+          <div className="space-y-2">
+            <p className="font-black text-sm text-red-600 uppercase tracking-tight">Удалить аккаунт и все данные</p>
+            <p className="text-[10px] font-medium text-[var(--text-secondary)] uppercase tracking-widest leading-relaxed">
+              Это действие безвозвратно удалит все ваши каналы, видео, комментарии и настройки.
+            </p>
           </div>
           <button 
             onClick={handleDeleteAccount}
-            className="px-6 py-2 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition-all uppercase tracking-widest"
+            className="w-full sm:w-auto px-10 py-4 bg-red-600 text-white text-[11px] font-black rounded-2xl hover:bg-red-700 transition-all uppercase tracking-[0.2em] shadow-xl shadow-red-600/20 active:scale-95"
           >
             Удалить всё
           </button>

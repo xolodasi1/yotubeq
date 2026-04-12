@@ -20,6 +20,7 @@ export interface Video {
   type?: 'video' | 'short' | 'music' | 'photo';
   soundName?: string;
   hashtags?: string[];
+  timestamps?: { time: string; label: string }[];
   audience?: 'kids' | 'not-kids';
   visibility?: 'public' | 'unlisted' | 'private';
   musicMetadata?: {

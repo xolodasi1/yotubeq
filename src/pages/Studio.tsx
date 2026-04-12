@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../App';
-import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic, Music as MusicIcon, Camera } from 'lucide-react';
+import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, Sparkles, ListMusic, Music as MusicIcon, Camera, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { setDoc, doc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -24,6 +24,7 @@ export default function Studio() {
   const [category, setCategory] = useState('Gaming');
   const [soundName, setSoundName] = useState('');
   const [hashtags, setHashtags] = useState('');
+  const [timestamps, setTimestamps] = useState<{ time: string; label: string }[]>([]);
   const [audience, setAudience] = useState<'kids' | 'not-kids'>('not-kids');
   const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
   const [musicMetadata, setMusicMetadata] = useState({
@@ -221,6 +222,7 @@ export default function Studio() {
         soundName: contentType === 'short' ? soundName : '',
         hashtags: contentType === 'short' ? hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [],
         musicMetadata: contentType === 'music' ? musicMetadata : undefined,
+        timestamps: contentType === 'video' ? timestamps : [],
         audience,
         visibility
       };
@@ -302,36 +304,39 @@ export default function Studio() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface)]">
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Загрузка видео</h1>
-          <button onClick={() => navigate('/studio')} className="p-2 hover:bg-[var(--hover)] rounded-full text-[var(--text-secondary)] transition-colors">
-            <X className="w-6 h-6" />
-          </button>
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 pb-24">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)]">Создание контента</h1>
+          <p className="text-sm font-medium text-[var(--text-secondary)] uppercase tracking-widest">Загрузка и настройка новых публикаций</p>
         </div>
+        <button onClick={() => navigate('/studio')} className="p-3 hover:bg-[var(--hover)] rounded-xl text-[var(--text-secondary)] transition-all border border-transparent hover:border-[var(--border)]">
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
-        <form onSubmit={handleUpload} className="p-8 space-y-10">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden">
+        <form onSubmit={handleUpload} className="divide-y divide-[var(--border)]">
           {/* Channel Selection */}
           {channels.length > 1 && (
-            <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
-              <label className="block text-xs font-bold text-blue-600 uppercase tracking-widest mb-4">Выберите канал для публикации</label>
+            <div className="p-8 bg-blue-500/5">
+              <label className="block text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-6">Выберите канал для публикации</label>
               <div className="flex flex-wrap gap-4">
                 {channels.map(channel => (
                   <button
                     key={channel.id}
                     type="button"
                     onClick={() => setActiveChannel(channel)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                    className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
                       activeChannel?.id === channel.id 
-                        ? 'border-blue-600 bg-white shadow-md' 
-                        : 'border-transparent bg-white/50 hover:bg-white'
+                        ? 'border-blue-600 bg-[var(--surface)] shadow-lg shadow-blue-600/10' 
+                        : 'border-transparent bg-[var(--hover)] hover:bg-[var(--surface)]'
                     }`}
                   >
-                    <img src={channel.photoURL} alt={channel.displayName} className="w-8 h-8 rounded-full object-cover" />
+                    <img src={channel.photoURL} alt={channel.displayName} className="w-10 h-10 rounded-full object-cover border-2 border-[var(--border)]" />
                     <div className="text-left">
-                      <p className="text-sm font-bold line-clamp-1">{channel.displayName}</p>
-                      {channel.isPrimary && <span className="text-[10px] text-blue-500 font-bold uppercase">Основной</span>}
+                      <p className="text-sm font-black text-[var(--text-primary)] line-clamp-1">{channel.displayName}</p>
+                      {channel.isPrimary && <span className="text-[9px] text-blue-500 font-black uppercase tracking-widest">Основной</span>}
                     </div>
                   </button>
                 ))}
@@ -339,12 +344,12 @@ export default function Studio() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            <div className="space-y-8">
-              {/* Video Upload Area */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest mb-3">Файл видео</label>
-                <div className="relative group border-2 border-dashed border-[var(--border)] rounded-xl p-10 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-center cursor-pointer bg-[var(--hover)]/50">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+            {/* Left Column: Media Upload */}
+            <div className="lg:col-span-5 p-8 lg:border-r border-[var(--border)] space-y-10">
+              <div className="space-y-4">
+                <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Файл контента</label>
+                <div className="relative group border-2 border-dashed border-[var(--border)] rounded-3xl p-12 hover:border-blue-500 hover:bg-blue-500/5 transition-all text-center cursor-pointer bg-[var(--hover)]/30">
                   <input
                     type="file"
                     accept="video/*,audio/*,image/*"
@@ -353,34 +358,36 @@ export default function Studio() {
                     required
                   />
                   {videoFile ? (
-                    <div className="flex flex-col items-center text-blue-600">
-                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                        {videoFile.type.startsWith('audio/') ? <MusicIcon className="w-8 h-8" /> : 
-                         videoFile.type.startsWith('image/') ? <ImageIcon className="w-8 h-8" /> : 
-                         <VideoIcon className="w-8 h-8" />}
+                    <div className="flex flex-col items-center">
+                      <div className="w-20 h-20 bg-blue-500/10 rounded-3xl flex items-center justify-center mb-6 text-blue-600">
+                        {videoFile.type.startsWith('audio/') ? <MusicIcon className="w-10 h-10" /> : 
+                         videoFile.type.startsWith('image/') ? <ImageIcon className="w-10 h-10" /> : 
+                         <VideoIcon className="w-10 h-10" />}
                       </div>
-                      <span className="text-sm font-bold truncate max-w-full text-[var(--text-primary)]">{videoFile.name}</span>
-                      <span className="text-xs text-[var(--text-secondary)] mt-2 font-medium">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB {contentType !== 'photo' && `• ${videoDuration}`}</span>
+                      <span className="text-sm font-black text-[var(--text-primary)] truncate max-w-full px-4">{videoFile.name}</span>
+                      <div className="flex items-center gap-2 mt-3">
+                        <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase bg-[var(--hover)] px-2 py-1 rounded">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</span>
+                        {contentType !== 'photo' && <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase bg-[var(--hover)] px-2 py-1 rounded">{videoDuration}</span>}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center text-[var(--text-secondary)]">
-                      <div className="w-16 h-16 bg-[var(--surface)] rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                        <Upload className="w-8 h-8" />
+                      <div className="w-20 h-20 bg-[var(--surface)] rounded-3xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform border border-[var(--border)]">
+                        <Upload className="w-10 h-10" />
                       </div>
-                      <span className="text-sm font-bold text-[var(--text-primary)]">Выберите файл для загрузки</span>
-                      <span className="text-xs mt-2 font-medium">MP4, WebM, MP3 или JPG/PNG (макс. {MAX_VIDEO_SIZE_MB}MB)</span>
+                      <span className="text-sm font-black text-[var(--text-primary)] uppercase tracking-tight">Перетащите файл сюда</span>
+                      <p className="text-[10px] mt-3 font-medium leading-relaxed max-w-[200px] mx-auto">MP4, WebM, MP3 или JPG/PNG (макс. {MAX_VIDEO_SIZE_MB}MB)</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Thumbnail Upload */}
               {contentType !== 'photo' && (
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest mb-3">
-                    Значок (превью) {contentType === 'music' && <span className="text-red-500">*обязательно</span>}
+                <div className="space-y-4">
+                  <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">
+                    Значок (превью) {contentType === 'music' && <span className="text-red-500">*</span>}
                   </label>
-                  <div className={`relative border-2 border-dashed rounded-xl p-6 transition-all text-center cursor-pointer bg-[var(--hover)]/50 ${contentType === 'music' && !thumbnailFile ? 'border-red-200 hover:border-red-400' : 'border-[var(--border)] hover:border-blue-500 hover:bg-blue-50/30'}`}>
+                  <div className={`relative border-2 border-dashed rounded-2xl p-6 transition-all text-center cursor-pointer bg-[var(--hover)]/30 ${contentType === 'music' && !thumbnailFile ? 'border-red-500/30 hover:border-red-500' : 'border-[var(--border)] hover:border-blue-500 hover:bg-blue-500/5'}`}>
                     <input
                       type="file"
                       accept="image/*"
@@ -388,24 +395,23 @@ export default function Studio() {
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
                     {thumbnailFile ? (
-                      <div className="flex items-center justify-center gap-3 text-blue-600">
+                      <div className="flex items-center justify-center gap-4 text-blue-600">
                         <ImageIcon className="w-6 h-6" />
-                        <span className="text-sm font-bold text-[var(--text-primary)] truncate">{thumbnailFile.name}</span>
+                        <span className="text-xs font-black text-[var(--text-primary)] truncate">{thumbnailFile.name}</span>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center text-[var(--text-secondary)]">
-                        <ImageIcon className="w-6 h-6 mb-2" />
-                        <span className="text-xs font-bold text-[var(--text-primary)]">Загрузить значок</span>
+                        <ImageIcon className="w-6 h-6 mb-2 opacity-50" />
+                        <span className="text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest">Загрузить значок</span>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Content Type Selection */}
-              <div className="space-y-3">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Тип контента</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-4">
+                <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Тип контента</label>
+                <div className="grid grid-cols-2 gap-3">
                   {[
                     { id: 'video', label: 'Видео', icon: VideoIcon },
                     { id: 'short', label: 'Shorts', icon: Smartphone },
@@ -416,239 +422,312 @@ export default function Studio() {
                       key={type.id}
                       type="button"
                       onClick={() => setContentType(type.id as any)}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
                         contentType === type.id 
-                          ? 'border-blue-600 bg-blue-50 text-blue-600' 
-                          : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'
+                          ? 'border-blue-600 bg-blue-500/5 text-blue-600' 
+                          : 'border-[var(--border)] bg-[var(--hover)]/50 text-[var(--text-secondary)] hover:border-[var(--border)] hover:bg-[var(--hover)]'
                       }`}
                     >
                       <type.icon className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">{type.label}</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest">{type.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-8">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Название (обязательно)</label>
-                  <button 
-                    type="button"
-                    onClick={handleGenerateTitle}
-                    disabled={generatingTitle}
-                    className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-wider"
-                  >
-                    {generatingTitle ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                    Сгенерировать ИИ
-                  </button>
+            {/* Right Column: Details */}
+            <div className="lg:col-span-7 p-8 space-y-10">
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Название</label>
+                    <button 
+                      type="button"
+                      onClick={handleGenerateTitle}
+                      disabled={generatingTitle}
+                      className="flex items-center gap-2 text-[9px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-[0.15em] bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/10"
+                    >
+                      {generatingTitle ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      ИИ Генерация
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm font-black transition-all text-[var(--text-primary)]"
+                    placeholder="Введите броское название..."
+                    required
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium transition-all"
-                  placeholder="Добавьте название, которое отражает суть видео"
-                  required
-                />
-              </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Описание</label>
-                  <button 
-                    type="button"
-                    onClick={handleGenerateDesc}
-                    disabled={generatingDesc}
-                    className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-wider"
-                  >
-                    {generatingDesc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                    Сгенерировать ИИ
-                  </button>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Описание</label>
+                    <button 
+                      type="button"
+                      onClick={handleGenerateDesc}
+                      disabled={generatingDesc}
+                      className="flex items-center gap-2 text-[9px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-[0.15em] bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/10"
+                    >
+                      {generatingDesc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      ИИ Генерация
+                    </button>
+                  </div>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm font-medium h-40 resize-none transition-all text-[var(--text-primary)] leading-relaxed"
+                    placeholder="Расскажите зрителям о чем ваш контент..."
+                  />
                 </div>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium h-48 resize-none transition-all"
-                  placeholder="Расскажите зрителям о своем видео"
-                />
-              </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Теги (необязательно)</label>
-                  <button 
-                    type="button"
-                    onClick={handleGenerateTags}
-                    disabled={generatingTags}
-                    className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-wider"
-                  >
-                    {generatingTags ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                    Сгенерировать ИИ
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium transition-all"
-                  placeholder="Теги через запятую"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Категория</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-bold text-gray-700 transition-all appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%221.67%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E')] bg-[length:20px_20px] bg-[right_1rem_center] bg-no-repeat"
-                >
-                  <option value="Gaming">Игры</option>
-                  <option value="Music">Музыка</option>
-                  <option value="Education">Образование</option>
-                  <option value="Entertainment">Развлечения</option>
-                  <option value="Tech">Технологии</option>
-                </select>
-              </div>
-
-              {/* Audience & Visibility */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 border-t border-gray-100">
-                <div className="space-y-4">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Аудитория</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input 
-                        type="radio" 
-                        name="audience" 
-                        checked={audience === 'kids'} 
-                        onChange={() => setAudience('kids')}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="text-sm font-medium text-[var(--text-primary)] group-hover:text-blue-600 transition-colors">Видео для детей</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input 
-                        type="radio" 
-                        name="audience" 
-                        checked={audience === 'not-kids'} 
-                        onChange={() => setAudience('not-kids')}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="text-sm font-medium text-[var(--text-primary)] group-hover:text-blue-600 transition-colors">Видео не для детей</span>
-                    </label>
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Категория</label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-xs font-black text-[var(--text-primary)] transition-all appearance-none uppercase tracking-widest"
+                    >
+                      <option value="Gaming">Игры</option>
+                      <option value="Music">Музыка</option>
+                      <option value="Education">Образование</option>
+                      <option value="Entertainment">Развлечения</option>
+                      <option value="Tech">Технологии</option>
+                    </select>
                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Параметры доступа</label>
-                  <div className="flex flex-col gap-2">
-                    {[
-                      { id: 'private', label: 'Ограниченный доступ' },
-                      { id: 'unlisted', label: 'Доступ по ссылке' },
-                      { id: 'public', label: 'Открытый доступ' }
-                    ].map((v) => (
-                      <button
-                        key={v.id}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Теги</label>
+                      <button 
                         type="button"
-                        onClick={() => setVisibility(v.id as any)}
-                        className={`px-4 py-2 rounded-lg border text-xs font-bold uppercase tracking-wider transition-all ${
-                          visibility === v.id 
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                            : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
-                        }`}
+                        onClick={handleGenerateTags}
+                        disabled={generatingTags}
+                        className="flex items-center gap-2 text-[9px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-[0.15em] bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/10"
                       >
-                        {v.label}
+                        {generatingTags ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        ИИ Генерация
                       </button>
-                    ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-xs font-bold transition-all text-[var(--text-primary)]"
+                      placeholder="Теги через запятую..."
+                    />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-[var(--border)]">
+                  <div className="space-y-5">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Аудитория</label>
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-4 cursor-pointer group p-3 rounded-xl hover:bg-[var(--hover)] transition-colors">
+                        <input 
+                          type="radio" 
+                          name="audience" 
+                          checked={audience === 'kids'} 
+                          onChange={() => setAudience('kids')}
+                          className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-[var(--border)]"
+                        />
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-black text-[var(--text-primary)] uppercase tracking-tight">Для детей</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] font-medium">Контент безопасен для младшей аудитории</p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-4 cursor-pointer group p-3 rounded-xl hover:bg-[var(--hover)] transition-colors">
+                        <input 
+                          type="radio" 
+                          name="audience" 
+                          checked={audience === 'not-kids'} 
+                          onChange={() => setAudience('not-kids')}
+                          className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-[var(--border)]"
+                        />
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-black text-[var(--text-primary)] uppercase tracking-tight">Не для детей</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] font-medium">Стандартный контент для всех возрастов</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Параметры доступа</label>
+                    <div className="grid grid-cols-1 gap-3">
+                      {[
+                        { id: 'private', label: 'Ограниченный доступ', desc: 'Только вы видите контент' },
+                        { id: 'unlisted', label: 'Доступ по ссылке', desc: 'Видят те, у кого есть ссылка' },
+                        { id: 'public', label: 'Открытый доступ', desc: 'Видят все пользователи' }
+                      ].map((v) => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setVisibility(v.id as any)}
+                          className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                            visibility === v.id 
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20' 
+                              : 'bg-[var(--hover)] text-[var(--text-secondary)] border-transparent hover:border-[var(--border)]'
+                          }`}
+                        >
+                          <p className={`text-[11px] font-black uppercase tracking-widest ${visibility === v.id ? 'text-white' : 'text-[var(--text-primary)]'}`}>{v.label}</p>
+                          <p className={`text-[9px] mt-1 font-medium ${visibility === v.id ? 'text-blue-100' : 'text-[var(--text-secondary)]'}`}>{v.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {contentType === 'music' && (
+                  <div className="pt-8 border-t border-[var(--border)] space-y-6">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Метаданные трека</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {[
+                        { id: 'author', label: 'Автор', placeholder: 'Имя автора' },
+                        { id: 'composer', label: 'Композитор', placeholder: 'Имя композитора' },
+                        { id: 'performer', label: 'Исполнитель', placeholder: 'Имя исполнителя' },
+                        { id: 'album', label: 'Альбом', placeholder: 'Название альбома' },
+                        { id: 'releaseYear', label: 'Год выпуска', placeholder: '2024' }
+                      ].map(field => (
+                        <div key={field.id} className="space-y-2">
+                          <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">{field.label}</label>
+                          <input 
+                            type="text" 
+                            value={(musicMetadata as any)[field.id]} 
+                            onChange={(e) => setMusicMetadata({...musicMetadata, [field.id]: e.target.value})} 
+                            className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-xl py-3 px-5 text-xs font-bold text-[var(--text-primary)]" 
+                            placeholder={field.placeholder} 
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Timestamps Section */}
+                {contentType === 'video' && (
+                  <div className="pt-8 border-t border-[var(--border)] space-y-6">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Таймкоды (Эпизоды)</label>
+                      <button 
+                        type="button"
+                        onClick={() => setTimestamps([...timestamps, { time: '', label: '' }])}
+                        className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                      >
+                        + Добавить
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {timestamps.map((ts, idx) => (
+                        <div key={idx} className="flex gap-3 items-center">
+                          <input
+                            type="text"
+                            value={ts.time}
+                            onChange={(e) => {
+                              const newTs = [...timestamps];
+                              newTs[idx].time = e.target.value;
+                              setTimestamps(newTs);
+                            }}
+                            placeholder="00:00"
+                            className="w-24 bg-[var(--hover)] border border-[var(--border)] rounded-xl py-2 px-4 text-xs font-mono text-[var(--text-primary)]"
+                          />
+                          <input
+                            type="text"
+                            value={ts.label}
+                            onChange={(e) => {
+                              const newTs = [...timestamps];
+                              newTs[idx].label = e.target.value;
+                              setTimestamps(newTs);
+                            }}
+                            placeholder="Название эпизода..."
+                            className="flex-1 bg-[var(--hover)] border border-[var(--border)] rounded-xl py-2 px-4 text-xs font-bold text-[var(--text-primary)]"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setTimestamps(timestamps.filter((_, i) => i !== idx))}
+                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      {timestamps.length === 0 && (
+                        <p className="text-[10px] text-[var(--text-secondary)] italic uppercase tracking-widest">Таймкоды не добавлены</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {contentType === 'short' && (
+                  <div className="pt-8 border-t border-[var(--border)] space-y-6">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Настройки Shorts</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">Название звука</label>
+                        <input
+                          type="text"
+                          value={soundName}
+                          onChange={(e) => setSoundName(e.target.value)}
+                          className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-xl py-3 px-5 text-xs font-bold text-[var(--text-primary)]"
+                          placeholder="Оригинальный звук..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">Хештеги</label>
+                        <input
+                          type="text"
+                          value={hashtags}
+                          onChange={(e) => setHashtags(e.target.value)}
+                          className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-xl py-3 px-5 text-xs font-bold text-[var(--text-primary)]"
+                          placeholder="#shorts, #тренды..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {contentType === 'music' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Автор</label>
-                    <input type="text" value={musicMetadata.author} onChange={(e) => setMusicMetadata({...musicMetadata, author: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Автор" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Композитор</label>
-                    <input type="text" value={musicMetadata.composer} onChange={(e) => setMusicMetadata({...musicMetadata, composer: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Композитор" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Исполнитель</label>
-                    <input type="text" value={musicMetadata.performer} onChange={(e) => setMusicMetadata({...musicMetadata, performer: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Исполнитель" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Другие участники</label>
-                    <input type="text" value={musicMetadata.otherParticipants} onChange={(e) => setMusicMetadata({...musicMetadata, otherParticipants: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Другие участники" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Альбом</label>
-                    <input type="text" value={musicMetadata.album} onChange={(e) => setMusicMetadata({...musicMetadata, album: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Альбом" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Год выпуска</label>
-                    <input type="text" value={musicMetadata.releaseYear} onChange={(e) => setMusicMetadata({...musicMetadata, releaseYear: e.target.value})} className="w-full border border-gray-200 rounded-lg py-3 px-4 text-sm font-medium" placeholder="Год выпуска" />
-                  </div>
-                </div>
-              )}
-
-              {contentType === 'short' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Название звука</label>
-                    <input
-                      type="text"
-                      value={soundName}
-                      onChange={(e) => setSoundName(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium transition-all"
-                      placeholder="Оригинальный звук (или название трека)"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Хештеги</label>
-                    <input
-                      type="text"
-                      value={hashtags}
-                      onChange={(e) => setHashtags(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium transition-all"
-                      placeholder="#shorts, #тренды (через запятую)"
-                    />
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
-          <div className="pt-8 border-t border-gray-100 flex items-center justify-between">
-            <div className="flex-1 max-w-xs">
+          <div className="p-8 bg-[var(--hover)]/30 flex flex-col sm:flex-row items-center justify-between gap-8">
+            <div className="w-full sm:max-w-md">
               {uploading && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-bold text-blue-600 uppercase tracking-widest">
-                    <span>Загрузка...</span>
-                    <span>{uploadProgress}%</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">
+                    <span>Обработка данных</span>
+                    <span className="font-mono">{uploadProgress}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                  <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-600 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(37,99,235,0.5)]" style={{ width: `${uploadProgress}%` }} />
                   </div>
                 </div>
               )}
             </div>
-            <button
-              type="submit"
-              disabled={uploading || !videoFile || !title}
-              className="bg-blue-600 text-white font-bold py-3 px-10 rounded-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 uppercase text-xs tracking-widest shadow-md hover:shadow-lg"
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Публикация...
-                </>
-              ) : (
-                'Опубликовать'
-              )}
-            </button>
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => navigate('/studio/content')}
+                className="flex-1 sm:flex-none px-8 py-4 text-[11px] font-black text-[var(--text-secondary)] hover:text-[var(--text-primary)] uppercase tracking-widest transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                type="submit"
+                disabled={uploading || !videoFile || !title}
+                className="flex-1 sm:flex-none bg-blue-600 text-white font-black py-4 px-12 rounded-2xl hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 uppercase text-[11px] tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Публикация...
+                  </>
+                ) : (
+                  'Опубликовать'
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
