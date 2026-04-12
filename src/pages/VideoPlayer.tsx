@@ -483,7 +483,7 @@ export default function VideoPlayer() {
 
     const subId = `${user.uid}_${video.authorId}`;
     const subRef = doc(db, 'subscriptions', subId);
-    const channelRef = doc(db, 'users', video.authorId);
+    const channelRef = doc(db, 'channels', video.authorId);
 
     try {
       if (isSubscribed) {

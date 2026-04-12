@@ -13,6 +13,7 @@ export default function StudioProfile() {
   const [pseudonym, setPseudonym] = useState('');
   const [searchAliases, setSearchAliases] = useState('');
   const [photoURL, setPhotoURL] = useState('');
+  const [bannerURL, setBannerURL] = useState('');
   const [bio, setBio] = useState('');
   const [socialLinks, setSocialLinks] = useState({
     website: '',
@@ -41,6 +42,7 @@ export default function StudioProfile() {
           setPseudonym(data.pseudonym || '');
           setSearchAliases(data.searchAliases?.join(', ') || '');
           setPhotoURL(data.photoURL || '');
+          setBannerURL(data.bannerURL || '');
           setBio(data.bio || '');
           if (data.homeLayout) {
             setHomeLayout(data.homeLayout);
@@ -79,6 +81,7 @@ export default function StudioProfile() {
         pseudonym,
         searchAliases: aliasesArray,
         photoURL,
+        bannerURL,
         bio,
         socialLinks,
         homeLayout
@@ -91,6 +94,7 @@ export default function StudioProfile() {
           pseudonym,
           searchAliases: aliasesArray,
           photoURL,
+          bannerURL,
           bio,
           socialLinks,
           homeLayout
@@ -379,6 +383,19 @@ export default function StudioProfile() {
                   value={photoURL}
                   onChange={(e) => setPhotoURL(e.target.value)}
                   placeholder="https://example.com/photo.jpg"
+                  className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all text-[var(--text-primary)] text-sm font-mono"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Layout className="w-3.5 h-3.5 text-blue-600" /> URL шапки канала
+                </label>
+                <input 
+                  type="text" 
+                  value={bannerURL}
+                  onChange={(e) => setBannerURL(e.target.value)}
+                  placeholder="https://example.com/banner.jpg"
                   className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all text-[var(--text-primary)] text-sm font-mono"
                 />
               </div>
