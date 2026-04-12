@@ -24,6 +24,8 @@ export default function Studio() {
   const [category, setCategory] = useState('Gaming');
   const [soundName, setSoundName] = useState('');
   const [hashtags, setHashtags] = useState('');
+  const [audience, setAudience] = useState<'kids' | 'not-kids'>('not-kids');
+  const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
   const [musicMetadata, setMusicMetadata] = useState({
     author: '',
     composer: '',
@@ -218,7 +220,9 @@ export default function Studio() {
         tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
         soundName: contentType === 'short' ? soundName : '',
         hashtags: contentType === 'short' ? hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [],
-        musicMetadata: contentType === 'music' ? musicMetadata : undefined
+        musicMetadata: contentType === 'music' ? musicMetadata : undefined,
+        audience,
+        visibility
       };
 
       // Remove undefined fields to prevent Firestore errors
@@ -506,6 +510,59 @@ export default function Studio() {
                   <option value="Entertainment">Развлечения</option>
                   <option value="Tech">Технологии</option>
                 </select>
+              </div>
+
+              {/* Audience & Visibility */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 border-t border-gray-100">
+                <div className="space-y-4">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Аудитория</label>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input 
+                        type="radio" 
+                        name="audience" 
+                        checked={audience === 'kids'} 
+                        onChange={() => setAudience('kids')}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-[var(--text-primary)] group-hover:text-blue-600 transition-colors">Видео для детей</span>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input 
+                        type="radio" 
+                        name="audience" 
+                        checked={audience === 'not-kids'} 
+                        onChange={() => setAudience('not-kids')}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-[var(--text-primary)] group-hover:text-blue-600 transition-colors">Видео не для детей</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Параметры доступа</label>
+                  <div className="flex flex-col gap-2">
+                    {[
+                      { id: 'private', label: 'Ограниченный доступ' },
+                      { id: 'unlisted', label: 'Доступ по ссылке' },
+                      { id: 'public', label: 'Открытый доступ' }
+                    ].map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setVisibility(v.id as any)}
+                        className={`px-4 py-2 rounded-lg border text-xs font-bold uppercase tracking-wider transition-all ${
+                          visibility === v.id 
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                            : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {contentType === 'music' && (

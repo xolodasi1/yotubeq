@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
-type TabType = 'videos' | 'shorts' | 'music' | 'photos' | 'playlists' | 'community' | 'about';
+type TabType = 'home' | 'videos' | 'shorts' | 'music' | 'photos' | 'playlists' | 'community' | 'about';
 
 export default function Channel() {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +20,7 @@ export default function Channel() {
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [authorInfo, setAuthorInfo] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('videos');
+  const [activeTab, setActiveTab] = useState<TabType>('home');
   
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -52,6 +52,7 @@ export default function Channel() {
           bannerUrl: channelData.bannerUrl || null,
           bio: channelData.bio || '',
           socialLinks: channelData.socialLinks || {},
+          homeLayout: channelData.homeLayout || ['videos', 'shorts', 'music', 'photos'],
           subscribers: channelData.subscribers || 0,
           joinedAt: channelData.createdAt?.toDate() || new Date(),
           lastPostAt: channelData.lastPostAt
@@ -305,10 +306,12 @@ export default function Channel() {
     );
   }
 
-  const regularVideos = videos.filter(v => v.type === 'video' || (!v.type && !v.isShort && !v.isMusic && !v.isPhoto));
-  const shortsVideos = videos.filter(v => v.type === 'short' || v.isShort);
-  const musicVideos = videos.filter(v => v.type === 'music' || v.isMusic);
-  const photosVideos = videos.filter(v => v.type === 'photo' || v.isPhoto);
+  const isOwner = user?.uid === authorInfo?.ownerId || activeChannel?.id === id;
+
+  const regularVideos = videos.filter(v => (v.type === 'video' || (!v.type && !v.isShort && !v.isMusic && !v.isPhoto)) && (isOwner || v.visibility === 'public' || !v.visibility));
+  const shortsVideos = videos.filter(v => (v.type === 'short' || v.isShort) && (isOwner || v.visibility === 'public' || !v.visibility));
+  const musicVideos = videos.filter(v => (v.type === 'music' || v.isMusic) && (isOwner || v.visibility === 'public' || !v.visibility));
+  const photosVideos = videos.filter(v => (v.type === 'photo' || v.isPhoto) && (isOwner || v.visibility === 'public' || !v.visibility));
   const canPostCommunity = subCount >= 10;
 
   return (
@@ -397,7 +400,7 @@ export default function Channel() {
 
         {/* Navigation Tabs */}
         <div className="flex gap-8 border-b border-[var(--border)] mb-10 overflow-x-auto scrollbar-hide bg-[var(--surface)]/50 backdrop-blur-sm sticky top-14 z-20 px-4 -mx-4 md:px-0 md:mx-0">
-          {(['videos', 'shorts', 'music', 'photos', 'playlists', 'community', 'about'] as TabType[]).map((tab) => (
+          {(['home', 'videos', 'shorts', 'music', 'photos', 'playlists', 'community', 'about'] as TabType[]).map((tab) => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -407,7 +410,8 @@ export default function Channel() {
                   : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              {tab === 'videos' ? 'Видео' : 
+              {tab === 'home' ? 'Общая' :
+               tab === 'videos' ? 'Видео' : 
                tab === 'shorts' ? 'Shorts' :
                tab === 'music' ? 'Музыка' :
                tab === 'photos' ? 'Фото' :
@@ -419,6 +423,89 @@ export default function Channel() {
 
         {/* Tab Content */}
         <div className="min-h-[40vh]">
+          {activeTab === 'home' && (
+            <div className="space-y-16">
+              {authorInfo?.homeLayout?.map((section: string) => {
+                if (section === 'videos' && regularVideos.length > 0) {
+                  return (
+                    <section key="videos">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-widest flex items-center gap-2">
+                          <PlaySquare className="w-5 h-5 text-blue-600" /> Видео
+                        </h2>
+                        <button onClick={() => setActiveTab('videos')} className="text-xs font-bold text-blue-600 uppercase tracking-widest hover:underline">Все видео</button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
+                        {regularVideos.slice(0, 5).map((video) => (
+                          <VideoCard key={video.id} video={video as any} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                }
+                if (section === 'shorts' && shortsVideos.length > 0) {
+                  return (
+                    <section key="shorts">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-widest flex items-center gap-2">
+                          <Smartphone className="w-5 h-5 text-red-600" /> Shorts
+                        </h2>
+                        <button onClick={() => setActiveTab('shorts')} className="text-xs font-bold text-blue-600 uppercase tracking-widest hover:underline">Все Shorts</button>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                        {shortsVideos.slice(0, 6).map((video) => (
+                          <ShortCard key={video.id} video={video as any} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                }
+                if (section === 'music' && musicVideos.length > 0) {
+                  return (
+                    <section key="music">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-widest flex items-center gap-2">
+                          <Snowflake className="w-5 h-5 text-blue-400" /> Музыка
+                        </h2>
+                        <button onClick={() => setActiveTab('music')} className="text-xs font-bold text-blue-600 uppercase tracking-widest hover:underline">Вся музыка</button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
+                        {musicVideos.slice(0, 5).map((video) => (
+                          <VideoCard key={video.id} video={video as any} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                }
+                if (section === 'photos' && photosVideos.length > 0) {
+                  return (
+                    <section key="photos">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-widest flex items-center gap-2">
+                          <Camera className="w-5 h-5 text-pink-500" /> Фото
+                        </h2>
+                        <button onClick={() => setActiveTab('photos')} className="text-xs font-bold text-blue-600 uppercase tracking-widest hover:underline">Все фото</button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-12">
+                        {photosVideos.slice(0, 5).map((video) => (
+                          <VideoCard key={video.id} video={video as any} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                }
+                return null;
+              })}
+
+              {videos.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">
+                  <PlaySquare className="w-16 h-16 mb-4 opacity-10" />
+                  <p className="text-lg font-bold">На канале пока нет контента</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'videos' && (
             regularVideos.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-32 text-[var(--text-secondary)]">

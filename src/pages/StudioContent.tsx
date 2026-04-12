@@ -24,6 +24,8 @@ export default function StudioContent() {
   const [editThumbnail, setEditThumbnail] = useState('');
   const [editHashtags, setEditHashtags] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [editAudience, setEditAudience] = useState<'kids' | 'not-kids'>('not-kids');
+  const [editVisibility, setEditVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
   const [editPlaylistId, setEditPlaylistId] = useState('');
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -94,6 +96,8 @@ export default function StudioContent() {
     setEditThumbnail(video.thumbnailUrl || '');
     setEditHashtags(video.hashtags?.join(', ') || '');
     setEditCategory(video.category || '');
+    setEditAudience(video.audience || 'not-kids');
+    setEditVisibility(video.visibility || 'public');
     
     // Find if video is in any playlist
     const currentPlaylist = playlists.find(p => p.videoIds?.includes(video.id));
@@ -112,7 +116,9 @@ export default function StudioContent() {
         description: editDescription,
         thumbnailUrl: editThumbnail,
         category: editCategory,
-        hashtags: hashtagsArray
+        hashtags: hashtagsArray,
+        audience: editAudience,
+        visibility: editVisibility
       };
 
       await updateDoc(videoRef, updateData);
@@ -541,6 +547,58 @@ export default function StudioContent() {
                   className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm"
                   placeholder="ice, tube, video"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--border)]">
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest">Аудитория</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="editAudience" 
+                        checked={editAudience === 'kids'} 
+                        onChange={() => setEditAudience('kids')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm text-[var(--text-primary)]">Для детей</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="editAudience" 
+                        checked={editAudience === 'not-kids'} 
+                        onChange={() => setEditAudience('not-kids')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm text-[var(--text-primary)]">Не для детей</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest">Доступ</label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[
+                      { id: 'private', label: 'Ограниченный' },
+                      { id: 'unlisted', label: 'По ссылке' },
+                      { id: 'public', label: 'Открытый' }
+                    ].map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setEditVisibility(v.id as any)}
+                        className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          editVisibility === v.id 
+                            ? 'bg-blue-600 text-white border-blue-600' 
+                            : 'bg-[var(--hover)] text-[var(--text-secondary)] border-[var(--border)] hover:border-blue-500'
+                        }`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Добавить в плейлист</label>

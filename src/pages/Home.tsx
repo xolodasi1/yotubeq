@@ -75,20 +75,15 @@ export default function Home() {
                          video.authorName.toLowerCase().includes(searchLower) ||
                          video.category?.toLowerCase().includes(searchLower);
     
-    let matchesCategory = false;
-    if (activeCategory === 'Все') {
-      matchesCategory = true;
-    } else if (activeCategory === 'Музыка') {
-      matchesCategory = !!video.isMusic || video.category?.toLowerCase() === 'музыка';
-    } else if (activeCategory === 'Shorts') {
-      matchesCategory = !!video.isShort;
-    } else if (activeCategory === 'Фото') {
-      matchesCategory = !!video.isPhoto || video.type === 'photo';
-    } else {
-      matchesCategory = video.category?.toLowerCase() === activeCategory.toLowerCase();
-    }
+    const matchesCategory = activeCategory === 'Все' || 
+                           (activeCategory === 'Музыка' && (!!video.isMusic || video.category?.toLowerCase() === 'музыка')) ||
+                           (activeCategory === 'Shorts' && !!video.isShort) ||
+                           (activeCategory === 'Фото' && (!!video.isPhoto || video.type === 'photo')) ||
+                           video.category?.toLowerCase() === activeCategory.toLowerCase();
     
-    return matchesSearch && matchesCategory;
+    const isVisible = video.visibility === 'public' || !video.visibility;
+    
+    return matchesSearch && matchesCategory && isVisible;
   });
 
   const filteredUsers = users.filter(user => {

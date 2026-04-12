@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, updateDoc, query, collection, where, getDocs, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2, Trash2 } from 'lucide-react';
+import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2, Trash2, Layout, ArrowUp, ArrowDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function StudioProfile() {
@@ -23,6 +23,8 @@ export default function StudioProfile() {
     vk: '',
     instagram: ''
   });
+  const [homeLayout, setHomeLayout] = useState<string[]>(['videos', 'shorts', 'music', 'photos']);
+  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'layout'>('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creatingChannel, setCreatingChannel] = useState(false);
@@ -40,6 +42,11 @@ export default function StudioProfile() {
           setSearchAliases(data.searchAliases?.join(', ') || '');
           setPhotoURL(data.photoURL || '');
           setBio(data.bio || '');
+          if (data.homeLayout) {
+            setHomeLayout(data.homeLayout);
+          } else {
+            setHomeLayout(['videos', 'shorts', 'music', 'photos']);
+          }
           if (data.socialLinks) {
             setSocialLinks({
               website: data.socialLinks.website || '',
@@ -73,7 +80,8 @@ export default function StudioProfile() {
         searchAliases: aliasesArray,
         photoURL,
         bio,
-        socialLinks
+        socialLinks,
+        homeLayout
       });
 
       // If it's the primary channel, also update the user document for legacy support
@@ -84,7 +92,8 @@ export default function StudioProfile() {
           searchAliases: aliasesArray,
           photoURL,
           bio,
-          socialLinks
+          socialLinks,
+          homeLayout
         });
       }
 
@@ -240,6 +249,16 @@ export default function StudioProfile() {
     }
   };
 
+  const moveLayoutItem = (index: number, direction: 'up' | 'down') => {
+    const newLayout = [...homeLayout];
+    if (direction === 'up' && index > 0) {
+      [newLayout[index], newLayout[index - 1]] = [newLayout[index - 1], newLayout[index]];
+    } else if (direction === 'down' && index < newLayout.length - 1) {
+      [newLayout[index], newLayout[index + 1]] = [newLayout[index + 1], newLayout[index]];
+    }
+    setHomeLayout(newLayout);
+  };
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-[var(--studio-muted)]">
@@ -258,18 +277,41 @@ export default function StudioProfile() {
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-8 pb-24">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600">
-          <User className="w-6 h-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--studio-text)]">Настройка канала</h1>
-          <p className="text-sm text-[var(--studio-muted)]">Персонализируйте свой канал для зрителей</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600">
+            <User className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--studio-text)]">Настройка канала</h1>
+            <p className="text-sm text-[var(--studio-muted)]">Персонализируйте свой канал для зрителей</p>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 space-y-8 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
+      {/* Sub Tabs */}
+      <div className="flex gap-4 border-b border-[var(--studio-border)]">
+        <button 
+          onClick={() => setActiveSubTab('profile')}
+          className={`pb-4 px-2 text-sm font-bold uppercase tracking-widest transition-all border-b-2 ${
+            activeSubTab === 'profile' ? 'border-blue-600 text-blue-600' : 'border-transparent text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+          }`}
+        >
+          Профиль
+        </button>
+        <button 
+          onClick={() => setActiveSubTab('layout')}
+          className={`pb-4 px-2 text-sm font-bold uppercase tracking-widest transition-all border-b-2 ${
+            activeSubTab === 'layout' ? 'border-blue-600 text-blue-600' : 'border-transparent text-[var(--studio-muted)] hover:text-[var(--studio-text)]'
+          }`}
+        >
+          Главная страница
+        </button>
+      </div>
+
+      {activeSubTab === 'profile' ? (
+        <form onSubmit={handleSave} className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 space-y-8 shadow-sm">
+          <div className="flex flex-col md:flex-row gap-8 items-start">
           <div className="relative group shrink-0">
             <img 
               src={photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`} 
@@ -467,6 +509,66 @@ export default function StudioProfile() {
           </div>
         </div>
       </form>
+      ) : (
+        <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 space-y-8 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-600">
+              <Layout className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[var(--studio-text)]">Порядок разделов</h2>
+              <p className="text-sm text-[var(--studio-muted)]">Настройте, в каком порядке будут отображаться категории на вкладке "Общая"</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {homeLayout.map((item, index) => (
+              <div 
+                key={item}
+                className="flex items-center justify-between p-4 bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-2xl group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 bg-[var(--studio-border)] rounded-lg flex items-center justify-center text-[var(--studio-muted)] font-bold text-xs">
+                    {index + 1}
+                  </div>
+                  <span className="font-bold text-[var(--studio-text)] capitalize">
+                    {item === 'videos' ? 'Видео' : 
+                     item === 'shorts' ? 'Shorts' : 
+                     item === 'music' ? 'Музыка' : 'Фото'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => moveLayoutItem(index, 'up')}
+                    disabled={index === 0}
+                    className="p-2 hover:bg-blue-600/10 rounded-lg text-blue-600 disabled:opacity-20 transition-all"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => moveLayoutItem(index, 'down')}
+                    disabled={index === homeLayout.length - 1}
+                    className="p-2 hover:bg-blue-600/10 rounded-lg text-blue-600 disabled:opacity-20 transition-all"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 border-t border-[var(--studio-border)]">
+            <button 
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-blue-600/20 uppercase tracking-widest text-xs"
+            >
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Сохранить порядок разделов
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Manage Channels Section */}
       <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 space-y-8 shadow-sm">
