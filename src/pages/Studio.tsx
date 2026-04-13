@@ -500,6 +500,11 @@ export default function Studio() {
                       <option value="Образование" />
                       <option value="Развлечения" />
                       <option value="Технологии" />
+                      <option value="Спорт" />
+                      <option value="Влоги" />
+                      <option value="Юмор" />
+                      <option value="Путешествия" />
+                      <option value="Авто" />
                     </datalist>
                   </div>
                   <div className="space-y-3">

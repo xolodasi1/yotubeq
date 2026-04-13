@@ -610,6 +610,9 @@ export default function StudioContent() {
                       <option value="Технологии" />
                       <option value="Спорт" />
                       <option value="Влоги" />
+                      <option value="Юмор" />
+                      <option value="Путешествия" />
+                      <option value="Авто" />
                     </datalist>
                   </div>
                   <div>
