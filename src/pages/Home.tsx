@@ -10,7 +10,7 @@ import { useAuth } from '../App';
 
 import { APP_LOGO_URL } from '../constants';
 
-const CATEGORIES = ['Все', 'Музыка', 'Shorts', 'Фото', 'Игры', 'Технологии', 'Развлечения'];
+const BASE_CATEGORIES = ['Все', 'Музыка', 'Shorts', 'Фото'];
 
 export default function Home() {
   const { user } = useAuth();
@@ -20,6 +20,7 @@ export default function Home() {
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>(BASE_CATEGORIES);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,6 +48,22 @@ export default function Home() {
         }
         
         setVideos(videosData);
+
+        // Extract unique categories from videos
+        const uniqueCategories = new Set<string>();
+        videosData.forEach(video => {
+          if (video.category && typeof video.category === 'string') {
+            const cat = video.category.trim();
+            // Don't add base categories again (case-insensitive check)
+            if (cat && !BASE_CATEGORIES.some(baseCat => baseCat.toLowerCase() === cat.toLowerCase())) {
+              // Capitalize first letter for display
+              const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1);
+              uniqueCategories.add(formattedCat);
+            }
+          }
+        });
+        
+        setDynamicCategories([...BASE_CATEGORIES, ...Array.from(uniqueCategories)]);
 
         const usersQuery = query(collection(db, 'users'));
         const usersSnapshot = await getDocs(usersQuery);
@@ -112,7 +129,7 @@ export default function Home() {
           <span className="text-xs font-bold uppercase tracking-wider">Фильтр</span>
         </div>
         <div className="flex gap-2.5">
-          {CATEGORIES.map((category) => (
+          {dynamicCategories.map((category) => (
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
