@@ -204,6 +204,11 @@ export default function App() {
         </div>
         <div className="flex flex-col items-center gap-2">
           <h2 className="text-2xl font-black tracking-tighter text-blue-600">IceTube</h2>
+          {process.env.icceeeee && (
+            <p className="text-xs font-bold text-blue-400/80 animate-pulse uppercase tracking-widest">
+              {process.env.icceeeee}
+            </p>
+          )}
           <div className="flex gap-1">
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>

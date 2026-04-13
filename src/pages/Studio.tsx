@@ -404,7 +404,14 @@ export default function Studio() {
     <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 pb-24">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)]">Создание контента</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)]">Создание контента</h1>
+            {process.env.icceeeee && (
+              <span className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-2 py-1 rounded-full uppercase tracking-widest animate-pulse border border-blue-500/20">
+                {process.env.icceeeee} MODE
+              </span>
+            )}
+          </div>
           <p className="text-sm font-medium text-[var(--text-secondary)] uppercase tracking-widest">Загрузка и настройка новых публикаций</p>
         </div>
         <button onClick={() => navigate('/studio')} className="p-3 hover:bg-[var(--hover)] rounded-xl text-[var(--text-secondary)] transition-all border border-transparent hover:border-[var(--border)]">
