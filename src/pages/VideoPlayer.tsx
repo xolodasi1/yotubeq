@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare, ChevronDown, ChevronUp, Play, Pause, VolumeX, Volume1, Volume2, Maximize, Minimize } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare, ChevronDown, ChevronUp, Play, Pause, VolumeX, Volume1, Volume2, Maximize, Minimize, Music as MusicIcon, ExternalLink } from 'lucide-react';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -76,6 +76,7 @@ export default function VideoPlayer() {
   const [isWatchLater, setIsWatchLater] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [musicVideos, setMusicVideos] = useState<VideoType[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [authorData, setAuthorData] = useState<any>(null);
@@ -444,6 +445,41 @@ export default function VideoPlayer() {
 
     fetchInteractions();
   }, [id, user, video?.authorId]);
+
+  useEffect(() => {
+    if (!video) return;
+
+    const fetchMusicVideos = async () => {
+      try {
+        let q;
+        if (video.soundName) {
+          q = query(
+            collection(db, 'videos'),
+            where('soundName', '==', video.soundName),
+            limit(10)
+          );
+        } else if (video.musicMetadata?.author) {
+          q = query(
+            collection(db, 'videos'),
+            where('musicMetadata.author', '==', video.musicMetadata.author),
+            limit(10)
+          );
+        } else {
+          return;
+        }
+
+        const snap = await getDocs(q);
+        const data = snap.docs
+          .map(d => ({ id: d.id, ...(d.data() as any) } as VideoType))
+          .filter(v => v.id !== video.id);
+        setMusicVideos(data);
+      } catch (err) {
+        console.error("Error fetching music videos:", err);
+      }
+    };
+
+    fetchMusicVideos();
+  }, [video?.id, video?.soundName, video?.musicMetadata?.author]);
 
   const handleLike = async (type: 'like' | 'dislike') => {
     if (!user || !video) {
@@ -1141,7 +1177,7 @@ export default function VideoPlayer() {
               className={`flex items-center gap-2 bg-[var(--studio-hover)] hover:bg-[var(--hover)] border border-[var(--studio-border)] px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-colors font-medium text-sm md:text-base ${isFavorited ? 'text-blue-600 border-blue-400/50' : 'text-[var(--studio-text)]'}`}
             >
               <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isFavorited ? 'fill-current' : ''}`} />
-              <span className="hidden sm:inline">Избранное</span>
+              <span className="inline">Избранное</span>
             </button>
 
             <button 
@@ -1254,6 +1290,35 @@ export default function VideoPlayer() {
               <>Развернуть <ChevronDown className="w-3 h-3" /></>
             )}
           </button>
+
+          {musicVideos.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-[var(--studio-border)]">
+              <div className="flex items-center gap-2 mb-3">
+                <MusicIcon className="w-4 h-4 text-blue-600" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-blue-600">Музыка из этого видео</h4>
+              </div>
+              <div className="flex flex-col gap-3">
+                {musicVideos.map((mv) => (
+                  <Link 
+                    key={mv.id} 
+                    to={`/video/${mv.id}`}
+                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all group"
+                  >
+                    <img 
+                      src={mv.thumbnailUrl} 
+                      alt={mv.title} 
+                      className="w-16 h-10 object-cover rounded-lg shadow-lg"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-[var(--studio-text)] truncate group-hover:text-blue-600 transition-colors">{mv.title}</p>
+                      <p className="text-[10px] text-[var(--studio-muted)] truncate">{mv.authorName}</p>
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-[var(--studio-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
           
           {video.timestamps && video.timestamps.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[var(--studio-border)]">

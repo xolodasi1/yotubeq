@@ -75,9 +75,9 @@ export default function Favorites() {
         <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
           <Heart className="w-10 h-10 text-red-500" />
         </div>
-        <h2 className="text-2xl font-bold mb-2">Понравившиеся видео</h2>
+        <h2 className="text-2xl font-bold mb-2">Избранные видео</h2>
         <p className="text-[var(--text-secondary)] max-w-md mb-8">
-          Здесь будут отображаться видео, которые вы отметили как понравившиеся.
+          Здесь будут отображаться видео, которые вы добавили в избранное.
         </p>
       </div>
     );
@@ -86,7 +86,7 @@ export default function Favorites() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="w-10 h-10 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function Favorites() {
         <div className="flex flex-col md:flex-row gap-8 items-start">
           {/* Playlist Preview Card */}
           <div className="w-full md:w-80 lg:w-96 flex-shrink-0">
-            <div className="bg-gradient-to-b from-red-600/20 to-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 space-y-6 sticky top-24">
+            <div className="bg-gradient-to-b from-blue-600/20 to-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 space-y-6 sticky top-24">
               <div className="aspect-video relative rounded-2xl overflow-hidden shadow-2xl group">
                 {videos[0] ? (
                   <img src={videos[0].thumbnailUrl} className="w-full h-full object-cover" alt="Playlist cover" />
@@ -113,7 +113,7 @@ export default function Favorites() {
               </div>
 
               <div className="space-y-2">
-                <h1 className="text-2xl font-black tracking-tight">Понравившиеся</h1>
+                <h1 className="text-2xl font-black tracking-tight">Избранные</h1>
                 <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] font-bold">
                   <span>{user.displayName}</span>
                   <span>•</span>

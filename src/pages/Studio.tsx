@@ -42,6 +42,25 @@ export default function Studio() {
   const [generatingTitle, setGeneratingTitle] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingTags, setGeneratingTags] = useState(false);
+  const [userCategories, setUserCategories] = useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (!activeChannel) return;
+    const fetchUserCategories = async () => {
+      try {
+        const q = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
+        const snap = await getDocs(q);
+        const cats = new Set<string>();
+        snap.docs.forEach(doc => {
+          if (doc.data().category) cats.add(doc.data().category);
+        });
+        setUserCategories(Array.from(cats));
+      } catch (error) {
+        console.error("Error fetching user categories:", error);
+      }
+    };
+    fetchUserCategories();
+  }, [activeChannel]);
 
   const handleGenerateTitle = async () => {
     if (!description && !category) {
@@ -495,16 +514,12 @@ export default function Studio() {
                       placeholder="Выберите или введите свою..."
                     />
                     <datalist id="category-options">
-                      <option value="Игры" />
-                      <option value="Музыка" />
-                      <option value="Образование" />
-                      <option value="Развлечения" />
-                      <option value="Технологии" />
-                      <option value="Спорт" />
-                      <option value="Влоги" />
-                      <option value="Юмор" />
-                      <option value="Путешествия" />
-                      <option value="Авто" />
+                      {['Игры', 'Музыка', 'Образование', 'Развлечения', 'Технологии', 'Спорт', 'Влоги', 'Юмор', 'Путешествия', 'Авто'].map(cat => (
+                        <option key={cat} value={cat} />
+                      ))}
+                      {userCategories.filter(cat => !['Игры', 'Музыка', 'Образование', 'Развлечения', 'Технологии', 'Спорт', 'Влоги', 'Юмор', 'Путешествия', 'Авто'].includes(cat)).map(cat => (
+                        <option key={cat} value={cat} />
+                      ))}
                     </datalist>
                   </div>
                   <div className="space-y-3">

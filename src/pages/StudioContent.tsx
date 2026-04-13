@@ -36,6 +36,7 @@ export default function StudioContent() {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [analyticsVideo, setAnalyticsVideo] = useState<VideoType | null>(null);
+  const userCategories: string[] = Array.from(new Set(videos.map(v => v.category).filter((cat): cat is string => typeof cat === 'string' && cat !== '')));
 
   useEffect(() => {
     if (!user || !activeChannel) return;
@@ -603,16 +604,14 @@ export default function StudioContent() {
                       placeholder="Выберите или введите свою..."
                     />
                     <datalist id="edit-category-options">
-                      <option value="Игры" />
-                      <option value="Музыка" />
-                      <option value="Образование" />
-                      <option value="Развлечения" />
-                      <option value="Технологии" />
-                      <option value="Спорт" />
-                      <option value="Влоги" />
-                      <option value="Юмор" />
-                      <option value="Путешествия" />
-                      <option value="Авто" />
+                      {['Игры', 'Музыка', 'Образование', 'Развлечения', 'Технологии', 'Спорт', 'Влоги', 'Юмор', 'Путешествия', 'Авто'].map(cat => (
+                        <option key={cat} value={cat} />
+                      ))}
+                      {userCategories.map(cat => {
+                        const baseCats = ['Игры', 'Музыка', 'Образование', 'Развлечения', 'Технологии', 'Спорт', 'Влоги', 'Юмор', 'Путешествия', 'Авто'];
+                        if (baseCats.includes(cat)) return null;
+                        return <option key={cat} value={cat} />;
+                      })}
                     </datalist>
                   </div>
                   <div>

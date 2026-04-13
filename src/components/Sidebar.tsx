@@ -23,7 +23,7 @@ const mainItems = [
   { icon: Camera, label: 'Фото', path: '/photos' },
   { icon: Users, label: 'Топ каналов', path: '/top-channels' },
   { icon: Clock, label: 'История', path: '/history' },
-  { icon: Heart, label: 'Понравившиеся', path: '/favorites' },
+  { icon: Heart, label: 'Избранные', path: '/favorites' },
   { icon: ListMusic, label: 'Смотреть позже', path: '/watch-later' },
   { icon: ListMusic, label: 'Плейлисты', path: '/playlists' },
 ];
