@@ -1092,19 +1092,21 @@ export default function VideoPlayer() {
               />
               <div>
                 <h3 className="font-bold text-base md:text-lg group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{video.authorName}</h3>
-                <p className="text-xs text-[var(--studio-muted)]">Канал</p>
+                <p className="text-xs text-[var(--studio-muted)]">{authorData?.subscribers || 0} подписчиков</p>
               </div>
             </Link>
-            <button 
-              onClick={handleSubscribe}
-              className={`px-4 py-1.5 md:px-6 md:py-2 rounded-full font-bold transition-colors text-sm md:text-base ${
-                isSubscribed 
-                  ? 'bg-[var(--studio-hover)] text-[var(--studio-text)] hover:bg-gray-200' 
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
-            </button>
+            {user?.uid !== video.authorId && (
+              <button 
+                onClick={handleSubscribe}
+                className={`px-4 py-1.5 md:px-6 md:py-2 rounded-full font-bold transition-colors text-sm md:text-base ${
+                  isSubscribed 
+                    ? 'bg-[var(--studio-hover)] text-[var(--studio-text)] hover:bg-gray-200' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {isSubscribed ? 'Вы подписаны' : 'Подписаться'}
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">

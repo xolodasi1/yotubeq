@@ -5,7 +5,7 @@ import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { VideoType, CommunityPost, Playlist } from '../types';
-import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff, Camera } from 'lucide-react';
+import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff, Camera, Music as MusicIcon } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -343,7 +343,12 @@ export default function Channel() {
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
               <span>{subCount} подписчиков</span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
-              <span>{videos.length} видео</span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1"><PlaySquare className="w-3.5 h-3.5" /> {regularVideos.length}</span>
+                <span className="flex items-center gap-1"><Smartphone className="w-3.5 h-3.5" /> {shortsVideos.length}</span>
+                <span className="flex items-center gap-1"><MusicIcon className="w-3.5 h-3.5" /> {musicVideos.length}</span>
+                <span className="flex items-center gap-1"><Camera className="w-3.5 h-3.5" /> {photosVideos.length}</span>
+              </div>
             </div>
             {authorInfo?.bio && (
               <p className="text-sm text-[var(--text-secondary)] max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
