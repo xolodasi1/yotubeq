@@ -46,11 +46,12 @@ export default function Studio() {
   const [generatingThumbnail, setGeneratingThumbnail] = useState(false);
   const [userCategories, setUserCategories] = useState<string[]>([]);
   
-  // Music Generation State
+  const [activeTab, setActiveTab] = useState<'upload' | 'ai-music'>('upload');
   const [musicPrompt, setMusicPrompt] = useState('');
   const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
   const [musicGenerationType, setMusicGenerationType] = useState<'clip' | 'pro'>('clip');
   const [thumbnailPrompt, setThumbnailPrompt] = useState('');
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
 
   React.useEffect(() => {
     if (!activeChannel) return;
@@ -158,8 +159,9 @@ export default function Studio() {
   };
 
   const handleGenerateThumbnail = async () => {
-    const prompt = thumbnailPrompt || title || "Music album cover art, high quality, artistic";
+    const prompt = thumbnailPrompt || title || "Music album cover art, high quality, artistic, vibrant colors";
     setGeneratingThumbnail(true);
+    setIsGeneratingAvatar(true);
     try {
       const imageUrl = await generateImage(prompt);
       const res = await fetch(imageUrl);
@@ -171,6 +173,7 @@ export default function Studio() {
       toast.error('Ошибка при генерации обложки');
     } finally {
       setGeneratingThumbnail(false);
+      setIsGeneratingAvatar(false);
     }
   };
 
@@ -396,6 +399,22 @@ export default function Studio() {
       </div>
 
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex border-b border-[var(--border)] bg-[var(--hover)]/30">
+          <button
+            onClick={() => setActiveTab('upload')}
+            className={`flex-1 py-4 text-xs font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'upload' ? 'bg-[var(--surface)] border-b-2 border-blue-600 text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            Загрузка файлов
+          </button>
+          <button
+            onClick={() => setActiveTab('ai-music')}
+            className={`flex-1 py-4 text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${activeTab === 'ai-music' ? 'bg-[var(--surface)] border-b-2 border-blue-600 text-blue-600' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            <Sparkles className="w-4 h-4" />
+            Создать музыку с ИИ
+          </button>
+        </div>
+
         <form onSubmit={handleUpload} className="divide-y divide-[var(--border)]">
           {/* Channel Selection */}
           {channels.length > 1 && (
@@ -427,46 +446,142 @@ export default function Studio() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
             {/* Left Column: Media Upload */}
             <div className="lg:col-span-5 p-8 lg:border-r border-[var(--border)] space-y-10">
-              <div className="space-y-4">
-                <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Файл контента</label>
-                <div className="relative group border-2 border-dashed border-[var(--border)] rounded-3xl p-12 hover:border-blue-500 hover:bg-blue-500/5 transition-all text-center cursor-pointer bg-[var(--hover)]/30">
-                  <input
-                    type="file"
-                    accept="video/*,audio/*,image/*"
-                    onChange={handleVideoSelect}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    required
-                  />
-                  {videoFile ? (
-                    <div className="flex flex-col items-center">
-                      <div className="w-20 h-20 bg-blue-500/10 rounded-3xl flex items-center justify-center mb-6 text-blue-600">
-                        {videoFile.type.startsWith('audio/') ? <MusicIcon className="w-10 h-10" /> : 
-                         videoFile.type.startsWith('image/') ? <ImageIcon className="w-10 h-10" /> : 
-                         <VideoIcon className="w-10 h-10" />}
-                      </div>
-                      <span className="text-sm font-black text-[var(--text-primary)] truncate max-w-full px-4">{videoFile.name}</span>
-                      <div className="flex items-center gap-2 mt-3">
-                        <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase bg-[var(--hover)] px-2 py-1 rounded">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</span>
-                        {contentType !== 'photo' && <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase bg-[var(--hover)] px-2 py-1 rounded">{videoDuration}</span>}
-                      </div>
+              {activeTab === 'ai-music' ? (
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <MusicIcon className="w-5 h-5 text-blue-600" />
+                      <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Генерация трека</label>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center text-[var(--text-secondary)]">
-                      <div className="w-20 h-20 bg-[var(--surface)] rounded-3xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform border border-[var(--border)]">
-                        <Upload className="w-10 h-10" />
+                    
+                    <div className="space-y-4">
+                      <div className="flex gap-2 p-1 bg-[var(--hover)] rounded-xl border border-[var(--border)]">
+                        <button
+                          type="button"
+                          onClick={() => setMusicGenerationType('clip')}
+                          className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${musicGenerationType === 'clip' ? 'bg-blue-600 text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                        >
+                          Клип (30с)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMusicGenerationType('pro')}
+                          className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${musicGenerationType === 'pro' ? 'bg-blue-600 text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                        >
+                          Полный трек
+                        </button>
                       </div>
-                      <span className="text-sm font-black text-[var(--text-primary)] uppercase tracking-tight">Перетащите файл сюда</span>
-                      <p className="text-[10px] mt-3 font-medium leading-relaxed max-w-[200px] mx-auto">MP4, WebM, MP3 или JPG/PNG (макс. {MAX_VIDEO_SIZE_MB}MB)</p>
+
+                      <div className="relative">
+                        <textarea
+                          value={musicPrompt}
+                          onChange={(e) => setMusicPrompt(e.target.value)}
+                          placeholder="Опишите музыку (например: Энергичный рок с мощными барабанами)..."
+                          className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 text-sm font-medium h-32 resize-none transition-all text-[var(--text-primary)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleGenerateMusic}
+                          disabled={isGeneratingMusic || !musicPrompt.trim()}
+                          className="absolute bottom-3 right-3 bg-blue-600 text-white p-4 rounded-2xl hover:bg-blue-700 transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20"
+                        >
+                          {isGeneratingMusic ? <Loader2 className="w-6 h-6 animate-spin" /> : <MusicIcon className="w-6 h-6" />}
+                        </button>
+                      </div>
+                      <p className="text-[9px] text-[var(--text-secondary)] font-medium text-center uppercase tracking-widest leading-relaxed">
+                        ИИ создаст уникальную композицию и текст на основе вашего описания
+                      </p>
+                    </div>
+                  </div>
+
+                  {videoFile && contentType === 'music' && (
+                    <div className="p-6 bg-blue-500/5 rounded-2xl border border-blue-500/10 animate-fade-in">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white">
+                          <MusicIcon className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-[var(--text-primary)] uppercase tracking-tight">Трек готов</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] font-mono">{videoDuration}</p>
+                        </div>
+                      </div>
+                      <audio src={URL.createObjectURL(videoFile)} controls className="w-full h-8" />
                     </div>
                   )}
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-10">
+                  <div className="space-y-4">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Файл контента</label>
+                    <div className="relative group border-2 border-dashed border-[var(--border)] rounded-3xl p-12 hover:border-blue-500 hover:bg-blue-500/5 transition-all text-center cursor-pointer bg-[var(--hover)]/30">
+                      <input
+                        type="file"
+                        accept="video/*,audio/*,image/*"
+                        onChange={handleVideoSelect}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        required={!videoFile}
+                      />
+                      {videoFile ? (
+                        <div className="flex flex-col items-center">
+                          <div className="w-20 h-20 bg-blue-500/10 rounded-3xl flex items-center justify-center mb-6 text-blue-600">
+                            {videoFile.type.startsWith('audio/') ? <MusicIcon className="w-10 h-10" /> : 
+                             videoFile.type.startsWith('image/') ? <ImageIcon className="w-10 h-10" /> : 
+                             <VideoIcon className="w-10 h-10" />}
+                          </div>
+                          <span className="text-sm font-black text-[var(--text-primary)] truncate max-w-full px-4">{videoFile.name}</span>
+                          <div className="flex items-center gap-2 mt-3">
+                            <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase bg-[var(--hover)] px-2 py-1 rounded">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</span>
+                            {contentType !== 'photo' && <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase bg-[var(--hover)] px-2 py-1 rounded">{videoDuration}</span>}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center text-[var(--text-secondary)]">
+                          <div className="w-20 h-20 bg-[var(--surface)] rounded-3xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform border border-[var(--border)]">
+                            <Upload className="w-10 h-10" />
+                          </div>
+                          <span className="text-sm font-black text-[var(--text-primary)] uppercase tracking-tight">Перетащите файл сюда</span>
+                          <p className="text-[10px] mt-3 font-medium leading-relaxed max-w-[200px] mx-auto">MP4, WebM, MP3 или JPG/PNG (макс. {MAX_VIDEO_SIZE_MB}MB)</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-              {contentType !== 'photo' && (
+                  <div className="space-y-4">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Тип контента</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { id: 'video', label: 'Видео', icon: VideoIcon },
+                        { id: 'short', label: 'Shorts', icon: Smartphone },
+                        { id: 'music', label: 'Музыка', icon: ListMusic },
+                        { id: 'photo', label: 'Фото', icon: Camera }
+                      ].map((type) => (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => setContentType(type.id as any)}
+                          className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                            contentType === type.id 
+                              ? 'border-blue-600 bg-blue-500/5 text-blue-600' 
+                              : 'border-[var(--border)] bg-[var(--hover)]/50 text-[var(--text-secondary)] hover:border-[var(--border)] hover:bg-[var(--hover)]'
+                          }`}
+                        >
+                          <type.icon className="w-5 h-5" />
+                          <span className="text-[11px] font-black uppercase tracking-widest">{type.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Details */}
+            <div className="lg:col-span-7 p-8 space-y-10">
+              <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">
-                      Значок (превью) {contentType === 'music' && <span className="text-red-500">*</span>}
+                      Обложка (Превью) {contentType === 'music' && <span className="text-red-500">*</span>}
                     </label>
                     <button 
                       type="button"
@@ -475,119 +590,40 @@ export default function Studio() {
                       className="flex items-center gap-2 text-[9px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-[0.15em] bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/10"
                     >
                       {generatingThumbnail ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                      ИИ Обложка
+                      Сгенерировать ИИ
                     </button>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <input 
-                      type="text"
-                      value={thumbnailPrompt}
-                      onChange={(e) => setThumbnailPrompt(e.target.value)}
-                      placeholder="Опишите обложку для ИИ (или используем название)..."
-                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-xl py-2 px-4 text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all"
-                    />
-                  </div>
 
-                  <div className={`relative border-2 border-dashed rounded-2xl p-6 transition-all text-center cursor-pointer bg-[var(--hover)]/30 ${contentType === 'music' && !thumbnailFile ? 'border-red-500/30 hover:border-red-500' : 'border-[var(--border)] hover:border-blue-500 hover:bg-blue-500/5'}`}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
-                    {thumbnailFile ? (
-                      <div className="flex items-center justify-center gap-4 text-blue-600">
-                        <ImageIcon className="w-6 h-6" />
-                        <span className="text-xs font-black text-[var(--text-primary)] truncate">{thumbnailFile.name}</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center text-[var(--text-secondary)]">
-                        <ImageIcon className="w-6 h-6 mb-2 opacity-50" />
-                        <span className="text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest">Загрузить значок</span>
-                      </div>
-                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className={`relative border-2 border-dashed rounded-2xl aspect-video flex flex-col items-center justify-center transition-all cursor-pointer bg-[var(--hover)]/30 overflow-hidden ${contentType === 'music' && !thumbnailFile ? 'border-red-500/30 hover:border-red-500' : 'border-[var(--border)] hover:border-blue-500 hover:bg-blue-500/5'}`}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      {thumbnailFile ? (
+                        <img src={URL.createObjectURL(thumbnailFile)} alt="Thumbnail" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center text-[var(--text-secondary)] p-4">
+                          <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+                          <span className="text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest">Загрузить</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Промпт для ИИ Обложки</p>
+                      <textarea
+                        value={thumbnailPrompt}
+                        onChange={(e) => setThumbnailPrompt(e.target.value)}
+                        placeholder="Опишите желаемую обложку (например: Абстрактный космос, неоновые цвета)..."
+                        className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-xl py-3 px-4 text-xs font-medium h-24 resize-none focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
                   </div>
                 </div>
-              )}
 
-              <div className="space-y-4">
-                <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Тип контента</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { id: 'video', label: 'Видео', icon: VideoIcon },
-                    { id: 'short', label: 'Shorts', icon: Smartphone },
-                    { id: 'music', label: 'Музыка', icon: ListMusic },
-                    { id: 'photo', label: 'Фото', icon: Camera }
-                  ].map((type) => (
-                    <button
-                      key={type.id}
-                      type="button"
-                      onClick={() => setContentType(type.id as any)}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
-                        contentType === type.id 
-                          ? 'border-blue-600 bg-blue-500/5 text-blue-600' 
-                          : 'border-[var(--border)] bg-[var(--hover)]/50 text-[var(--text-secondary)] hover:border-[var(--border)] hover:bg-[var(--hover)]'
-                      }`}
-                    >
-                      <type.icon className="w-5 h-5" />
-                      <span className="text-[11px] font-black uppercase tracking-widest">{type.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* AI Music Generation Section */}
-              <div className="pt-8 border-t border-[var(--border)] space-y-6">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-600" />
-                  <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Создать музыку с ИИ</label>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex gap-2 p-1 bg-[var(--hover)] rounded-xl border border-[var(--border)]">
-                    <button
-                      type="button"
-                      onClick={() => setMusicGenerationType('clip')}
-                      className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${musicGenerationType === 'clip' ? 'bg-blue-600 text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      Клип (30с)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMusicGenerationType('pro')}
-                      className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${musicGenerationType === 'pro' ? 'bg-blue-600 text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                    >
-                      Полный трек
-                    </button>
-                  </div>
-
-                  <div className="relative">
-                    <textarea
-                      value={musicPrompt}
-                      onChange={(e) => setMusicPrompt(e.target.value)}
-                      placeholder="Опишите музыку (например: Энергичный рок с мощными барабанами)..."
-                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 text-sm font-medium h-24 resize-none transition-all text-[var(--text-primary)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleGenerateMusic}
-                      disabled={isGeneratingMusic || !musicPrompt.trim()}
-                      className="absolute bottom-3 right-3 bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20"
-                    >
-                      {isGeneratingMusic ? <Loader2 className="w-5 h-5 animate-spin" /> : <MusicIcon className="w-5 h-5" />}
-                    </button>
-                  </div>
-                  <p className="text-[9px] text-[var(--text-secondary)] font-medium text-center uppercase tracking-widest">
-                    ИИ создаст уникальную композицию на основе вашего описания
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Details */}
-            <div className="lg:col-span-7 p-8 space-y-10">
-              <div className="space-y-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Название</label>

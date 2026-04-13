@@ -213,11 +213,16 @@ export default function StudioContent() {
   const filteredVideos = displayedContent
     .filter(v => v.title.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
-      if (sortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      if (sortBy === 'views') return (b.views || 0) - (a.views || 0);
-      if (sortBy === 'likes') return (b.likes || 0) - (a.likes || 0);
-      if (sortBy === 'ices') return (b.ices || 0) - (a.ices || 0);
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const validA = isNaN(dateA) ? 0 : dateA;
+      const validB = isNaN(dateB) ? 0 : dateB;
+
+      if (sortBy === 'newest') return validB - validA;
+      if (sortBy === 'oldest') return validA - validB;
+      if (sortBy === 'views') return (Number(b.views) || 0) - (Number(a.views) || 0);
+      if (sortBy === 'likes') return (Number(b.likes) || 0) - (Number(a.likes) || 0);
+      if (sortBy === 'ices') return (Number(b.ices) || 0) - (Number(a.ices) || 0);
       return 0;
     });
 
@@ -377,7 +382,13 @@ export default function StudioContent() {
                       </td>
                       <td className="px-8 py-6">
                         <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-[var(--text-primary)]">{video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}</p>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">
+                            {(() => {
+                              if (!video.createdAt) return '-';
+                              const d = new Date(video.createdAt);
+                              return isNaN(d.getTime()) ? '-' : format(d, 'dd MMM yyyy', { locale: ru });
+                            })()}
+                          </p>
                           <p className="text-[9px] font-mono text-[var(--text-secondary)] uppercase">Опубликовано</p>
                         </div>
                       </td>
@@ -462,7 +473,11 @@ export default function StudioContent() {
                           </span>
                         </div>
                         <p className="text-[9px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
-                          {video.createdAt ? format(new Date(video.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}
+                          {(() => {
+                            if (!video.createdAt) return '-';
+                            const d = new Date(video.createdAt);
+                            return isNaN(d.getTime()) ? '-' : format(d, 'dd MMM yyyy', { locale: ru });
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -797,7 +812,11 @@ export default function StudioContent() {
               </div>
               <div>
                 <h3 className="font-bold text-[var(--text-primary)] line-clamp-1">{analyticsVideo.title}</h3>
-                <p className="text-sm text-[var(--text-secondary)] mt-1">Опубликовано: {analyticsVideo.createdAt ? format(new Date(analyticsVideo.createdAt), 'dd MMM yyyy', { locale: ru }) : '-'}</p>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">Опубликовано: {(() => {
+                  if (!analyticsVideo.createdAt) return '-';
+                  const d = new Date(analyticsVideo.createdAt);
+                  return isNaN(d.getTime()) ? '-' : format(d, 'dd MMM yyyy', { locale: ru });
+                })()}</p>
               </div>
             </div>
 

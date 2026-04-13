@@ -1379,9 +1379,9 @@ export default function VideoPlayer() {
 
         <div className="mt-4 p-3 md:p-4 bg-[var(--studio-hover)] rounded-xl border border-[var(--studio-border)] group/desc cursor-pointer" onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}>
           <div className="flex items-center gap-3 text-xs md:text-sm font-bold mb-2 text-[var(--studio-text)]">
-            <span>{video.views.toLocaleString()} просмотров</span>
+            <span>{(video.views || 0).toLocaleString()} просмотров</span>
             <span>{formattedDate}</span>
-            <span className="text-blue-600">#{video.category.replace(/\s+/g, '')}</span>
+            <span className="text-blue-600">#{video.category?.replace(/\s+/g, '') || 'БезКатегории'}</span>
           </div>
           <div className={`relative overflow-hidden transition-all duration-300 ${isDescriptionExpanded ? 'max-h-[2000px]' : 'max-h-12 md:max-h-16'}`}>
             <p className="text-xs md:text-sm whitespace-pre-wrap text-[var(--studio-text)]/90">{video.description}</p>
@@ -1617,7 +1617,7 @@ export default function VideoPlayer() {
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest block truncate">{v.authorName}</span>
                   <div className="flex items-center gap-2 text-[9px] font-black text-[var(--studio-muted)] uppercase tracking-widest">
-                    <span>{v.views.toLocaleString()} просмотров</span>
+                    <span>{(v.views || 0).toLocaleString()} просмотров</span>
                     <span className="w-1 h-1 bg-[var(--studio-muted)] rounded-full opacity-30" />
                     <span>{safeFormatDistanceToNow(v.createdAt, { locale: ru })}</span>
                   </div>

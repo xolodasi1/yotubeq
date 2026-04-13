@@ -95,8 +95,8 @@ export default function Home() {
   const filteredVideos = videos.filter(video => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = video.title.toLowerCase().includes(searchLower) ||
-                         video.authorName.toLowerCase().includes(searchLower) ||
-                         video.category?.toLowerCase().includes(searchLower);
+                         (video.authorName || '').toLowerCase().includes(searchLower) ||
+                         (video.category || '').toLowerCase().includes(searchLower);
     
     const matchesCategory = activeCategory === 'Все' || 
                            (activeCategory === 'Музыка' && (!!video.isMusic || video.category?.toLowerCase() === 'музыка')) ||
@@ -122,9 +122,13 @@ export default function Home() {
   const musicVideos = filteredVideos.filter(v => v.isMusic);
   const photoVideos = filteredVideos.filter(v => v.isPhoto || v.type === 'photo');
 
-  const topVideos = [...regularVideos].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
-  const newVideos = [...regularVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
-  const topIcedVideos = [...regularVideos].sort((a, b) => (b.ices || 0) - (a.ices || 0)).slice(0, 8);
+  const topVideos = [...regularVideos].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).slice(0, 8);
+  const newVideos = [...regularVideos].sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+  }).slice(0, 8);
+  const topIcedVideos = [...regularVideos].sort((a, b) => (Number(b.ices) || 0) - (Number(a.ices) || 0)).slice(0, 8);
 
   return (
     <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto pb-24 md:pb-10 bg-[var(--bg)] min-h-screen">

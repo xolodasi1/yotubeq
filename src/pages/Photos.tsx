@@ -9,6 +9,7 @@ import { useAuth } from '../App';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { safeFormatDistanceToNow } from '../lib/dateUtils';
 
 export default function Photos() {
   const { user } = useAuth();
@@ -330,7 +331,7 @@ export default function Photos() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-bold text-[var(--text-primary)]">{comment.authorName}</span>
                           <span className="text-[10px] text-[var(--text-secondary)]">
-                            {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: ru }) : ''}
+                            {safeFormatDistanceToNow(comment.createdAt)}
                           </span>
                         </div>
                         <p className="text-sm text-[var(--text-primary)] leading-relaxed">{comment.text}</p>
