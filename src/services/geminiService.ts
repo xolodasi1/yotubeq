@@ -1,20 +1,13 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export async function generateVideoTitle(description: string, category: string) {
   try {
-    const prompt = `Сгенерируй привлекательное и кликабельное название для видео на YouTube. 
-    Категория: ${category}. 
-    Описание: ${description}. 
-    Название должно быть коротким, интригующим и на русском языке. Выдай только один вариант названия без лишнего текста.`;
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
+    const response = await fetch('/api/generate-title', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description, category })
     });
-    
-    return response.text?.trim().replace(/^"|"$/g, '') || "Без названия";
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    return data.text || "Без названия";
   } catch (error) {
     console.error("Error generating title:", error);
     throw error;
@@ -23,17 +16,14 @@ export async function generateVideoTitle(description: string, category: string) 
 
 export async function generateVideoDescription(title: string, category: string) {
   try {
-    const prompt = `Напиши подробное и интересное описание для видео на YouTube под названием "${title}". 
-    Категория: ${category}. 
-    Описание должно включать краткий обзор видео, призыв к действию (подписаться, поставить лайк) и несколько релевантных хештегов. 
-    Язык: русский. Выдай только текст описания.`;
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
+    const response = await fetch('/api/generate-description', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, category })
     });
-    
-    return response.text?.trim() || "";
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    return data.text || "";
   } catch (error) {
     console.error("Error generating description:", error);
     throw error;
@@ -42,17 +32,14 @@ export async function generateVideoDescription(title: string, category: string) 
 
 export async function generateVideoTags(title: string, description: string, category: string) {
   try {
-    const prompt = `Сгенерируй список из 5-10 релевантных тегов для видео на YouTube под названием "${title}". 
-    Категория: ${category}. 
-    Описание: ${description}. 
-    Выдай теги через запятую, без лишнего текста.`;
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
+    const response = await fetch('/api/generate-tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description, category })
     });
-    
-    return response.text?.trim() || "";
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    return data.text || "";
   } catch (error) {
     console.error("Error generating tags:", error);
     throw error;
@@ -61,26 +48,14 @@ export async function generateVideoTags(title: string, description: string, cate
 
 export async function generateImage(prompt: string) {
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [{ text: prompt }],
-      },
-      config: {
-        imageConfig: {
-          aspectRatio: "1:1",
-        },
-      },
+    const response = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
     });
-    
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    throw new Error("No image generated");
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    return data.imageUrl;
   } catch (error) {
     console.error("Error generating image:", error);
     throw error;
