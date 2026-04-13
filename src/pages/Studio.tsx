@@ -127,6 +127,20 @@ export default function Studio() {
       toast.error('Введите описание музыки для генерации');
       return;
     }
+
+    // Check for API key selection in AI Studio
+    if (window.aistudio) {
+      try {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          await window.aistudio.openSelectKey();
+          // Proceed after selection (assuming success as per skill)
+        }
+      } catch (err) {
+        console.error("Error checking/selecting API key:", err);
+      }
+    }
+
     setIsGeneratingMusic(true);
     try {
       const result = await generateMusic(musicPrompt, musicGenerationType === 'pro');

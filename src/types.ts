@@ -148,3 +148,12 @@ export interface CommentAction {
   commentId: string;
   type: 'like' | 'dislike';
 }
+
+declare global {
+  interface Window {
+    aistudio: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}

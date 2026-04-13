@@ -1,16 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 
-let aiInstance: GoogleGenAI | null = null;
-
 function getAI() {
-  if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is missing. Please set it in the environment.");
-    }
-    aiInstance = new GoogleGenAI({ apiKey });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is missing. Please set it in the environment or select an API key in AI Studio.");
   }
-  return aiInstance;
+  return new GoogleGenAI({ apiKey });
 }
 
 export async function generateVideoTitle(description: string, category: string) {
