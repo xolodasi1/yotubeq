@@ -1,9 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is missing. Please set it in the environment.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+}
 
 export async function generateVideoTitle(description: string, category: string) {
   try {
+    const ai = getAI();
     const prompt = `Сгенерируй привлекательное и кликабельное название для видео на YouTube. 
     Категория: ${category}. 
     Описание: ${description}. 
@@ -23,6 +35,7 @@ export async function generateVideoTitle(description: string, category: string) 
 
 export async function generateVideoDescription(title: string, category: string) {
   try {
+    const ai = getAI();
     const prompt = `Напиши подробное и интересное описание для видео на YouTube под названием "${title}". 
     Категория: ${category}. 
     Описание должно включать краткий обзор видео, призыв к действию (подписаться, поставить лайк) и несколько релевантных хештегов. 
@@ -42,6 +55,7 @@ export async function generateVideoDescription(title: string, category: string) 
 
 export async function generateVideoTags(title: string, description: string, category: string) {
   try {
+    const ai = getAI();
     const prompt = `Сгенерируй список из 5-10 релевантных тегов для видео на YouTube под названием "${title}". 
     Категория: ${category}. 
     Описание: ${description}. 
@@ -61,6 +75,7 @@ export async function generateVideoTags(title: string, description: string, cate
 
 export async function generateImage(prompt: string) {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
