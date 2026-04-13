@@ -17,6 +17,7 @@ const studioItems = [
 const mainItems = [
   { icon: Youtube, label: 'На главную', path: '/' },
   { icon: Bell, label: 'Подписки', path: '/subscriptions' },
+  { icon: PlaySquare, label: 'Видео', path: '/videos' },
   { icon: Smartphone, label: 'Shorts', path: '/shorts' },
   { icon: ListMusic, label: 'Музыка', path: '/music' },
   { icon: Camera, label: 'Фото', path: '/photos' },

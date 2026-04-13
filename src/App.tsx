@@ -77,6 +77,8 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+import Videos from './pages/Videos';
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [channels, setChannels] = useState<ChannelType[]>([]);
@@ -222,6 +224,7 @@ export default function App() {
             <main className="flex-1 overflow-y-auto">
               <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/videos" element={<Videos />} />
                 <Route path="/shorts" element={<Shorts />} />
                 <Route path="/music" element={<Music />} />
                 <Route path="/top-channels" element={<TopChannels />} />

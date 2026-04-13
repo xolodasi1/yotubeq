@@ -84,7 +84,7 @@ export default function TopChannels() {
           const i = Number(video.ices) || 0;
           stats[authorId].totalViews += v;
           stats[authorId].totalIces += i;
-          if (!video.isShort && !video.isMusic && !video.isPhoto && video.type !== 'photo') {
+          if (!video.isMusic && !video.isPhoto && video.type !== 'photo') {
             stats[authorId].likes += l;
           }
           if (video.isMusic) {
@@ -227,7 +227,7 @@ export default function TopChannels() {
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border ${sortBy === 'likes' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'}`}
             >
               <Heart className="w-3.5 h-3.5" />
-              По лайкам на видео
+              По лайкам (Видео + Shorts)
             </button>
             <button 
               onClick={() => setSortBy('views')}
