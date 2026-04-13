@@ -7,8 +7,7 @@ import { auth, db } from '../lib/firebase';
 import { MeltingAvatar } from './MeltingAvatar';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
-import { formatDistanceToNow } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { safeFormatDistanceToNow } from '../lib/dateUtils';
 
 import { APP_LOGO_URL } from '../constants';
 
@@ -240,7 +239,7 @@ export default function Navbar() {
                                        ` оставил комментарий: "${notif.commentText}"`}
                                     </p>
                                     <p className="text-xs text-[var(--text-secondary)] mt-1">
-                                      {notif.createdAt?.toDate ? formatDistanceToNow(notif.createdAt.toDate(), { addSuffix: true, locale: ru }) : 'только что'}
+                                      {safeFormatDistanceToNow(notif.createdAt)}
                                     </p>
                                   </div>
                                 </div>

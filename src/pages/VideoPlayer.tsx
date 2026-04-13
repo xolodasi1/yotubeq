@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare, ChevronDown, ChevronUp, Play, Pause, VolumeX, Volume1, Volume2, Maximize, Minimize, Music as MusicIcon, ExternalLink, SkipBack, SkipForward, Repeat, Shuffle, Captions } from 'lucide-react';
 import { MeltingAvatar } from '../components/MeltingAvatar';
-import { formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { ru } from 'date-fns/locale';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment, serverTimestamp, onSnapshot, addDoc } from 'firebase/firestore';
@@ -941,9 +941,7 @@ export default function VideoPlayer() {
     );
   }
 
-  const formattedDate = video.createdAt 
-    ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru }) 
-    : 'недавно';
+  const formattedDate = safeFormatDistanceToNow(video.createdAt);
 
   return (
     <div className="max-w-[1800px] mx-auto p-3 md:p-6 pb-24 md:pb-6 flex flex-col xl:flex-row gap-6">
@@ -1494,7 +1492,7 @@ export default function VideoPlayer() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-bold text-xs md:text-sm text-[var(--studio-text)]">@{c.authorName.replace(/\s+/g, '').toLowerCase()}</span>
                           <span className="text-[10px] md:text-xs text-[var(--studio-muted)]">
-                            {c.createdAt ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
+                            {safeFormatDistanceToNow(c.createdAt)}
                           </span>
                           {c.isEdited && <span className="text-[10px] md:text-xs text-[var(--studio-muted)]">(изменено)</span>}
                         </div>
@@ -1621,7 +1619,7 @@ export default function VideoPlayer() {
                   <div className="flex items-center gap-2 text-[9px] font-black text-[var(--studio-muted)] uppercase tracking-widest">
                     <span>{v.views.toLocaleString()} просмотров</span>
                     <span className="w-1 h-1 bg-[var(--studio-muted)] rounded-full opacity-30" />
-                    <span>{v.createdAt ? formatDistanceToNow(new Date(v.createdAt), { locale: ru }) : 'недавно'}</span>
+                    <span>{safeFormatDistanceToNow(v.createdAt, { locale: ru })}</span>
                   </div>
                 </div>
               </div>

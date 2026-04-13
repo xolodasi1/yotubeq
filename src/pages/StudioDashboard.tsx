@@ -5,8 +5,7 @@ import { collection, query, where, getDocs, orderBy, limit } from 'firebase/fire
 import { VideoType } from '../types';
 import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { safeFormatDistanceToNow } from '../lib/dateUtils';
 
 import { APP_LOGO_URL } from '../constants';
 
@@ -133,7 +132,7 @@ export default function StudioDashboard() {
                   {videos[0].title}
                 </h3>
                 <p className="text-[10px] font-mono text-[var(--text-secondary)] uppercase">
-                  {videos[0].createdAt ? formatDistanceToNow(new Date(videos[0].createdAt), { addSuffix: true, locale: ru }) : 'Неизвестно'}
+                  {videos[0].createdAt ? safeFormatDistanceToNow(videos[0].createdAt) : 'Неизвестно'}
                 </p>
               </div>
 

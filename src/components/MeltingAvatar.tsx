@@ -24,7 +24,10 @@ export const MeltingAvatar: React.FC<MeltingAvatarProps> = ({
   const calculateMelt = () => {
     if (!lastPostAt) return 0;
     
-    const lastDate = lastPostAt.toDate ? lastPostAt.toDate() : new Date(lastPostAt);
+    const lastDate = lastPostAt.toDate ? lastPostAt.toDate() : 
+                     (lastPostAt.seconds ? new Date(lastPostAt.seconds * 1000) : new Date(lastPostAt));
+    
+    if (isNaN(lastDate.getTime())) return 0;
     const days = differenceInDays(new Date(), lastDate);
     
     if (days <= 3) return 0;

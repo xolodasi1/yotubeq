@@ -6,8 +6,7 @@ import { VideoType, Comment } from '../types';
 import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, X, Send, Snowflake, Ban } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 
@@ -340,7 +339,7 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
                       <div className="flex items-baseline gap-2">
                         <span className="font-bold text-sm text-[var(--text-primary)]">{comment.authorName}</span>
                         <span className="text-xs text-[var(--text-secondary)]">
-                          {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: ru }) : ''}
+                          {safeFormatDistanceToNow(comment.createdAt)}
                         </span>
                       </div>
                       <p className="text-sm text-[var(--text-primary)] mt-1">{comment.text}</p>
@@ -400,10 +399,20 @@ export default function Shorts() {
           orderBy('createdAt', 'desc')
         );
         const querySnapshot = await getDocs(q);
-        let data = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
-        })) as VideoType[];
+        let data = querySnapshot.docs.map(doc => {
+          const videoData = doc.data();
+          let createdAt = videoData.createdAt;
+          if (createdAt?.toDate) {
+            createdAt = createdAt.toDate().toISOString();
+          } else if (createdAt?.seconds) {
+            createdAt = new Date(createdAt.seconds * 1000).toISOString();
+          }
+          return {
+            ...videoData,
+            id: doc.id,
+            createdAt
+          };
+        }) as VideoType[];
         
         if (hiddenChannelIds.length > 0) {
           data = data.filter(video => !hiddenChannelIds.includes(video.authorId));

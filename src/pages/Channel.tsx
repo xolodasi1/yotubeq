@@ -9,8 +9,7 @@ import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { safeFormatDistanceToNow } from '../lib/dateUtils';
 
 type TabType = 'home' | 'videos' | 'shorts' | 'music' | 'photos' | 'playlists' | 'community' | 'about';
 
@@ -686,7 +685,7 @@ export default function Channel() {
                       <div>
                         <h4 className="font-bold text-[var(--text-primary)] text-sm">{post.authorName}</h4>
                         <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-0.5">
-                          {post.createdAt ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: ru }) : 'только что'}
+                          {safeFormatDistanceToNow(post.createdAt)}
                         </p>
                       </div>
                     </div>

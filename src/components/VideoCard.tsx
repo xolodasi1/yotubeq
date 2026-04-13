@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Video } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { Eye, ThumbsUp, Snowflake, Ban, Clock, Music as MusicIcon } from 'lucide-react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
@@ -15,9 +16,7 @@ export default function VideoCard({ video }: { video: Video; key?: React.Key }) 
   const [isHiding, setIsHiding] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
-  const formattedDate = video.createdAt 
-    ? formatDistanceToNow(new Date(video.createdAt), { addSuffix: true, locale: ru }) 
-    : 'недавно';
+  const formattedDate = safeFormatDistanceToNow(video.createdAt);
 
   const handleHideChannel = async (e: React.MouseEvent) => {
     e.stopPropagation();

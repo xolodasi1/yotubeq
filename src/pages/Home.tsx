@@ -36,10 +36,16 @@ export default function Home() {
         const videosSnapshot = await getDocs(videosQuery);
         let videosData = videosSnapshot.docs.map(doc => {
           const videoData = doc.data();
+          let createdAt = videoData.createdAt;
+          if (createdAt?.toDate) {
+            createdAt = createdAt.toDate().toISOString();
+          } else if (createdAt?.seconds) {
+            createdAt = new Date(createdAt.seconds * 1000).toISOString();
+          }
           return {
             ...videoData,
             id: doc.id,
-            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
+            createdAt
           };
         }) as VideoType[];
         
