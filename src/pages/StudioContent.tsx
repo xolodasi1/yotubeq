@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Trash2, Edit, ExternalLink, Search, Filter, MoreVertical, BarChart2, X, Save, Snowflake, Plus, Loader2, Sparkles, AlertCircle, Layout, Video as VideoIcon, Image as ImageIcon, Music as MusicIcon, Smartphone, Clock, ChevronDown } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Trash2, Edit, ExternalLink, Search, Filter, MoreVertical, BarChart2, X, Save, Snowflake, Plus, Loader2, AlertCircle, Layout, Video as VideoIcon, Image as ImageIcon, Music as MusicIcon, Smartphone, Clock, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
