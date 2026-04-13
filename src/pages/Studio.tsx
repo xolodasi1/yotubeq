@@ -486,17 +486,21 @@ export default function Studio() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
                     <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Категория</label>
-                    <select
+                    <input
+                      type="text"
+                      list="category-options"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-xs font-black text-[var(--text-primary)] transition-all appearance-none uppercase tracking-widest"
-                    >
-                      <option value="Gaming">Игры</option>
-                      <option value="Music">Музыка</option>
-                      <option value="Education">Образование</option>
-                      <option value="Entertainment">Развлечения</option>
-                      <option value="Tech">Технологии</option>
-                    </select>
+                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-xs font-black text-[var(--text-primary)] transition-all uppercase tracking-widest"
+                      placeholder="Выберите или введите свою..."
+                    />
+                    <datalist id="category-options">
+                      <option value="Игры" />
+                      <option value="Музыка" />
+                      <option value="Образование" />
+                      <option value="Развлечения" />
+                      <option value="Технологии" />
+                    </datalist>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">

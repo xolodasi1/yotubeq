@@ -594,20 +594,23 @@ export default function StudioContent() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Категория</label>
-                    <select
+                    <input
+                      type="text"
+                      list="edit-category-options"
                       value={editCategory}
                       onChange={(e) => setEditCategory(e.target.value)}
                       className="w-full px-4 py-2 bg-[var(--hover)] border border-[var(--border)] rounded-xl focus:outline-none focus:border-blue-500 text-[var(--text-primary)] text-sm font-medium"
-                    >
-                      <option value="">Выберите категорию</option>
-                      <option value="Игры">Игры</option>
-                      <option value="Музыка">Музыка</option>
-                      <option value="Образование">Образование</option>
-                      <option value="Развлечения">Развлечения</option>
-                      <option value="Технологии">Технологии</option>
-                      <option value="Спорт">Спорт</option>
-                      <option value="Влоги">Влоги</option>
-                    </select>
+                      placeholder="Выберите или введите свою..."
+                    />
+                    <datalist id="edit-category-options">
+                      <option value="Игры" />
+                      <option value="Музыка" />
+                      <option value="Образование" />
+                      <option value="Развлечения" />
+                      <option value="Технологии" />
+                      <option value="Спорт" />
+                      <option value="Влоги" />
+                    </datalist>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Плейлист</label>

@@ -19,10 +19,14 @@ export default function Videos() {
           orderBy('createdAt', 'desc')
         );
         const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
-        })) as VideoType[];
+        const data = querySnapshot.docs.map(doc => {
+          const videoData = doc.data();
+          return {
+            ...videoData,
+            id: doc.id,
+            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
+          };
+        }) as VideoType[];
         
         // Filter only regular videos
         const regularVideos = data.filter(v => !v.isShort && !v.isMusic && !v.isPhoto && v.type !== 'photo');
