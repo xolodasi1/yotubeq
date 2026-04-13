@@ -1,7 +1,6 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-const genAI = new GoogleGenerativeAI(import.meta.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function generateVideoTitle(description: string, category: string) {
   try {
@@ -10,9 +9,12 @@ export async function generateVideoTitle(description: string, category: string) 
     Описание: ${description}. 
     Название должно быть коротким, интригующим и на русском языке. Выдай только один вариант названия без лишнего текста.`;
     
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text()?.trim().replace(/^"|"$/g, '') || "Без названия";
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+    
+    return response.text?.trim().replace(/^"|"$/g, '') || "Без названия";
   } catch (error) {
     console.error("Error generating title:", error);
     throw error;
@@ -26,9 +28,12 @@ export async function generateVideoDescription(title: string, category: string) 
     Описание должно включать краткий обзор видео, призыв к действию (подписаться, поставить лайк) и несколько релевантных хештегов. 
     Язык: русский. Выдай только текст описания.`;
     
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text()?.trim() || "";
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+    
+    return response.text?.trim() || "";
   } catch (error) {
     console.error("Error generating description:", error);
     throw error;
@@ -42,11 +47,42 @@ export async function generateVideoTags(title: string, description: string, cate
     Описание: ${description}. 
     Выдай теги через запятую, без лишнего текста.`;
     
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text()?.trim() || "";
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+    
+    return response.text?.trim() || "";
   } catch (error) {
     console.error("Error generating tags:", error);
+    throw error;
+  }
+}
+
+export async function generateImage(prompt: string) {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [{ text: prompt }],
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "1:1",
+        },
+      },
+    });
+    
+    if (response.candidates?.[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
+    }
+    throw new Error("No image generated");
+  } catch (error) {
+    console.error("Error generating image:", error);
     throw error;
   }
 }

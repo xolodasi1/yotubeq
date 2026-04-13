@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { setDoc, doc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { generateVideoTitle, generateVideoDescription, generateVideoTags } from '../services/geminiService';
+import { generateVideoTitle, generateVideoDescription, generateVideoTags, generateImage } from '../services/geminiService';
+import { generateMusic } from '../services/musicGenerationService';
 
 const MAX_VIDEO_SIZE_MB = 50;
 const CLOUDINARY_CLOUD_NAME = 'du6zw4m8g';
@@ -42,7 +43,14 @@ export default function Studio() {
   const [generatingTitle, setGeneratingTitle] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingTags, setGeneratingTags] = useState(false);
+  const [generatingThumbnail, setGeneratingThumbnail] = useState(false);
   const [userCategories, setUserCategories] = useState<string[]>([]);
+  
+  // Music Generation State
+  const [musicPrompt, setMusicPrompt] = useState('');
+  const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
+  const [musicGenerationType, setMusicGenerationType] = useState<'clip' | 'pro'>('clip');
+  const [thumbnailPrompt, setThumbnailPrompt] = useState('');
 
   React.useEffect(() => {
     if (!activeChannel) return;
@@ -110,6 +118,59 @@ export default function Studio() {
       toast.error('Ошибка при генерации тегов');
     } finally {
       setGeneratingTags(false);
+    }
+  };
+
+  const handleGenerateMusic = async () => {
+    if (!musicPrompt.trim()) {
+      toast.error('Введите описание музыки для генерации');
+      return;
+    }
+    setIsGeneratingMusic(true);
+    try {
+      const result = await generateMusic(musicPrompt, musicGenerationType === 'pro');
+      
+      // Create a File object from the Blob
+      const fileName = `generated_music_${Date.now()}.wav`;
+      const file = new File([result.blob], fileName, { type: result.mimeType });
+      
+      setVideoFile(file);
+      setContentType('music');
+      setTitle(musicPrompt.slice(0, 50));
+      setDescription(`Сгенерировано ИИ: ${musicPrompt}\n\n${result.lyrics || ''}`);
+      setCategory('Музыка');
+      
+      // Get duration
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(result.blob);
+      audio.onloadedmetadata = () => {
+        const minutes = Math.floor(audio.duration / 60);
+        const seconds = Math.floor(audio.duration % 60);
+        setVideoDuration(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      };
+
+      toast.success('Музыка успешно сгенерирована!');
+    } catch (error) {
+      toast.error('Ошибка при генерации музыки. Проверьте API ключ.');
+    } finally {
+      setIsGeneratingMusic(false);
+    }
+  };
+
+  const handleGenerateThumbnail = async () => {
+    const prompt = thumbnailPrompt || title || "Music album cover art, high quality, artistic";
+    setGeneratingThumbnail(true);
+    try {
+      const imageUrl = await generateImage(prompt);
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `generated_thumb_${Date.now()}.png`, { type: "image/png" });
+      setThumbnailFile(file);
+      toast.success('Обложка сгенерирована!');
+    } catch (error) {
+      toast.error('Ошибка при генерации обложки');
+    } finally {
+      setGeneratingThumbnail(false);
     }
   };
 
@@ -403,9 +464,31 @@ export default function Studio() {
 
               {contentType !== 'photo' && (
                 <div className="space-y-4">
-                  <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">
-                    Значок (превью) {contentType === 'music' && <span className="text-red-500">*</span>}
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">
+                      Значок (превью) {contentType === 'music' && <span className="text-red-500">*</span>}
+                    </label>
+                    <button 
+                      type="button"
+                      onClick={handleGenerateThumbnail}
+                      disabled={generatingThumbnail}
+                      className="flex items-center gap-2 text-[9px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-[0.15em] bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/10"
+                    >
+                      {generatingThumbnail ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      ИИ Обложка
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <input 
+                      type="text"
+                      value={thumbnailPrompt}
+                      onChange={(e) => setThumbnailPrompt(e.target.value)}
+                      placeholder="Опишите обложку для ИИ (или используем название)..."
+                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-xl py-2 px-4 text-[10px] font-bold focus:outline-none focus:border-blue-500 transition-all"
+                    />
+                  </div>
+
                   <div className={`relative border-2 border-dashed rounded-2xl p-6 transition-all text-center cursor-pointer bg-[var(--hover)]/30 ${contentType === 'music' && !thumbnailFile ? 'border-red-500/30 hover:border-red-500' : 'border-[var(--border)] hover:border-blue-500 hover:bg-blue-500/5'}`}>
                     <input
                       type="file"
@@ -451,6 +534,53 @@ export default function Studio() {
                       <span className="text-[11px] font-black uppercase tracking-widest">{type.label}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* AI Music Generation Section */}
+              <div className="pt-8 border-t border-[var(--border)] space-y-6">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <label className="block text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Создать музыку с ИИ</label>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex gap-2 p-1 bg-[var(--hover)] rounded-xl border border-[var(--border)]">
+                    <button
+                      type="button"
+                      onClick={() => setMusicGenerationType('clip')}
+                      className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${musicGenerationType === 'clip' ? 'bg-blue-600 text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    >
+                      Клип (30с)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMusicGenerationType('pro')}
+                      className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${musicGenerationType === 'pro' ? 'bg-blue-600 text-white shadow-lg' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    >
+                      Полный трек
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <textarea
+                      value={musicPrompt}
+                      onChange={(e) => setMusicPrompt(e.target.value)}
+                      placeholder="Опишите музыку (например: Энергичный рок с мощными барабанами)..."
+                      className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-blue-500 text-sm font-medium h-24 resize-none transition-all text-[var(--text-primary)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGenerateMusic}
+                      disabled={isGeneratingMusic || !musicPrompt.trim()}
+                      className="absolute bottom-3 right-3 bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20"
+                    >
+                      {isGeneratingMusic ? <Loader2 className="w-5 h-5 animate-spin" /> : <MusicIcon className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-[var(--text-secondary)] font-medium text-center uppercase tracking-widest">
+                    ИИ создаст уникальную композицию на основе вашего описания
+                  </p>
                 </div>
               </div>
             </div>
