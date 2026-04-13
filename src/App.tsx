@@ -59,6 +59,8 @@ interface AuthContextType {
   loading: boolean;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  isSidebarOpen: boolean;
+  toggleSidebar: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -69,6 +71,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   theme: 'light',
   toggleTheme: () => {},
+  isSidebarOpen: true,
+  toggleSidebar: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -78,6 +82,7 @@ export default function App() {
   const [channels, setChannels] = useState<ChannelType[]>([]);
   const [activeChannel, setActiveChannel] = useState<ChannelType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
     return (saved as 'light' | 'dark') || 'light';
@@ -87,6 +92,10 @@ export default function App() {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
   useEffect(() => {
@@ -204,7 +213,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, channels, activeChannel, setActiveChannel, loading, theme, toggleTheme }}>
+    <AuthContext.Provider value={{ user, channels, activeChannel, setActiveChannel, loading, theme, toggleTheme, isSidebarOpen, toggleSidebar }}>
       <Router>
         <div className={`min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col transition-colors duration-300`}>
           <Navbar />

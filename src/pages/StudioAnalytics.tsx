@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 export default function StudioAnalytics() {
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeMainTab, setActiveMainTab] = useState<'overview' | 'content' | 'audience'>('overview');
@@ -24,9 +24,9 @@ export default function StudioAnalytics() {
   const [popularTab, setPopularTab] = useState<'all' | 'video' | 'short' | 'music' | 'photo'>('all');
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeChannel) return;
 
-    const unsubscribeSub = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+    const unsubscribeSub = onSnapshot(doc(db, 'channels', activeChannel.id), (docSnap) => {
       if (docSnap.exists()) {
         setStats(prev => ({ ...prev, subscribers: docSnap.data().subscribers || 0 }));
       }
@@ -34,7 +34,7 @@ export default function StudioAnalytics() {
 
     const fetchAnalytics = async () => {
       try {
-        const q = query(collection(db, 'videos'), where('authorId', '==', user.uid));
+        const q = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoType));
         
@@ -74,7 +74,7 @@ export default function StudioAnalytics() {
 
     fetchAnalytics();
     return () => unsubscribeSub();
-  }, [user]);
+  }, [user, activeChannel?.id]);
 
   if (loading) {
     return (

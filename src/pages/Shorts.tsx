@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 
 const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> = ({ short, isActive, user }) => {
@@ -28,7 +28,7 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   useEffect(() => {
     const fetchAuthor = async () => {
       try {
-        const authorSnap = await getDoc(doc(db, 'users', short.authorId));
+        const authorSnap = await getDoc(doc(db, 'channels', short.authorId));
         if (authorSnap.exists()) {
           setAuthorData(authorSnap.data() as any);
         }
@@ -111,6 +111,7 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
   const handleIce = async () => {
     if (!user) return toast.error('Войдите, чтобы ставить снежинки');
+    if (user.uid === short.authorId) return toast.error('Вы не можете ставить снежинки своим видео');
     const iceId = `${user.uid}_${short.id}`;
     const iceRef = doc(db, 'video_ices', iceId);
     const videoRef = doc(db, 'videos', short.id);
@@ -139,7 +140,7 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
     const subId = `${user.uid}_${short.authorId}`;
     const subRef = doc(db, 'subscriptions', subId);
-    const channelRef = doc(db, 'users', short.authorId);
+    const channelRef = doc(db, 'channels', short.authorId);
 
     try {
       if (isSubscribed) {
@@ -377,6 +378,7 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
 export default function Shorts() {
   const { user } = useAuth();
+  const location = useLocation();
   const [shorts, setShorts] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -416,6 +418,25 @@ export default function Shorts() {
     };
     fetchShorts();
   }, [user]);
+
+  useEffect(() => {
+    if (shorts.length > 0) {
+      const urlParams = new URLSearchParams(location.search);
+      const videoId = urlParams.get('v');
+      if (videoId) {
+        const index = shorts.findIndex(v => v.id === videoId);
+        if (index !== -1 && index !== currentIndex) {
+          setCurrentIndex(index);
+          if (containerRef.current) {
+            containerRef.current.scrollTo({
+              top: index * containerRef.current.clientHeight,
+              behavior: 'auto'
+            });
+          }
+        }
+      }
+    }
+  }, [location.search, shorts]);
 
   useEffect(() => {
     if (!user || shorts.length === 0) return;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare, ChevronDown, ChevronUp, Play, Pause, VolumeX, Volume1, Volume2, Maximize, Minimize } from 'lucide-react';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -93,7 +93,165 @@ export default function VideoPlayer() {
   const [playlistVisibility, setPlaylistVisibility] = useState<'public' | 'private'>('public');
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
+  // Custom Video Player State
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [buffered, setBuffered] = useState(0);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const formatTime = (timeInSeconds: number) => {
+    if (isNaN(timeInSeconds)) return '0:00';
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
+  const handlePlayPause = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const current = videoRef.current.currentTime;
+      const total = videoRef.current.duration;
+      setCurrentTime(current);
+      setProgress((current / total) * 100);
+    }
+  };
+
+  const handleProgress = () => {
+    if (videoRef.current && videoRef.current.buffered.length > 0) {
+      const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+      const duration = videoRef.current.duration;
+      if (duration > 0) {
+        setBuffered((bufferedEnd / duration) * 100);
+      }
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const seekTime = (Number(e.target.value) / 100) * duration;
+    if (videoRef.current) {
+      videoRef.current.currentTime = seekTime;
+      setProgress(Number(e.target.value));
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = Number(e.target.value);
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume;
+      setVolume(newVolume);
+      setIsMuted(newVolume === 0);
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      const newMutedState = !isMuted;
+      videoRef.current.muted = newMutedState;
+      setIsMuted(newMutedState);
+      if (newMutedState) {
+        setVolume(0);
+      } else {
+        setVolume(1);
+        videoRef.current.volume = 1;
+      }
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!playerContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      playerContainerRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying) {
+        setShowControls(false);
+      }
+    }, 3000);
+  };
+
+  const handleMouseLeave = () => {
+    if (isPlaying) {
+      setShowControls(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      
+      switch(e.key.toLowerCase()) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case 'f':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case 'm':
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'arrowright':
+          e.preventDefault();
+          if (videoRef.current) videoRef.current.currentTime += 5;
+          break;
+        case 'arrowleft':
+          e.preventDefault();
+          if (videoRef.current) videoRef.current.currentTime -= 5;
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, isMuted]);
 
   const seekTo = (time: string) => {
     if (!videoRef.current) return;
@@ -130,7 +288,7 @@ export default function VideoPlayer() {
         setVideo(data);
 
         // Fetch author data
-        const authorSnap = await getDoc(doc(db, 'users', data.authorId));
+        const authorSnap = await getDoc(doc(db, 'channels', data.authorId));
         if (authorSnap.exists()) {
           setAuthorData(authorSnap.data());
         }
@@ -359,6 +517,11 @@ export default function VideoPlayer() {
   const handleIce = async () => {
     if (!user || !video) {
       toast.error('Пожалуйста, войдите, чтобы ставить снежинки');
+      return;
+    }
+
+    if (user.uid === video.authorId) {
+      toast.error('Вы не можете ставить снежинки своим видео');
       return;
     }
 
@@ -784,41 +947,136 @@ export default function VideoPlayer() {
               />
             </div>
           ) : (
-            <video
-              ref={videoRef}
-              src={video.videoUrl}
-              controls
-              autoPlay
-              className="w-full h-full object-contain bg-black"
-            />
-          )}
-          
-          {/* Quality Selector Overlay */}
-          <div className="absolute top-4 right-4 z-10">
-            <div className="relative">
-              <button 
-                onClick={() => setShowQualityMenu(!showQualityMenu)}
-                className="bg-black/60 hover:bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded border border-white/20 backdrop-blur-sm transition-all flex items-center gap-1"
-              >
-                <SettingsIcon className="w-3 h-3" />
-                {quality}
-              </button>
+            <div 
+              ref={playerContainerRef}
+              className="relative w-full h-full bg-black flex items-center justify-center group/player"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+            >
+              <video
+                ref={videoRef}
+                src={video.videoUrl}
+                autoPlay
+                onClick={handlePlayPause}
+                onDoubleClick={(e) => {
+                  if (!videoRef.current) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  if (x > rect.width / 2) {
+                    videoRef.current.currentTime += 10;
+                  } else {
+                    videoRef.current.currentTime -= 10;
+                  }
+                }}
+                onTimeUpdate={handleTimeUpdate}
+                onProgress={handleProgress}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => setIsPlaying(false)}
+                className="w-full h-full object-contain cursor-pointer"
+              />
               
-              {showQualityMenu && (
-                <div className="absolute top-full right-0 mt-1 bg-black/90 border border-white/10 rounded-lg overflow-hidden shadow-xl min-w-[80px]">
-                  {['2160p (4K)', '1440p', '1080p', '720p', '480p', '360p'].map((q) => (
-                    <button
-                      key={q}
-                      onClick={() => { setQuality(q.split(' ')[0]); setShowQualityMenu(false); }}
-                      className={`w-full text-left px-3 py-1.5 text-[10px] font-medium hover:bg-white/10 transition-colors ${quality === q.split(' ')[0] ? 'text-blue-400' : 'text-white'}`}
-                    >
-                      {q}
-                    </button>
-                  ))}
+              {/* Big Play Button Overlay */}
+              {!isPlaying && (
+                <div 
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <div className="w-20 h-20 bg-blue-600/80 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-[0_0_30px_rgba(37,99,235,0.5)] transform transition-transform hover:scale-110">
+                    <Play className="w-10 h-10 fill-current ml-2" />
+                  </div>
                 </div>
               )}
+
+              {/* Custom Controls Overlay */}
+              <div 
+                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-4 pt-12 pb-4 transition-opacity duration-300 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}
+              >
+                {/* Progress Bar */}
+                <div className="relative w-full h-1.5 bg-white/20 rounded-full mb-4 cursor-pointer group/progress" onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const pos = (e.clientX - rect.left) / rect.width;
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = pos * duration;
+                  }
+                }}>
+                  {/* Buffered Bar */}
+                  <div 
+                    className="absolute top-0 left-0 h-full bg-white/40 rounded-full transition-all duration-300"
+                    style={{ width: `${buffered}%` }}
+                  />
+                  {/* Progress Bar */}
+                  <div 
+                    className="absolute top-0 left-0 h-full bg-blue-500 rounded-full"
+                    style={{ width: `${progress}%` }}
+                  />
+                  <div 
+                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover/progress:opacity-100 transition-opacity"
+                    style={{ left: `calc(${progress}% - 6px)` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {/* Play/Pause */}
+                    <button onClick={handlePlayPause} className="text-white hover:text-blue-400 transition-colors">
+                      {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
+                    </button>
+
+                    {/* Volume */}
+                    <div className="flex items-center gap-2 group/volume">
+                      <button onClick={toggleMute} className="text-white hover:text-blue-400 transition-colors">
+                        {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : volume < 0.5 ? <Volume1 className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                      </button>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="1" 
+                        step="0.05" 
+                        value={isMuted ? 0 : volume}
+                        onChange={handleVolumeChange}
+                        className="w-0 group-hover/volume:w-20 opacity-0 group-hover/volume:opacity-100 transition-all duration-300 accent-blue-500 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Time */}
+                    <div className="text-white text-xs font-medium font-mono">
+                      {formatTime(currentTime)} / {formatTime(duration)}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    {/* Settings/Quality */}
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowQualityMenu(!showQualityMenu)}
+                        className="text-white hover:text-blue-400 transition-colors"
+                      >
+                        <SettingsIcon className="w-5 h-5" />
+                      </button>
+                      
+                      {showQualityMenu && (
+                        <div className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/10 rounded-lg overflow-hidden shadow-xl min-w-[100px]">
+                          {['2160p (4K)', '1440p', '1080p', '720p', '480p', '360p'].map((q) => (
+                            <button
+                              key={q}
+                              onClick={() => { setQuality(q.split(' ')[0]); setShowQualityMenu(false); }}
+                              className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-white/10 transition-colors ${quality === q.split(' ')[0] ? 'text-blue-400' : 'text-white'}`}
+                            >
+                              {q}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Fullscreen */}
+                    <button onClick={toggleFullscreen} className="text-white hover:text-blue-400 transition-colors">
+                      {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <h1 className="text-xl md:text-3xl font-bold mt-4 md:mt-6 mb-3 md:mb-4 text-[var(--studio-text)] leading-tight">{video.title}</h1>
@@ -830,7 +1088,7 @@ export default function VideoPlayer() {
                 photoURL={video.authorPhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.authorId}`}
                 lastPostAt={authorData?.lastPostAt}
                 size="lg"
-                className="border-2 border-blue-100 shadow-[0_0_10px_rgba(37,99,235,0.2)] group-hover:scale-105 transition-transform"
+                className="border-2 border-blue-100 shadow-[0_0_10px_rgba(37,99,235,0.2)] group-hover:scale-105 transition-transform shrink-0"
               />
               <div>
                 <h3 className="font-bold text-base md:text-lg group-hover:text-blue-600 transition-colors line-clamp-1 text-[var(--studio-text)]">{video.authorName}</h3>

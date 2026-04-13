@@ -59,7 +59,7 @@ const SidebarItem = ({ icon: Icon, label, path, isActive, locked }: { icon: any,
 
 export default function Sidebar() {
   const location = useLocation();
-  const { user, activeChannel } = useAuth();
+  const { user, activeChannel, isSidebarOpen } = useAuth();
   const isStudio = location.pathname.startsWith('/studio');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstall, setShowInstall] = useState(false);
@@ -88,9 +88,11 @@ export default function Sidebar() {
     setDeferredPrompt(null);
   };
 
+  if (!isSidebarOpen) return null;
+
   return (
     <>
-      <aside className="w-72 bg-[var(--surface)] border-r border-[var(--border)] hidden lg:flex flex-col py-8">
+      <aside className="w-72 bg-[var(--surface)] border-r border-[var(--border)] hidden lg:flex flex-col py-8 overflow-y-auto">
         {user && isStudio && (
           <div className="px-8 mb-10">
             <div className="p-6 bg-[var(--hover)]/50 rounded-[2rem] border border-[var(--border)] flex flex-col items-center text-center group cursor-pointer hover:border-blue-500/30 transition-all" onClick={() => window.location.href = `/channel/${activeChannel?.id || user.uid}`}>

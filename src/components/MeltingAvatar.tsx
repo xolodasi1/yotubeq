@@ -62,7 +62,7 @@ export const MeltingAvatar: React.FC<MeltingAvatarProps> = ({
   };
 
   return (
-    <div className={`relative ${sizeClasses[size]} ${className}`}>
+    <div className={`relative shrink-0 ${sizeClasses[size]} ${className}`}>
       <img
         src={photoURL}
         alt="Avatar"

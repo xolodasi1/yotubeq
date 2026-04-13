@@ -34,20 +34,8 @@ export default function TopChannels() {
   const [sortBy, setSortBy] = useState<'subscribers' | 'music' | 'views' | 'photos' | 'ices' | 'likes'>('subscribers');
 
   useEffect(() => {
-    // Listen to users for real-time subscriber updates
-    const usersQuery = query(
-      collection(db, 'users'),
-      orderBy('subscribers', 'desc')
-    );
-
-    const unsubscribeUsers = onSnapshot(usersQuery, async (usersSnapshot) => {
+    const fetchVideos = async () => {
       try {
-        const usersData = usersSnapshot.docs.map(doc => ({
-          uid: doc.id,
-          ...doc.data()
-        })) as any[];
-
-        // Fetch all videos to aggregate stats
         const videosQuery = query(collection(db, 'videos'));
         const videosSnapshot = await getDocs(videosQuery);
         const allVideos = videosSnapshot.docs.map(doc => ({
@@ -55,50 +43,6 @@ export default function TopChannels() {
           ...doc.data(),
           createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt
         })) as VideoType[];
-
-        // Aggregate stats per user
-        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number, likes: number, photoLikes: number, photoCount: number, totalIces: number }> = {};
-        allVideos.forEach(video => {
-          const authorId = video.authorId;
-          if (!stats[authorId]) {
-            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0, likes: 0, photoLikes: 0, photoCount: 0, totalIces: 0 };
-          }
-          const v = Number(video.views) || 0;
-          const l = Number(video.likes) || 0;
-          const i = Number(video.ices) || 0;
-          stats[authorId].totalViews += v;
-          stats[authorId].totalIces += i;
-          if (!video.isShort && !video.isMusic && !video.isPhoto && video.type !== 'photo') {
-            stats[authorId].likes += l;
-          }
-          if (video.isMusic) {
-            stats[authorId].musicViews += v;
-            stats[authorId].musicCount += 1;
-          }
-          if (video.isPhoto || video.type === 'photo') {
-            stats[authorId].photoLikes += l;
-            stats[authorId].photoCount += 1;
-          }
-        });
-
-        const combinedData: TopChannel[] = usersData.map(user => ({
-          uid: user.uid,
-          displayName: user.displayName || 'User',
-          pseudonym: user.pseudonym || '',
-          photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-          bio: user.bio || '',
-          subscribers: Number(user.subscribers) || 0,
-          lastPostAt: user.lastPostAt,
-          totalMusicViews: stats[user.uid]?.musicViews || 0,
-          musicCount: stats[user.uid]?.musicCount || 0,
-          totalViews: stats[user.uid]?.totalViews || 0,
-          totalLikes: stats[user.uid]?.likes || 0,
-          totalPhotoLikes: stats[user.uid]?.photoLikes || 0,
-          photoCount: stats[user.uid]?.photoCount || 0,
-          totalIces: stats[user.uid]?.totalIces || 0
-        }));
-
-        setChannels(combinedData);
 
         // Set top tracks (music only)
         const musicTracks = allVideos
@@ -128,14 +72,78 @@ export default function TopChannels() {
           .slice(0, 50);
         setTopShorts(popularShorts);
 
+        // Aggregate stats per user
+        const stats: Record<string, { totalViews: number, musicViews: number, musicCount: number, likes: number, photoLikes: number, photoCount: number, totalIces: number }> = {};
+        allVideos.forEach(video => {
+          const authorId = video.authorId;
+          if (!stats[authorId]) {
+            stats[authorId] = { totalViews: 0, musicViews: 0, musicCount: 0, likes: 0, photoLikes: 0, photoCount: 0, totalIces: 0 };
+          }
+          const v = Number(video.views) || 0;
+          const l = Number(video.likes) || 0;
+          const i = Number(video.ices) || 0;
+          stats[authorId].totalViews += v;
+          stats[authorId].totalIces += i;
+          if (!video.isShort && !video.isMusic && !video.isPhoto && video.type !== 'photo') {
+            stats[authorId].likes += l;
+          }
+          if (video.isMusic) {
+            stats[authorId].musicViews += v;
+            stats[authorId].musicCount += 1;
+          }
+          if (video.isPhoto || video.type === 'photo') {
+            stats[authorId].photoLikes += l;
+            stats[authorId].photoCount += 1;
+          }
+        });
+
+        // Listen to channels for real-time subscriber updates
+        const channelsQuery = query(collection(db, 'channels'));
+        const unsubscribeChannels = onSnapshot(channelsQuery, (channelsSnapshot) => {
+          const channelsData = channelsSnapshot.docs.map(doc => ({
+            uid: doc.id,
+            ...doc.data()
+          })) as any[];
+
+          const combinedData: TopChannel[] = channelsData.map(channel => ({
+            uid: channel.uid,
+            displayName: channel.displayName || 'User',
+            pseudonym: channel.pseudonym || '',
+            photoURL: channel.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.uid}`,
+            bio: channel.bio || '',
+            subscribers: Number(channel.subscribers) || 0,
+            lastPostAt: channel.lastPostAt,
+            totalMusicViews: stats[channel.uid]?.musicViews || 0,
+            musicCount: stats[channel.uid]?.musicCount || 0,
+            totalViews: stats[channel.uid]?.totalViews || 0,
+            totalLikes: stats[channel.uid]?.likes || 0,
+            totalPhotoLikes: stats[channel.uid]?.photoLikes || 0,
+            photoCount: stats[channel.uid]?.photoCount || 0,
+            totalIces: stats[channel.uid]?.totalIces || 0
+          }));
+
+          setChannels(combinedData);
+          setLoading(false);
+        }, (error) => {
+          console.error("Error in TopChannels snapshot:", error);
+          setLoading(false);
+        });
+
+        return unsubscribeChannels;
       } catch (error) {
-        console.error("Error in TopChannels snapshot:", error);
-      } finally {
+        console.error("Error fetching videos for TopChannels:", error);
         setLoading(false);
       }
+    };
+
+    let unsubscribe: any;
+    fetchVideos().then(unsub => {
+      unsubscribe = unsub;
     });
 
-    return () => unsubscribeUsers();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const sortedChannels = React.useMemo(() => {

@@ -38,7 +38,7 @@ export default function StudioHiddenChannels() {
           let photoURL = `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.channelId}`;
           
           try {
-            const channelDoc = await getDoc(doc(db, 'users', data.channelId));
+            const channelDoc = await getDoc(doc(db, 'channels', data.channelId));
             if (channelDoc.exists()) {
               const channelData = channelDoc.data();
               displayName = channelData.displayName || displayName;

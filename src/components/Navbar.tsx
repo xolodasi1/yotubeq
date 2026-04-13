@@ -13,7 +13,7 @@ import { ru } from 'date-fns/locale';
 import { APP_LOGO_URL } from '../constants';
 
 export default function Navbar() {
-  const { user, channels, activeChannel, setActiveChannel } = useAuth();
+  const { user, channels, activeChannel, setActiveChannel, toggleSidebar } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -110,7 +110,7 @@ export default function Navbar() {
     <>
       <nav className="h-16 bg-[var(--surface)] sticky top-0 z-50 flex items-center justify-between px-4 border-b border-[var(--border)]">
         <div className="flex items-center gap-4">
-          <button className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors lg:hidden">
+          <button onClick={toggleSidebar} className="p-2 hover:bg-[var(--hover)] rounded-full transition-colors">
             <Menu className="w-6 h-6 text-[var(--text-secondary)]" />
           </button>
           <Link to="/" className="flex items-center gap-2">

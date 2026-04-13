@@ -32,9 +32,21 @@ export default function Subscriptions() {
         }
 
         // Fetch channel info
-        const channelPromises = channelIds.map(id => getDoc(doc(db, 'users', id)));
+        const channelPromises = channelIds.map(id => getDoc(doc(db, 'channels', id)));
         const channelSnaps = await Promise.all(channelPromises);
-        setChannels(channelSnaps.filter(s => s.exists()).map(s => s.data() as UserType));
+        setChannels(channelSnaps.filter(s => s.exists()).map(s => {
+          const data = s.data();
+          return {
+            uid: s.id,
+            email: '',
+            joinedAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            displayName: data.displayName,
+            photoURL: data.photoURL,
+            pseudonym: data.pseudonym,
+            bio: data.bio,
+            subscribers: data.subscribers
+          } as UserType;
+        }));
 
         // Fetch videos from these channels
         const videosQ = query(
