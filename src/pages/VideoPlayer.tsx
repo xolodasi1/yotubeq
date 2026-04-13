@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { VideoType, Comment, SubscriptionType, VideoLikeType, Playlist } from '../types';
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare, ChevronDown, ChevronUp, Play, Pause, VolumeX, Volume1, Volume2, Maximize, Minimize, Music as MusicIcon, ExternalLink } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake, Heart, Clock, ListPlus, Plus, Settings as SettingsIcon, MessageSquare, ChevronDown, ChevronUp, Play, Pause, VolumeX, Volume1, Volume2, Maximize, Minimize, Music as MusicIcon, ExternalLink, SkipBack, SkipForward, Repeat, Shuffle, Captions } from 'lucide-react';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment, serverTimestamp, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { motion } from 'motion/react';
 
 enum OperationType {
   CREATE = 'create',
@@ -87,6 +88,7 @@ export default function VideoPlayer() {
   const [replyCommentText, setReplyCommentText] = useState('');
   const [quality, setQuality] = useState('1080p');
   const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [showSubtitles, setShowSubtitles] = useState(false);
 
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
@@ -949,29 +951,119 @@ export default function VideoPlayer() {
       <div className="flex-1 min-w-0">
         <div className={`rounded-2xl md:rounded-3xl overflow-hidden glass border border-ice-border shadow-2xl relative group ${video.isShort ? 'aspect-[9/16] max-w-[400px] mx-auto' : 'aspect-video'}`}>
           {video.isMusic ? (
-            <div className="w-full h-full relative flex items-center justify-center bg-gradient-to-br from-gray-900 to-black overflow-hidden">
+            <div className="w-full h-full relative flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900/20 to-black overflow-hidden p-6 md:p-12">
+              {/* Background Blur */}
               <img 
                 src={video.thumbnailUrl} 
                 alt={video.title} 
-                className="absolute inset-0 w-full h-full object-cover opacity-30 blur-2xl scale-110"
+                className="absolute inset-0 w-full h-full object-cover opacity-20 blur-3xl scale-125 pointer-events-none"
               />
-              <div className="relative z-10 flex flex-col items-center gap-6">
-                <div className="w-48 h-48 md:w-64 md:h-64 rounded-2xl shadow-2xl overflow-hidden border-4 border-white/10 animate-pulse-slow">
-                  <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
+              
+              {/* Main Player Card */}
+              <div className="relative z-10 w-full max-w-md flex flex-col items-center gap-8">
+                {/* Album Art */}
+                <motion.div 
+                  animate={{ 
+                    rotate: isPlaying ? 360 : 0,
+                    scale: isPlaying ? 1.05 : 1
+                  }}
+                  transition={{ 
+                    rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+                    scale: { duration: 2, repeat: Infinity, repeatType: "reverse" }
+                  }}
+                  className="relative w-48 h-48 md:w-64 md:h-64"
+                >
+                  <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-2xl animate-pulse" />
+                  <div className="relative w-full h-full rounded-full shadow-2xl overflow-hidden border-8 border-white/10 p-1 bg-black">
+                    <img 
+                      src={video.thumbnailUrl} 
+                      alt={video.title} 
+                      className="w-full h-full object-cover rounded-full" 
+                    />
+                    {/* Vinyl Hole */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-black rounded-full border-4 border-white/20 shadow-inner" />
+                  </div>
+                </motion.div>
+
+                {/* Track Info */}
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight line-clamp-1">{video.title}</h2>
+                  <p className="text-blue-400 font-bold uppercase tracking-[0.2em] text-xs">{video.authorName}</p>
                 </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
-                    <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">Сейчас играет</span>
+
+                {/* Controls */}
+                <div className="w-full space-y-6">
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <div 
+                      className="relative w-full h-2 bg-white/10 rounded-full cursor-pointer group"
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const pos = (e.clientX - rect.left) / rect.width;
+                        if (videoRef.current) videoRef.current.currentTime = pos * duration;
+                      }}
+                    >
+                      <div 
+                        className="absolute top-0 left-0 h-full bg-blue-500 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.6)]"
+                        style={{ width: `${progress}%` }}
+                      />
+                      <div 
+                        className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform"
+                        style={{ left: `calc(${progress}% - 8px)` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+
+                  {/* Playback Buttons */}
+                  <div className="flex items-center justify-center gap-8">
+                    <button className="text-white/40 hover:text-white transition-colors">
+                      <Shuffle className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={() => { if(videoRef.current) videoRef.current.currentTime = 0; }}
+                      className="text-white hover:text-blue-400 transition-colors"
+                    >
+                      <SkipBack className="w-8 h-8 fill-current" />
+                    </button>
+                    <button 
+                      onClick={handlePlayPause}
+                      className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-[0_0_30px_rgba(37,99,235,0.4)] hover:scale-110 transition-transform"
+                    >
+                      {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (musicVideos.length > 0) {
+                          window.location.href = `/video/${musicVideos[0].id}`;
+                        } else {
+                          toast.info('Следующих треков пока нет');
+                        }
+                      }}
+                      className="text-white hover:text-blue-400 transition-colors"
+                    >
+                      <SkipForward className="w-8 h-8 fill-current" />
+                    </button>
+                    <button className="text-white/40 hover:text-white transition-colors">
+                      <Repeat className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </div>
+
+              {/* Hidden Video Element */}
               <video
                 ref={videoRef}
                 src={video.videoUrl}
-                controls
                 autoPlay
-                className="absolute bottom-0 left-0 w-full h-12 bg-black/60 backdrop-blur-md"
+                onTimeUpdate={handleTimeUpdate}
+                onProgress={handleProgress}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => setIsPlaying(false)}
+                className="hidden"
               />
             </div>
           ) : video.isPhoto || video.type === 'photo' ? (
@@ -1010,6 +1102,13 @@ export default function VideoPlayer() {
                 onEnded={() => setIsPlaying(false)}
                 className="w-full h-full object-contain cursor-pointer"
               />
+
+              {/* Subtitles Overlay */}
+              {showSubtitles && isPlaying && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 text-white text-sm font-medium text-center max-w-[80%] pointer-events-none animate-fade-in">
+                  [Автоматические субтитры: {video.title}]
+                </div>
+              )}
               
               {/* Big Play Button Overlay */}
               {!isPlaying && (
@@ -1100,6 +1199,18 @@ export default function VideoPlayer() {
                               {q}
                             </button>
                           ))}
+                          <div className="border-t border-white/10 mt-1 pt-1">
+                            <button
+                              onClick={() => { setShowSubtitles(!showSubtitles); setShowQualityMenu(false); }}
+                              className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-white/10 transition-colors flex items-center justify-between ${showSubtitles ? 'text-blue-400' : 'text-white'}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Captions className="w-3 h-3" />
+                                <span>Субтитры</span>
+                              </div>
+                              <span className="text-[10px] opacity-60">{showSubtitles ? 'ВКЛ' : 'ВЫКЛ'}</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
