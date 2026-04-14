@@ -566,16 +566,19 @@ export default function VideoPlayer() {
     const iceId = `${user.uid}_${video.id}`;
     const iceRef = doc(db, 'video_ices', iceId);
     const videoRef = doc(db, 'videos', video.id);
+    const channelRef = doc(db, 'channels', video.authorId);
 
     try {
       if (isIced) {
         await deleteDoc(iceRef);
-        await updateDoc(videoRef, { ices: Math.max(0, (video.ices || 0) - 1) });
+        await updateDoc(videoRef, { ices: increment(-1) });
+        await updateDoc(channelRef, { ices: increment(-1) }).catch(() => {});
         setVideo({ ...video, ices: Math.max(0, (video.ices || 0) - 1) });
         setIsIced(false);
       } else {
         await setDoc(iceRef, { id: iceId, userId: user.uid, videoId: video.id, createdAt: serverTimestamp() });
-        await updateDoc(videoRef, { ices: (video.ices || 0) + 1 });
+        await updateDoc(videoRef, { ices: increment(1) });
+        await updateDoc(channelRef, { ices: increment(1) }).catch(() => {});
         setVideo({ ...video, ices: (video.ices || 0) + 1 });
         setIsIced(true);
       }

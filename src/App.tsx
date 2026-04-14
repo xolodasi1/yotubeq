@@ -147,12 +147,14 @@ export default function App() {
               displayName: userData.displayName,
               photoURL: userData.photoURL,
               isPrimary: true,
-              subscribers: userData.subscribers || 0
+              subscribers: userData.subscribers || 0,
+              ices: userData.ices || 0
             };
             await setDoc(doc(db, 'channels', firebaseUser.uid), {
               ...primaryChannel,
               bio: '',
-              createdAt: new Date()
+              createdAt: new Date(),
+              competitors: []
             });
             
             // Demote any other primary channels

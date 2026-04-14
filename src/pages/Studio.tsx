@@ -98,6 +98,35 @@ export default function Studio() {
     mediaElement.src = URL.createObjectURL(file);
     setVideoFile(file);
     if (!title) setTitle(file.name.replace(/\.[^/.]+$/, ""));
+
+    // Music Detection Logic
+    const detectMusic = async () => {
+      try {
+        // Simple fingerprint: name + size
+        const fingerprint = `${file.name}_${file.size}`;
+        const q = query(collection(db, 'music_registry'), where('fingerprint', '==', fingerprint));
+        const snap = await getDocs(q);
+        
+        if (!snap.empty) {
+          const musicData = snap.docs[0].data();
+          toast.success(`Обнаружена музыка: ${musicData.title} - ${musicData.author}`);
+          setMusicMetadata({
+            author: musicData.author || '',
+            composer: musicData.composer || '',
+            performer: musicData.performer || '',
+            otherParticipants: musicData.otherParticipants || '',
+            album: musicData.album || '',
+            releaseYear: musicData.releaseYear || ''
+          });
+          if (contentType !== 'music') {
+            setSoundName(`${musicData.author} - ${musicData.title}`);
+          }
+        }
+      } catch (error) {
+        console.error("Music detection error:", error);
+      }
+    };
+    detectMusic();
   };
 
   const uploadFile = async (file: File, folder: string, onProgress?: (progress: number) => void): Promise<string> => {
@@ -201,6 +230,23 @@ export default function Studio() {
       });
 
       await setDoc(doc(db, 'videos', videoId), newVideoData);
+
+      // Save to music registry if metadata is provided
+      if (contentType === 'music' || (musicMetadata.author && musicMetadata.album)) {
+        const fingerprint = `${videoFile.name}_${videoFile.size}`;
+        await addDoc(collection(db, 'music_registry'), {
+          title: title,
+          author: musicMetadata.author || 'Unknown',
+          composer: musicMetadata.composer || '',
+          performer: musicMetadata.performer || '',
+          otherParticipants: musicMetadata.otherParticipants || '',
+          album: musicMetadata.album || '',
+          releaseYear: musicMetadata.releaseYear || '',
+          originalVideoId: videoId,
+          fingerprint: fingerprint,
+          createdAt: serverTimestamp()
+        });
+      }
 
       // Update lastPostAt in user profile and channel
       try {

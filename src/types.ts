@@ -42,10 +42,21 @@ export interface Channel {
   photoURL: string;
   bannerUrl?: string;
   subscribers: number;
+  ices: number; // Reputation points
   bio: string;
   isPrimary: boolean;
   createdAt: any;
   pseudonym?: string;
+  competitors?: string[]; // Array of channel IDs
+}
+
+export interface MusicRegistry {
+  id: string; // Hash of the audio file or unique identifier
+  title: string;
+  author: string;
+  album?: string;
+  originalVideoId: string;
+  fingerprint: string;
 }
 
 export interface UserProfile {

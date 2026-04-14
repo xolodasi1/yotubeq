@@ -3,9 +3,11 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
+import { toast } from 'sonner';
+import { arrayUnion, arrayRemove, doc as firestoreDoc, updateDoc as firestoreUpdateDoc } from 'firebase/firestore';
 
 import { APP_LOGO_URL } from '../constants';
 
@@ -21,11 +23,17 @@ export default function StudioDashboard() {
     subscribers: 0
   });
 
+  const [competitorsData, setCompetitorsData] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   useEffect(() => {
     if (!user || !activeChannel) return;
 
     const fetchStudioData = async () => {
       try {
+        // ... existing video fetching ...
         const vq = query(
           collection(db, 'videos'),
           where('authorId', '==', activeChannel.id),
@@ -61,6 +69,17 @@ export default function StudioDashboard() {
           totalIces: ices,
           subscribers: activeChannel.subscribers || 0
         });
+
+        // Fetch competitors data
+        if (activeChannel.competitors && activeChannel.competitors.length > 0) {
+          const compPromises = activeChannel.competitors.map(id => getDoc(firestoreDoc(db, 'channels', id)));
+          const compSnaps = await Promise.all(compPromises);
+          const compData = compSnaps.filter(s => s.exists()).map(s => ({ id: s.id, ...s.data() }));
+          setCompetitorsData(compData);
+        } else {
+          setCompetitorsData([]);
+        }
+
       } catch (error) {
         console.error("Error fetching studio data:", error);
       } finally {
@@ -70,6 +89,57 @@ export default function StudioDashboard() {
 
     fetchStudioData();
   }, [user, activeChannel]);
+
+  const handleSearchCompetitors = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const q = query(collection(db, 'channels'), limit(20));
+      const snap = await getDocs(q);
+      const results = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter((c: any) => 
+          c.id !== activeChannel?.id && 
+          c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          !activeChannel?.competitors?.includes(c.id)
+        );
+      setSearchResults(results);
+    } catch (error) {
+      toast.error('Ошибка при поиске');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const addCompetitor = async (channelId: string) => {
+    if (!activeChannel) return;
+    try {
+      await firestoreUpdateDoc(firestoreDoc(db, 'channels', activeChannel.id), {
+        competitors: arrayUnion(channelId)
+      });
+      toast.success('Конкурент добавлен');
+      setSearchQuery('');
+      setSearchResults([]);
+      // Refresh will happen via useAuth if it listens to real-time, 
+      // but for now let's manually update local state or wait for refresh
+      window.location.reload(); 
+    } catch (error) {
+      toast.error('Не удалось добавить конкурента');
+    }
+  };
+
+  const removeCompetitor = async (channelId: string) => {
+    if (!activeChannel) return;
+    try {
+      await firestoreUpdateDoc(firestoreDoc(db, 'channels', activeChannel.id), {
+        competitors: arrayRemove(channelId)
+      });
+      toast.success('Конкурент удален');
+      window.location.reload();
+    } catch (error) {
+      toast.error('Не удалось удалить конкурента');
+    }
+  };
 
   if (loading) {
     return (
@@ -272,6 +342,121 @@ export default function StudioDashboard() {
             ) : null}
           </div>
         </div>
+      </div>
+
+      {/* Competitors Section */}
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-sm space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Конкуренты</h2>
+            <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">Следите за успехами других каналов</p>
+          </div>
+          
+          <div className="relative w-full md:w-96">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearchCompetitors()}
+                  placeholder="Найти канал..."
+                  className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-xl py-3 pl-11 pr-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
+                />
+              </div>
+              <button 
+                onClick={handleSearchCompetitors}
+                disabled={isSearching}
+                className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50"
+              >
+                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Поиск'}
+              </button>
+            </div>
+
+            {searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto">
+                <div className="p-2 border-b border-[var(--border)] flex justify-between items-center bg-[var(--hover)]/50">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)] px-2">Результаты поиска</span>
+                  <button onClick={() => setSearchResults([])} className="p-1 hover:bg-[var(--border)] rounded-lg transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {searchResults.map(channel => (
+                  <div key={channel.id} className="flex items-center justify-between p-4 hover:bg-[var(--hover)] transition-colors border-b border-[var(--border)] last:border-0">
+                    <div className="flex items-center gap-3">
+                      <img src={channel.photoURL} alt="" className="w-10 h-10 rounded-full object-cover border border-[var(--border)]" />
+                      <div>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{channel.displayName}</p>
+                        <p className="text-[10px] text-[var(--text-secondary)] font-medium">{channel.subscribers || 0} подписчиков</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => addCompetitor(channel.id)}
+                      className="p-2 bg-blue-600/10 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
+                      title="Добавить в конкуренты"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {competitorsData.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {competitorsData.map(comp => (
+              <div key={comp.id} className="bg-[var(--hover)] border border-[var(--border)] rounded-2xl p-6 relative group hover:border-blue-500/30 transition-all">
+                <button 
+                  onClick={() => removeCompetitor(comp.id)}
+                  className="absolute top-4 right-4 p-2 text-[var(--text-secondary)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                  title="Удалить"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <Link to={`/channel/${comp.id}`}>
+                    <img src={comp.photoURL} alt="" className="w-20 h-20 rounded-full object-cover border-4 border-[var(--surface)] shadow-lg group-hover:scale-105 transition-transform" />
+                  </Link>
+                  <div>
+                    <Link to={`/channel/${comp.id}`} className="text-base font-black text-[var(--text-primary)] hover:text-blue-600 transition-colors line-clamp-1">{comp.displayName}</Link>
+                    <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-1">Канал-конкурент</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-8 pt-6 border-t border-[var(--border)]/50">
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mb-1">Подписчики</p>
+                    <p className="text-lg font-black text-[var(--text-primary)] font-mono">{comp.subscribers?.toLocaleString() || 0}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest mb-1">Снежинки</p>
+                    <div className="flex items-center justify-center gap-1 text-blue-400">
+                      <Snowflake className="w-3.5 h-3.5" />
+                      <p className="text-lg font-black text-[var(--text-primary)] font-mono">{comp.ices?.toLocaleString() || 0}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <Link to={`/channel/${comp.id}`} className="mt-6 flex items-center justify-center gap-2 w-full bg-[var(--surface)] text-[var(--text-primary)] text-[10px] font-bold py-3 rounded-xl transition-all uppercase tracking-widest hover:bg-blue-600 hover:text-white">
+                  Перейти на канал
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-20 flex flex-col items-center justify-center text-center bg-[var(--hover)]/30 rounded-3xl border border-dashed border-[var(--border)]">
+            <div className="w-16 h-16 bg-[var(--surface)] rounded-full flex items-center justify-center mb-4 shadow-sm">
+              <Users className="w-8 h-8 text-[var(--text-secondary)] opacity-20" />
+            </div>
+            <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-widest">Список конкурентов пуст</h3>
+            <p className="text-[10px] text-[var(--text-secondary)] mt-2 max-w-xs mx-auto">Добавьте каналы, за которыми хотите следить, используя поиск выше</p>
+          </div>
+        )}
       </div>
     </div>
   );

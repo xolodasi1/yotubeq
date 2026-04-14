@@ -77,11 +77,32 @@ export default function Home() {
           ...doc.data(),
           uid: doc.id
         }));
+
+        const channelsQuery = query(collection(db, 'channels'));
+        const channelsSnapshot = await getDocs(channelsQuery);
+        const channelsData = channelsSnapshot.docs.reduce((acc: any, doc) => {
+          acc[doc.id] = doc.data();
+          return acc;
+        }, {});
         
         if (hiddenChannelIds.length > 0) {
           usersData = usersData.filter(u => !hiddenChannelIds.includes(u.uid));
         }
+
+        // Calculate recommendation score for each video
+        videosData = videosData.map(video => {
+          const channelReputation = channelsData[video.authorId]?.ices || 0;
+          const views = Number(video.views) || 0;
+          const likes = Number(video.likes) || 0;
+          const ices = Number(video.ices) || 0;
+          
+          // Score formula: views (40%) + likes (30%) + reputation (30%)
+          const score = (views * 0.4) + (likes * 10 * 0.3) + (channelReputation * 5 * 0.3) + (ices * 20 * 0.1);
+          
+          return { ...video, recommendationScore: score };
+        });
         
+        setVideos(videosData);
         setUsers(usersData);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -117,7 +138,14 @@ export default function Home() {
     return matchesName || matchesAliases;
   });
 
-  const regularVideos = filteredVideos.filter(v => !v.isShort && !v.isMusic && !v.isPhoto && v.type !== 'photo');
+  const regularVideos = filteredVideos
+    .filter(v => !v.isShort && !v.isMusic && !v.isPhoto && v.type !== 'photo')
+    .sort((a, b) => {
+      if (activeCategory === 'Все' && !searchQuery) {
+        return (b.recommendationScore || 0) - (a.recommendationScore || 0);
+      }
+      return 0; // Keep original (descending by createdAt from query)
+    });
   const shortsVideos = filteredVideos.filter(v => v.isShort);
   const musicVideos = filteredVideos.filter(v => v.isMusic);
   const photoVideos = filteredVideos.filter(v => v.isPhoto || v.type === 'photo');

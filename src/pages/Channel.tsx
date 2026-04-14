@@ -50,6 +50,7 @@ export default function Channel() {
           photoUrl: channelData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
           bannerUrl: channelData.bannerUrl || null,
           bio: channelData.bio || '',
+          ices: channelData.ices || 0,
           socialLinks: channelData.socialLinks || {},
           homeLayout: channelData.homeLayout || ['videos', 'shorts', 'music', 'photos'],
           subscribers: channelData.subscribers || 0,
@@ -341,6 +342,11 @@ export default function Channel() {
               <span>{authorInfo?.pseudonym || authorInfo?.pseudonim || `@user-${id?.substring(0, 8)}`}</span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
               <span>{subCount} подписчиков</span>
+              <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
+              <div className="flex items-center gap-1 text-blue-400">
+                <Snowflake className="w-3.5 h-3.5" />
+                <span>{authorInfo?.ices || 0} снежинок</span>
+              </div>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1"><PlaySquare className="w-3.5 h-3.5" /> {regularVideos.length}</span>
