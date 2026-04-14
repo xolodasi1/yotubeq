@@ -337,26 +337,32 @@ export default function Channel() {
             className="shadow-xl bg-[var(--surface)]"
           />
           <div className="flex-1 space-y-3">
-            <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight">{authorInfo?.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">
-              <span>{authorInfo?.pseudonym || authorInfo?.pseudonim || `@user-${id?.substring(0, 8)}`}</span>
+            <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight drop-shadow-sm">{authorInfo?.name}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">
+              <span className="text-blue-600">{authorInfo?.pseudonym || authorInfo?.pseudonim || `@user-${id?.substring(0, 8)}`}</span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
-              <span>{subCount} подписчиков</span>
+              <span>
+                {subCount} {
+                  subCount % 10 === 1 && subCount % 100 !== 11 ? 'подписчик' :
+                  [2, 3, 4].includes(subCount % 10) && ![12, 13, 14].includes(subCount % 100) ? 'подписчика' :
+                  'подписчиков'
+                }
+              </span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
-              <div className="flex items-center gap-1 text-blue-400">
+              <div className="flex items-center gap-1.5 text-blue-500 bg-blue-500/5 px-2 py-1 rounded-lg">
                 <Snowflake className="w-3.5 h-3.5" />
                 <span>{authorInfo?.ices || 0} снежинок</span>
               </div>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1"><PlaySquare className="w-3.5 h-3.5" /> {regularVideos.length}</span>
-                <span className="flex items-center gap-1"><Smartphone className="w-3.5 h-3.5" /> {shortsVideos.length}</span>
-                <span className="flex items-center gap-1"><MusicIcon className="w-3.5 h-3.5" /> {musicVideos.length}</span>
-                <span className="flex items-center gap-1"><Camera className="w-3.5 h-3.5" /> {photosVideos.length}</span>
+              <div className="flex items-center gap-4 bg-[var(--hover)]/50 px-3 py-1 rounded-lg">
+                <span className="flex items-center gap-1.5" title="Видео"><PlaySquare className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {regularVideos.length}</span>
+                <span className="flex items-center gap-1.5" title="Shorts"><Smartphone className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {shortsVideos.length}</span>
+                <span className="flex items-center gap-1.5" title="Музыка"><MusicIcon className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {musicVideos.length}</span>
+                <span className="flex items-center gap-1.5" title="Фото"><Camera className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {photosVideos.length}</span>
               </div>
             </div>
             {authorInfo?.bio && (
-              <p className="text-sm text-[var(--text-secondary)] max-w-3xl line-clamp-2 leading-relaxed font-medium">{authorInfo.bio}</p>
+              <p className="text-sm md:text-base text-[var(--text-secondary)] max-w-4xl line-clamp-3 leading-relaxed font-medium opacity-90">{authorInfo.bio}</p>
             )}
             
             {/* Social Links in Header */}
@@ -372,9 +378,9 @@ export default function Channel() {
               </div>
             )}
 
-            <div className="pt-2 flex flex-wrap gap-3 items-center">
+            <div className="pt-4 flex flex-wrap gap-3 items-center">
               {user?.uid === authorInfo?.ownerId ? (
-                <Link to="/studio/profile" className="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold text-sm transition-all hover:bg-blue-700 shadow-lg shadow-blue-100/20">
+                <Link to="/studio/profile" className="bg-blue-600 text-white px-10 py-3 rounded-full font-black text-xs uppercase tracking-widest transition-all hover:bg-blue-700 shadow-xl shadow-blue-600/20 active:scale-95">
                   Настроить канал
                 </Link>
               ) : (
