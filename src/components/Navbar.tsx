@@ -74,12 +74,15 @@ export default function Navbar() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleGoogleLogin = async () => {
+    console.log("Starting Google Login...");
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      console.log("Login successful, user:", result.user.uid);
       setShowAuthModal(false);
       toast.success(isStudio ? 'Добро пожаловать в Студию!' : 'Добро пожаловать!');
     } catch (error: any) {
+      console.error("Login error:", error);
       toast.error(error.message || 'Ошибка аутентификации');
     }
   };

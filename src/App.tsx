@@ -120,17 +120,25 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    console.log("Current user state:", user?.uid);
+  }, [user]);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth state changed:", firebaseUser?.uid);
       setLoading(true);
       if (firebaseUser) {
         try {
           const userRef = doc(db, 'users', firebaseUser.uid);
           const userSnap = await getDoc(userRef);
           let userData: any;
+          let isNewUser = false;
 
           if (userSnap.exists()) {
             userData = userSnap.data();
+            console.log("User document found:", userData);
           } else {
+            isNewUser = true;
             userData = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
@@ -141,19 +149,22 @@ export default function App() {
               ices: 0,
               createdAt: new Date().toISOString()
             };
-            await setDoc(userRef, userData);
+            console.log("Creating new user document data:", userData);
           }
 
-          // Fetch or create channels
+          // Fetch channels
           const channelsRef = collection(db, 'channels');
           const q = query(channelsRef, where('ownerId', '==', firebaseUser.uid));
           const channelsSnap = await getDocs(q);
           let userChannels: ChannelType[] = channelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ChannelType));
+          console.log("Fetched channels:", userChannels.length);
 
-          // Ensure there is a channel with ID == uid (for backward compatibility with old videos)
+          // Ensure there is a primary channel
+          const hasPrimaryChannel = userChannels.some(c => c.isPrimary);
           const hasUidChannel = userChannels.some(c => c.id === firebaseUser.uid);
           
           if (!hasUidChannel) {
+            console.log("Primary channel missing, creating...");
             const primaryChannel: ChannelType = {
               id: firebaseUser.uid,
               ownerId: firebaseUser.uid,
@@ -162,40 +173,60 @@ export default function App() {
               isPrimary: true,
               subscribers: userData.subscribers || 0,
               ices: userData.ices || 0,
-              competitors: []
+              competitors: [],
+              pinnedAchievements: []
             };
+            
+            // Save channel
             await setDoc(doc(db, 'channels', firebaseUser.uid), {
               ...primaryChannel,
               bio: '',
-              createdAt: new Date().toISOString(),
-              competitors: []
+              createdAt: new Date().toISOString()
             });
             
-            // Demote any other primary channels
-            for (const ch of userChannels) {
-              if (ch.isPrimary) {
-                await updateDoc(doc(db, 'channels', ch.id), { isPrimary: false });
-                ch.isPrimary = false;
-              }
-            }
-            
+            // Update local state
             userChannels.push(primaryChannel);
-            await updateDoc(userRef, { primaryChannelId: firebaseUser.uid });
             userData.primaryChannelId = firebaseUser.uid;
+            
+            // If user doc already existed, update it. If not, it will be saved in the next step.
+            if (!isNewUser) {
+              await updateDoc(userRef, { primaryChannelId: firebaseUser.uid });
+            }
+          } else if (!userData.primaryChannelId) {
+            // Fix missing primaryChannelId in user doc if it exists in channels
+            const uidChannel = userChannels.find(c => c.id === firebaseUser.uid);
+            if (uidChannel) {
+              userData.primaryChannelId = uidChannel.id;
+              await updateDoc(userRef, { primaryChannelId: uidChannel.id });
+            }
+          }
+
+          // Save user doc if new
+          if (isNewUser) {
+            console.log("Saving new user document...");
+            await setDoc(userRef, userData);
           }
 
           setChannels(userChannels);
           const primary = userChannels.find(c => c.isPrimary) || userChannels.find(c => c.id === firebaseUser.uid) || userChannels[0];
           setActiveChannel(primary);
-          setUser({
+          
+          const finalUser = {
             ...userData,
             uid: firebaseUser.uid
-          });
+          };
+          console.log("Setting user state:", finalUser.uid);
+          setUser(finalUser);
         } catch (error: any) {
           console.error("Error fetching/saving user:", error);
           toast.error(`Ошибка при инициализации профиля: ${error.message || 'Неизвестная ошибка'}`);
+          // Reset state on error to avoid partial login
+          setUser(null);
+          setChannels([]);
+          setActiveChannel(null);
         }
       } else {
+        console.log("No firebase user, clearing state");
         setUser(null);
         setChannels([]);
         setActiveChannel(null);
@@ -206,72 +237,70 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-6">
-        <div className="relative">
-          <img 
-            src={APP_LOGO_URL} 
-            alt="IceTube Logo" 
-            className="w-24 h-24 rounded-3xl shadow-[0_0_30px_rgba(37,99,235,0.4)] animate-pulse object-contain"
-            crossOrigin="anonymous"
-          />
-          <div className="absolute -inset-4 border-4 border-blue-600/20 border-t-blue-600 rounded-[2.5rem] animate-spin"></div>
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <h2 className="text-2xl font-black tracking-tighter text-blue-600">IceTube</h2>
-          {process.env.icceeeee && (
-            <p className="text-xs font-bold text-blue-400/80 animate-pulse uppercase tracking-widest">
-              {process.env.icceeeee}
-            </p>
-          )}
-          <div className="flex gap-1">
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <AuthContext.Provider value={{ user, channels, activeChannel, setActiveChannel: handleSetActiveChannel, loading, theme, toggleTheme, isSidebarOpen, toggleSidebar }}>
       <Router>
-        <div className={`min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col transition-colors duration-300`}>
-          <Navbar />
-          <div className="flex flex-1 overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/videos" element={<Videos />} />
-                <Route path="/shorts" element={<Shorts />} />
-                <Route path="/music" element={<Music />} />
-                <Route path="/top-channels" element={<TopChannels />} />
-                <Route path="/photos" element={<Photos />} />
-                <Route path="/video/:id" element={<VideoPlayer />} />
-                <Route path="/channel/:id" element={<Channel />} />
-                <Route path="/studio" element={<StudioDashboard />} />
-                <Route path="/studio/content" element={<StudioContent />} />
-                <Route path="/studio/analytics" element={<StudioAnalytics />} />
-                <Route path="/studio/comments" element={<StudioComments />} />
-                <Route path="/studio/community" element={<StudioCommunity />} />
-                <Route path="/studio/profile" element={<StudioProfile />} />
-                <Route path="/studio/achievements" element={<StudioAchievements />} />
-                <Route path="/studio/hidden" element={<StudioHiddenChannels />} />
-                <Route path="/studio/upload" element={<Studio />} />
-                <Route path="/history" element={<History />} />
-                <Route path="/watch-later" element={<WatchLater />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/subscriptions" element={<Subscriptions />} />
-                <Route path="/playlists" element={<Playlists />} />
-                <Route path="/playlist/:id" element={<PlaylistDetail />} />
-                <Route path="/settings" element={<Settings />} />
-              </Routes>
-            </main>
+        {loading ? (
+          <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-6">
+            <div className="relative">
+              <img 
+                src={APP_LOGO_URL} 
+                alt="IceTube Logo" 
+                className="w-24 h-24 rounded-3xl shadow-[0_0_30px_rgba(37,99,235,0.4)] animate-pulse object-contain"
+                crossOrigin="anonymous"
+              />
+              <div className="absolute -inset-4 border-4 border-blue-600/20 border-t-blue-600 rounded-[2.5rem] animate-spin"></div>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <h2 className="text-2xl font-black tracking-tighter text-blue-600">IceTube</h2>
+              {process.env.icceeeee && (
+                <p className="text-xs font-bold text-blue-400/80 animate-pulse uppercase tracking-widest">
+                  {process.env.icceeeee}
+                </p>
+              )}
+              <div className="flex gap-1">
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className={`min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col transition-colors duration-300`}>
+            <Navbar />
+            <div className="flex flex-1 overflow-hidden">
+              <Sidebar />
+              <main className="flex-1 overflow-y-auto">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/videos" element={<Videos />} />
+                  <Route path="/shorts" element={<Shorts />} />
+                  <Route path="/music" element={<Music />} />
+                  <Route path="/top-channels" element={<TopChannels />} />
+                  <Route path="/photos" element={<Photos />} />
+                  <Route path="/video/:id" element={<VideoPlayer />} />
+                  <Route path="/channel/:id" element={<Channel />} />
+                  <Route path="/studio" element={<StudioDashboard />} />
+                  <Route path="/studio/content" element={<StudioContent />} />
+                  <Route path="/studio/analytics" element={<StudioAnalytics />} />
+                  <Route path="/studio/comments" element={<StudioComments />} />
+                  <Route path="/studio/community" element={<StudioCommunity />} />
+                  <Route path="/studio/profile" element={<StudioProfile />} />
+                  <Route path="/studio/achievements" element={<StudioAchievements />} />
+                  <Route path="/studio/hidden" element={<StudioHiddenChannels />} />
+                  <Route path="/studio/upload" element={<Studio />} />
+                  <Route path="/history" element={<History />} />
+                  <Route path="/watch-later" element={<WatchLater />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="/subscriptions" element={<Subscriptions />} />
+                  <Route path="/playlists" element={<Playlists />} />
+                  <Route path="/playlist/:id" element={<PlaylistDetail />} />
+                  <Route path="/settings" element={<Settings />} />
+                </Routes>
+              </main>
+            </div>
+          </div>
+        )}
         <Toaster theme={theme} position="bottom-right" />
       </Router>
     </AuthContext.Provider>
