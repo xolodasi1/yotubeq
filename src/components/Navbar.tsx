@@ -1,4 +1,4 @@
-import { Search, Menu, Video, Bell, LogIn, LogOut, X, Plus, HelpCircle, PlaySquare, Settings } from 'lucide-react';
+import { Search, Menu, Video, Bell, LogIn, LogOut, X, Plus, HelpCircle, PlaySquare, Settings, Loader2 } from 'lucide-react';
 import { useAuth } from '../App';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
@@ -12,7 +12,8 @@ import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { APP_LOGO_URL } from '../constants';
 
 export default function Navbar() {
-  const { user, channels, activeChannel, setActiveChannel, toggleSidebar } = useAuth();
+  const { user, channels, activeChannel, setActiveChannel, toggleSidebar, loading } = useAuth();
+  console.log("Navbar render - User:", user?.uid, "Loading:", loading);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -337,6 +338,11 @@ export default function Navbar() {
                 </div>
               </div>
             </>
+          ) : auth.currentUser ? (
+            <div className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--text-secondary)] animate-pulse">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="hidden xs:inline">Синхронизация...</span>
+            </div>
           ) : (
             <button
               onClick={() => setShowAuthModal(true)}

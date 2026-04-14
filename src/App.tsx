@@ -126,112 +126,95 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("Auth state changed:", firebaseUser?.uid);
-      setLoading(true);
-      if (firebaseUser) {
-        try {
-          const userRef = doc(db, 'users', firebaseUser.uid);
-          const userSnap = await getDoc(userRef);
-          let userData: any;
-          let isNewUser = false;
-
-          if (userSnap.exists()) {
-            userData = userSnap.data();
-            console.log("User document found:", userData);
-          } else {
-            isNewUser = true;
-            userData = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              pseudonym: '',
-              photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
-              subscribers: 0,
-              ices: 0,
-              createdAt: new Date().toISOString()
-            };
-            console.log("Creating new user document data:", userData);
-          }
-
-          // Fetch channels
-          const channelsRef = collection(db, 'channels');
-          const q = query(channelsRef, where('ownerId', '==', firebaseUser.uid));
-          const channelsSnap = await getDocs(q);
-          let userChannels: ChannelType[] = channelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ChannelType));
-          console.log("Fetched channels:", userChannels.length);
-
-          // Ensure there is a primary channel
-          const hasPrimaryChannel = userChannels.some(c => c.isPrimary);
-          const hasUidChannel = userChannels.some(c => c.id === firebaseUser.uid);
-          
-          if (!hasUidChannel) {
-            console.log("Primary channel missing, creating...");
-            const primaryChannel: ChannelType = {
-              id: firebaseUser.uid,
-              ownerId: firebaseUser.uid,
-              displayName: userData.displayName,
-              photoURL: userData.photoURL,
-              isPrimary: true,
-              subscribers: userData.subscribers || 0,
-              ices: userData.ices || 0,
-              competitors: [],
-              pinnedAchievements: []
-            };
-            
-            // Save channel
-            await setDoc(doc(db, 'channels', firebaseUser.uid), {
-              ...primaryChannel,
-              bio: '',
-              createdAt: new Date().toISOString()
-            });
-            
-            // Update local state
-            userChannels.push(primaryChannel);
-            userData.primaryChannelId = firebaseUser.uid;
-            
-            // If user doc already existed, update it. If not, it will be saved in the next step.
-            if (!isNewUser) {
-              await updateDoc(userRef, { primaryChannelId: firebaseUser.uid });
-            }
-          } else if (!userData.primaryChannelId) {
-            // Fix missing primaryChannelId in user doc if it exists in channels
-            const uidChannel = userChannels.find(c => c.id === firebaseUser.uid);
-            if (uidChannel) {
-              userData.primaryChannelId = uidChannel.id;
-              await updateDoc(userRef, { primaryChannelId: uidChannel.id });
-            }
-          }
-
-          // Save user doc if new
-          if (isNewUser) {
-            console.log("Saving new user document...");
-            await setDoc(userRef, userData);
-          }
-
-          setChannels(userChannels);
-          const primary = userChannels.find(c => c.isPrimary) || userChannels.find(c => c.id === firebaseUser.uid) || userChannels[0];
-          setActiveChannel(primary);
-          
-          const finalUser = {
-            ...userData,
-            uid: firebaseUser.uid
-          };
-          console.log("Setting user state:", finalUser.uid);
-          setUser(finalUser);
-        } catch (error: any) {
-          console.error("Error fetching/saving user:", error);
-          toast.error(`Ошибка при инициализации профиля: ${error.message || 'Неизвестная ошибка'}`);
-          // Reset state on error to avoid partial login
-          setUser(null);
-          setChannels([]);
-          setActiveChannel(null);
-        }
-      } else {
+      
+      if (!firebaseUser) {
         console.log("No firebase user, clearing state");
         setUser(null);
         setChannels([]);
         setActiveChannel(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      setLoading(true);
+      try {
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        const userSnap = await getDoc(userRef);
+        let userData: any;
+        let isNewUser = false;
+
+        if (userSnap.exists()) {
+          userData = userSnap.data();
+          console.log("User document found:", userData);
+        } else {
+          isNewUser = true;
+          userData = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+            pseudonym: '',
+            photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
+            subscribers: 0,
+            ices: 0,
+            createdAt: new Date().toISOString()
+          };
+          console.log("Creating new user document data:", userData);
+          // Save user doc immediately if new
+          await setDoc(userRef, userData);
+        }
+
+        // Set user state early so the UI updates
+        setUser({ ...userData, uid: firebaseUser.uid });
+
+        // Fetch channels
+        const channelsRef = collection(db, 'channels');
+        const q = query(channelsRef, where('ownerId', '==', firebaseUser.uid));
+        const channelsSnap = await getDocs(q);
+        let userChannels: ChannelType[] = channelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ChannelType));
+        console.log("Fetched channels:", userChannels.length);
+
+        // Ensure there is a primary channel
+        const hasUidChannel = userChannels.some(c => c.id === firebaseUser.uid);
+        
+        if (!hasUidChannel) {
+          console.log("Primary channel missing, creating...");
+          const primaryChannel: ChannelType = {
+            id: firebaseUser.uid,
+            ownerId: firebaseUser.uid,
+            displayName: userData.displayName,
+            photoURL: userData.photoURL,
+            isPrimary: true,
+            subscribers: userData.subscribers || 0,
+            ices: userData.ices || 0,
+            competitors: [],
+            pinnedAchievements: []
+          };
+          
+          await setDoc(doc(db, 'channels', firebaseUser.uid), {
+            ...primaryChannel,
+            bio: '',
+            createdAt: new Date().toISOString()
+          });
+          
+          userChannels.push(primaryChannel);
+          if (!userData.primaryChannelId) {
+            await updateDoc(userRef, { primaryChannelId: firebaseUser.uid });
+            userData.primaryChannelId = firebaseUser.uid;
+            setUser({ ...userData, uid: firebaseUser.uid });
+          }
+        }
+
+        setChannels(userChannels);
+        const primary = userChannels.find(c => c.isPrimary) || userChannels.find(c => c.id === firebaseUser.uid) || userChannels[0];
+        setActiveChannel(primary);
+      } catch (error: any) {
+        console.error("Error during auth initialization:", error);
+        toast.error(`Ошибка профиля: ${error.message || 'Не удалось загрузить данные'}`);
+        // We don't necessarily clear the user here, as they are authenticated in Firebase
+        // but we might want to if the app can't function without the user doc
+      } finally {
+        setLoading(false);
+      }
     });
 
     return () => unsubscribe();
