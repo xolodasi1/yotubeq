@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit, getDoc } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, Loader2 } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, RefreshCw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { toast } from 'sonner';
@@ -29,7 +29,14 @@ export default function StudioDashboard() {
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    if (!user || !activeChannel) return;
+    if (!user || !activeChannel) {
+      if (!user) {
+        navigate('/');
+      } else if (!activeChannel) {
+        setLoading(false);
+      }
+      return;
+    }
 
     const fetchStudioData = async () => {
       try {
@@ -92,19 +99,35 @@ export default function StudioDashboard() {
 
   const handleSearchCompetitors = async () => {
     if (!searchQuery.trim()) return;
+    if (!activeChannel) {
+      toast.error('Активный канал не найден');
+      return;
+    }
+    
     setIsSearching(true);
     try {
+      console.log('Searching for competitors with query:', searchQuery);
       const q = query(collection(db, 'channels'), limit(20));
       const snap = await getDocs(q);
+      
       const results = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter((c: any) => 
-          c.id !== activeChannel?.id && 
-          c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !activeChannel?.competitors?.includes(c.id)
-        );
+        .filter((c: any) => {
+          try {
+            const isNotSelf = c.id !== activeChannel.id;
+            const matchesQuery = (c.displayName || '').toLowerCase().includes(searchQuery.toLowerCase());
+            const isNotAlreadyCompetitor = !(activeChannel.competitors || []).includes(c.id);
+            return isNotSelf && matchesQuery && isNotAlreadyCompetitor;
+          } catch (e) {
+            console.error('Error filtering channel:', c, e);
+            return false;
+          }
+        });
+        
+      console.log('Search results:', results);
       setSearchResults(results);
     } catch (error) {
+      console.error('Search error:', error);
       toast.error('Ошибка при поиске');
     } finally {
       setIsSearching(false);
@@ -370,7 +393,7 @@ export default function StudioDashboard() {
                 disabled={isSearching}
                 className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50"
               >
-                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Поиск'}
+                {isSearching ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Поиск'}
               </button>
             </div>
 
