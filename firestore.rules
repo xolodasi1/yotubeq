@@ -21,6 +21,13 @@ service cloud.firestore {
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
+
+    function isChannelOwner(channelId) {
+      return isAuthenticated() && (
+        channelId == request.auth.uid || 
+        get(/databases/$(database)/documents/channels/$(channelId)).data.ownerId == request.auth.uid
+      );
+    }
     
     match /users/{userId} {
       allow read: if true;
@@ -31,30 +38,30 @@ service cloud.firestore {
     
     match /videos/{videoId} {
       allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
-      allow update: if (isAuthenticated() && isOwner(resource.data.authorId)) ||
+      allow create: if isChannelOwner(request.resource.data.authorId);
+      allow update: if isChannelOwner(resource.data.authorId) ||
                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likes', 'dislikes', 'ices']));
-      allow delete: if isOwner(resource.data.authorId);
+      allow delete: if isChannelOwner(resource.data.authorId);
     }
 
     match /comments/{commentId} {
       allow read: if true;
-      allow create: if (isAuthenticated() && request.resource.data.authorId == request.auth.uid) || request.resource.data.authorId == 'anonymous';
+      allow create: if isChannelOwner(request.resource.data.authorId) || request.resource.data.authorId == 'anonymous';
       allow update: if isAuthenticated() && (
         // Author can edit their own comment
-        (resource.data.authorId == request.auth.uid && 
+        (isChannelOwner(resource.data.authorId) && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isEdited'])) ||
         
         // Any authenticated user can like/dislike
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes'])) ||
         
         // Video author can heart the comment
-        (get(/databases/$(database)/documents/videos/$(resource.data.videoId)).data.authorId == request.auth.uid &&
+        (isChannelOwner(get(/databases/$(database)/documents/videos/$(resource.data.videoId)).data.authorId) &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authorHearted']))
       );
       allow delete: if isAuthenticated() && (
-        resource.data.authorId == request.auth.uid || 
-        get(/databases/$(database)/documents/videos/$(resource.data.videoId)).data.authorId == request.auth.uid
+        isChannelOwner(resource.data.authorId) || 
+        isChannelOwner(get(/databases/$(database)/documents/videos/$(resource.data.videoId)).data.authorId)
       );
     }
 
@@ -81,18 +88,18 @@ service cloud.firestore {
 
     match /playlists/{playlistId} {
       allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+      allow create: if isChannelOwner(request.resource.data.authorId);
+      allow update, delete: if isChannelOwner(resource.data.authorId);
     }
 
     match /community_posts/{postId} {
       allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow create: if isChannelOwner(request.resource.data.authorId);
       allow update: if isAuthenticated() && (
-        resource.data.authorId == request.auth.uid ||
+        isChannelOwner(resource.data.authorId) ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'pollOptions'])
       );
-      allow delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+      allow delete: if isChannelOwner(resource.data.authorId);
     }
 
     match /history/{historyId} {

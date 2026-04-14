@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit, getDoc } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, RefreshCw } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, RefreshCw, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { toast } from 'sonner';
@@ -12,7 +12,7 @@ import { arrayUnion, arrayRemove, doc as firestoreDoc, updateDoc as firestoreUpd
 import { APP_LOGO_URL } from '../constants';
 
 export default function StudioDashboard() {
-  const { user, activeChannel } = useAuth();
+  const { user, channels, activeChannel, setActiveChannel } = useAuth();
   const navigate = useNavigate();
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -191,7 +191,34 @@ export default function StudioDashboard() {
           <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)]">Панель управления</h1>
           <p className="text-sm font-medium text-[var(--text-secondary)] uppercase tracking-widest">Обзор канала и статистика</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {channels.length > 1 && (
+            <div className="relative group">
+              <button className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--border)] px-4 py-3 rounded-xl hover:bg-[var(--hover)] transition-all">
+                <img src={activeChannel?.photoURL} className="w-6 h-6 rounded-full object-cover" alt="" />
+                <span className="text-xs font-bold text-[var(--text-primary)]">{activeChannel?.displayName}</span>
+                <ChevronDown className="w-4 h-4 text-[var(--text-secondary)]" />
+              </button>
+              <div className="absolute right-0 mt-2 w-64 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-xl overflow-hidden z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                <div className="p-2">
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest px-3 py-2">Сменить канал</p>
+                  {channels.map(channel => (
+                    <button
+                      key={channel.id}
+                      onClick={() => setActiveChannel(channel)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${activeChannel?.id === channel.id ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--hover)]'}`}
+                    >
+                      <img src={channel.photoURL} className="w-8 h-8 rounded-full object-cover" alt="" />
+                      <div className="text-left">
+                        <p className="text-xs font-bold truncate">{channel.displayName}</p>
+                        {channel.isPrimary && <span className="text-[9px] uppercase tracking-tighter opacity-60">Основной</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           <button 
             onClick={() => navigate('/studio/upload')}
             className="flex-1 md:flex-none bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 active:scale-95"

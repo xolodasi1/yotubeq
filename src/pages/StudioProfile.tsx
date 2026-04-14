@@ -352,11 +352,22 @@ export default function StudioProfile() {
                   alt="Profile" 
                   referrerPolicy="no-referrer"
                 />
-                <label className="absolute inset-0 bg-black/60 rounded-[2rem] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-20 backdrop-blur-sm scale-95 group-hover:scale-100">
-                  <Camera className="w-8 h-8 text-white mb-2" />
-                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Изменить</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                </label>
+                <div className="flex flex-col gap-2">
+                  <label className="absolute inset-0 bg-black/60 rounded-[2rem] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-20 backdrop-blur-sm scale-95 group-hover:scale-100">
+                    <Camera className="w-8 h-8 text-white mb-2" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Изменить</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  </label>
+                  {photoURL && (
+                    <button 
+                      type="button"
+                      onClick={() => setPhotoURL('')}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white p-2 rounded-full shadow-lg z-30 hover:bg-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
               
               <div className="flex-1 w-full grid grid-cols-1 gap-8">
@@ -424,6 +435,15 @@ export default function StudioProfile() {
                       <span className="text-[10px] font-black text-white uppercase tracking-widest">Изменить шапку</span>
                       <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
                     </label>
+                    {bannerUrl && (
+                      <button 
+                        type="button"
+                        onClick={() => setBannerUrl('')}
+                        className="absolute top-4 right-4 bg-red-500 text-white p-2 rounded-xl shadow-lg z-30 hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                   <p className="text-[9px] text-[var(--text-secondary)] mt-2 uppercase font-bold tracking-wider">Рекомендуемый размер: 2560 x 1440 (макс. 2МБ)</p>
                 </div>

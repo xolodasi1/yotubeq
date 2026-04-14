@@ -9,16 +9,16 @@ import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 export default function StudioCommunity() {
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPostText, setNewPostText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const isEligible = (user?.subscribers || 0) >= 10;
+  const isEligible = (activeChannel?.subscribers || 0) >= 10;
 
   useEffect(() => {
-    if (!user || !isEligible) {
+    if (!user || !activeChannel || !isEligible) {
       setLoading(false);
       return;
     }
@@ -27,7 +27,7 @@ export default function StudioCommunity() {
       try {
         const q = query(
           collection(db, 'community_posts'),
-          where('authorId', '==', user.uid),
+          where('authorId', '==', activeChannel.id),
           orderBy('createdAt', 'desc')
         );
         const snapshot = await getDocs(q);
@@ -54,9 +54,9 @@ export default function StudioCommunity() {
     setSubmitting(true);
     try {
       const postData = {
-        authorId: user.uid,
-        authorName: user.displayName,
-        authorPhotoUrl: user.photoURL,
+        authorId: activeChannel?.id || user.uid,
+        authorName: activeChannel?.displayName || user.displayName,
+        authorPhotoUrl: activeChannel?.photoURL || user.photoURL,
         text: newPostText,
         type: 'text',
         createdAt: serverTimestamp(),

@@ -15,18 +15,18 @@ interface CommentWithVideo extends Comment {
 }
 
 export default function StudioComments() {
-  const { user } = useAuth();
+  const { user, activeChannel } = useAuth();
   const navigate = useNavigate();
   const [comments, setComments] = useState<CommentWithVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeChannel) return;
 
     const fetchComments = async () => {
       try {
-        const vq = query(collection(db, 'videos'), where('authorId', '==', user.uid));
+        const vq = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
         const vSnapshot = await getDocs(vq);
         const videoIds = vSnapshot.docs.map(doc => doc.id);
         const videoTitlesMap = vSnapshot.docs.reduce((acc, doc) => {
