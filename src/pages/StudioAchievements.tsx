@@ -21,37 +21,46 @@ export default function StudioAchievements() {
   }, [activeChannel]);
 
   const handleTogglePin = async (achievementId: string) => {
-    if (!activeChannel) return;
+    if (!activeChannel) {
+      console.error("No active channel found");
+      return;
+    }
 
     const isPinned = activeChannel.pinnedAchievements?.includes(achievementId);
     const channelRef = doc(db, 'channels', activeChannel.id);
+
+    console.log(`Toggling pin for ${achievementId}. Current pinned:`, activeChannel.pinnedAchievements);
 
     try {
       if (isPinned) {
         await updateDoc(channelRef, {
           pinnedAchievements: arrayRemove(achievementId)
         });
+        const updatedPinned = activeChannel.pinnedAchievements?.filter(id => id !== achievementId) || [];
         setActiveChannel({
           ...activeChannel,
-          pinnedAchievements: activeChannel.pinnedAchievements?.filter(id => id !== achievementId)
+          pinnedAchievements: updatedPinned
         });
         toast.success('Достижение убрано с канала');
       } else {
-        if ((activeChannel.pinnedAchievements?.length || 0) >= 3) {
+        const currentPinnedCount = activeChannel.pinnedAchievements?.length || 0;
+        if (currentPinnedCount >= 3) {
           toast.error('Можно закрепить не более 3 достижений');
           return;
         }
         await updateDoc(channelRef, {
           pinnedAchievements: arrayUnion(achievementId)
         });
+        const updatedPinned = [...(activeChannel.pinnedAchievements || []), achievementId];
         setActiveChannel({
           ...activeChannel,
-          pinnedAchievements: [...(activeChannel.pinnedAchievements || []), achievementId]
+          pinnedAchievements: updatedPinned
         });
         toast.success('Достижение закреплено на канале');
       }
-    } catch (error) {
-      toast.error('Ошибка при обновлении достижений');
+    } catch (error: any) {
+      console.error('Error updating pinned achievements:', error);
+      toast.error(`Ошибка: ${error.message || 'Не удалось обновить достижения'}`);
     }
   };
 

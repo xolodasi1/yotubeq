@@ -54,6 +54,7 @@ interface ChannelType {
   subscribers: number;
   ices: number;
   competitors: string[];
+  pinnedAchievements?: string[];
 }
 
 interface AuthContextType {
@@ -103,6 +104,11 @@ export default function App() {
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleSetActiveChannel = (channel: ChannelType) => {
+    setActiveChannel(channel);
+    setChannels(prev => prev.map(c => c.id === channel.id ? channel : c));
   };
 
   useEffect(() => {
@@ -230,7 +236,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, channels, activeChannel, setActiveChannel, loading, theme, toggleTheme, isSidebarOpen, toggleSidebar }}>
+    <AuthContext.Provider value={{ user, channels, activeChannel, setActiveChannel: handleSetActiveChannel, loading, theme, toggleTheme, isSidebarOpen, toggleSidebar }}>
       <Router>
         <div className={`min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col transition-colors duration-300`}>
           <Navbar />
