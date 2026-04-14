@@ -115,6 +115,7 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       if (firebaseUser) {
         try {
           const userRef = doc(db, 'users', firebaseUser.uid);
@@ -131,7 +132,8 @@ export default function App() {
               pseudonym: '',
               photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
               subscribers: 0,
-              createdAt: new Date()
+              ices: 0,
+              createdAt: new Date().toISOString()
             };
             await setDoc(userRef, userData);
           }
@@ -159,7 +161,7 @@ export default function App() {
             await setDoc(doc(db, 'channels', firebaseUser.uid), {
               ...primaryChannel,
               bio: '',
-              createdAt: new Date(),
+              createdAt: new Date().toISOString(),
               competitors: []
             });
             
@@ -183,9 +185,9 @@ export default function App() {
             ...userData,
             uid: firebaseUser.uid
           });
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error fetching/saving user:", error);
-          toast.error("Ошибка при инициализации профиля. Пожалуйста, обновите страницу.");
+          toast.error(`Ошибка при инициализации профиля: ${error.message || 'Неизвестная ошибка'}`);
         }
       } else {
         setUser(null);
