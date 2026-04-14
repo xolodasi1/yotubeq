@@ -55,7 +55,8 @@ export default function Channel() {
           homeLayout: channelData.homeLayout || ['videos', 'shorts', 'music', 'photos'],
           subscribers: channelData.subscribers || 0,
           joinedAt: channelData.createdAt?.toDate() || new Date(),
-          lastPostAt: channelData.lastPostAt
+          lastPostAt: channelData.lastPostAt,
+          pinnedAchievements: channelData.pinnedAchievements || []
         });
         setSubCount(channelData.subscribers || 0);
       }
