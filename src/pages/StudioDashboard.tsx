@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit, getDoc } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, RefreshCw, ChevronDown } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, RefreshCw, ChevronDown, Trophy } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { toast } from 'sonner';
@@ -345,6 +345,31 @@ export default function StudioDashboard() {
                   <p className="text-xl font-bold text-[var(--text-primary)] font-mono">{stats.totalIces.toLocaleString()}</p>
                 </div>
               </div>
+
+              {/* Pinned Achievements in Dashboard */}
+              {activeChannel?.pinnedAchievements && activeChannel.pinnedAchievements.length > 0 && (
+                <div className="pt-6 border-t border-[var(--border)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">Закреплено на канале</h3>
+                    <Trophy className="w-4 h-4 text-yellow-500" />
+                  </div>
+                  <div className="space-y-2">
+                    {activeChannel.pinnedAchievements.map(id => {
+                      const titles: Record<string, string> = {
+                        'subscribers_10': '10 Подписчиков',
+                        'long_views_1000': '1000 Просмотров',
+                        'shorts_views_1000': '1000 Shorts'
+                      };
+                      return (
+                        <div key={id} className="flex items-center gap-3 p-3 bg-[var(--hover)]/50 rounded-xl border border-[var(--border)]">
+                          <Trophy className="w-3.5 h-3.5 text-blue-600" />
+                          <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider">{titles[id]}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           

@@ -48,6 +48,7 @@ export interface Channel {
   createdAt: any;
   pseudonym?: string;
   competitors?: string[]; // Array of channel IDs
+  pinnedAchievements?: string[]; // Array of achievement IDs
 }
 
 export interface MusicRegistry {

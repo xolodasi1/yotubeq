@@ -5,7 +5,7 @@ import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { VideoType, CommunityPost, Playlist } from '../types';
-import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff, Camera, Music as MusicIcon } from 'lucide-react';
+import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff, Camera, Music as MusicIcon, Trophy, Users } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -361,10 +361,6 @@ export default function Channel() {
                 <span className="flex items-center gap-1.5" title="Фото"><Camera className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {photosVideos.length}</span>
               </div>
             </div>
-            {authorInfo?.bio && (
-              <p className="text-sm md:text-base text-[var(--text-secondary)] max-w-4xl line-clamp-3 leading-relaxed font-medium opacity-90">{authorInfo.bio}</p>
-            )}
-            
             {/* Social Links in Header */}
             {authorInfo?.socialLinks && Object.values(authorInfo.socialLinks).some(link => link) && (
               <div className="flex flex-wrap gap-3 pt-2">
@@ -375,6 +371,28 @@ export default function Channel() {
                 {authorInfo.socialLinks.youtube && <a href={authorInfo.socialLinks.youtube.startsWith('http') ? authorInfo.socialLinks.youtube : `https://${authorInfo.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-red-600"><PlaySquare className="w-5 h-5" /></a>}
                 {authorInfo.socialLinks.vk && <a href={authorInfo.socialLinks.vk.startsWith('http') ? authorInfo.socialLinks.vk : `https://vk.com/${authorInfo.socialLinks.vk}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-500"><Globe className="w-5 h-5" /></a>}
                 {authorInfo.socialLinks.instagram && <a href={`https://instagram.com/${authorInfo.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-pink-500"><Instagram className="w-5 h-5" /></a>}
+              </div>
+            )}
+
+            {/* Pinned Achievements */}
+            {authorInfo?.pinnedAchievements && authorInfo.pinnedAchievements.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {authorInfo.pinnedAchievements.map(achievementId => {
+                  const achievements: Record<string, { title: string, icon: any, color: string }> = {
+                    'subscribers_10': { title: '10 Подписчиков', icon: Users, color: 'text-blue-600 bg-blue-50' },
+                    'long_views_1000': { title: '1000 Просмотров', icon: PlaySquare, color: 'text-green-600 bg-green-50' },
+                    'shorts_views_1000': { title: '1000 Shorts', icon: Smartphone, color: 'text-red-600 bg-red-50' }
+                  };
+                  const achievement = achievements[achievementId];
+                  if (!achievement) return null;
+                  const Icon = achievement.icon;
+                  return (
+                    <div key={achievementId} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-current/10 ${achievement.color} transition-all hover:scale-105 cursor-default shadow-sm`}>
+                      <Trophy className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-black uppercase tracking-wider">{achievement.title}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
