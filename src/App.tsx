@@ -38,7 +38,9 @@ interface User {
   displayName: string;
   pseudonym?: string;
   photoURL: string;
+  bannerUrl?: string;
   subscribers: number;
+  ices: number;
   primaryChannelId?: string;
 }
 
@@ -47,8 +49,11 @@ interface ChannelType {
   ownerId: string;
   displayName: string;
   photoURL: string;
+  bannerUrl?: string;
   isPrimary: boolean;
   subscribers: number;
+  ices: number;
+  competitors: string[];
 }
 
 interface AuthContextType {
@@ -148,7 +153,8 @@ export default function App() {
               photoURL: userData.photoURL,
               isPrimary: true,
               subscribers: userData.subscribers || 0,
-              ices: userData.ices || 0
+              ices: userData.ices || 0,
+              competitors: []
             };
             await setDoc(doc(db, 'channels', firebaseUser.uid), {
               ...primaryChannel,

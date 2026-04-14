@@ -13,7 +13,7 @@ export default function StudioProfile() {
   const [pseudonym, setPseudonym] = useState('');
   const [searchAliases, setSearchAliases] = useState('');
   const [photoURL, setPhotoURL] = useState('');
-  const [bannerURL, setBannerURL] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
   const [bio, setBio] = useState('');
   const [socialLinks, setSocialLinks] = useState({
     website: '',
@@ -42,7 +42,7 @@ export default function StudioProfile() {
           setPseudonym(data.pseudonym || '');
           setSearchAliases(data.searchAliases?.join(', ') || '');
           setPhotoURL(data.photoURL || '');
-          setBannerURL(data.bannerURL || '');
+          setBannerUrl(data.bannerUrl || data.bannerURL || '');
           setBio(data.bio || '');
           if (data.homeLayout) {
             setHomeLayout(data.homeLayout);
@@ -81,7 +81,7 @@ export default function StudioProfile() {
         pseudonym,
         searchAliases: aliasesArray,
         photoURL,
-        bannerURL,
+        bannerUrl,
         bio,
         socialLinks,
         homeLayout
@@ -94,7 +94,7 @@ export default function StudioProfile() {
           pseudonym,
           searchAliases: aliasesArray,
           photoURL,
-          bannerURL,
+          bannerUrl,
           bio,
           socialLinks,
           homeLayout
@@ -263,6 +263,36 @@ export default function StudioProfile() {
     setHomeLayout(newLayout);
   };
 
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Файл слишком большой (макс. 2МБ)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) {
+        toast.error('Файл слишком большой (макс. 1МБ)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoURL(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-[var(--studio-muted)]">
@@ -322,10 +352,11 @@ export default function StudioProfile() {
                   alt="Profile" 
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-0 bg-black/60 rounded-[2rem] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-20 backdrop-blur-sm scale-95 group-hover:scale-100">
+                <label className="absolute inset-0 bg-black/60 rounded-[2rem] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-20 backdrop-blur-sm scale-95 group-hover:scale-100">
                   <Camera className="w-8 h-8 text-white mb-2" />
                   <span className="text-[10px] font-black text-white uppercase tracking-widest">Изменить</span>
-                </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                </label>
               </div>
               
               <div className="flex-1 w-full grid grid-cols-1 gap-8">
@@ -376,7 +407,31 @@ export default function StudioProfile() {
 
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
-                  <Camera className="w-3.5 h-3.5 text-blue-600" /> URL аватара
+                  <Layout className="w-3.5 h-3.5 text-blue-600" /> Шапка канала
+                </label>
+                <div className="relative group">
+                  <div className="h-32 md:h-48 bg-[var(--hover)] rounded-2xl border-2 border-dashed border-[var(--border)] overflow-hidden relative">
+                    {bannerUrl ? (
+                      <img src={bannerUrl} className="w-full h-full object-cover" alt="Banner Preview" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] opacity-40">
+                        <Camera className="w-10 h-10 mb-2" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Загрузить шапку</span>
+                      </div>
+                    )}
+                    <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer backdrop-blur-sm">
+                      <Camera className="w-8 h-8 text-white mb-2" />
+                      <span className="text-[10px] font-black text-white uppercase tracking-widest">Изменить шапку</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+                    </label>
+                  </div>
+                  <p className="text-[9px] text-[var(--text-secondary)] mt-2 uppercase font-bold tracking-wider">Рекомендуемый размер: 2560 x 1440 (макс. 2МБ)</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Camera className="w-3.5 h-3.5 text-blue-600" /> URL аватара (или загрузите выше)
                 </label>
                 <input 
                   type="text" 
@@ -389,12 +444,12 @@ export default function StudioProfile() {
 
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] flex items-center gap-2">
-                  <Layout className="w-3.5 h-3.5 text-blue-600" /> URL шапки канала
+                  <Layout className="w-3.5 h-3.5 text-blue-600" /> URL шапки канала (или загрузите выше)
                 </label>
                 <input 
                   type="text" 
-                  value={bannerURL}
-                  onChange={(e) => setBannerURL(e.target.value)}
+                  value={bannerUrl}
+                  onChange={(e) => setBannerUrl(e.target.value)}
                   placeholder="https://example.com/banner.jpg"
                   className="w-full bg-[var(--hover)] border border-[var(--border)] rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all text-[var(--text-primary)] text-sm font-mono"
                 />

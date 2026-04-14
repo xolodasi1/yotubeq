@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, getDoc } from 'firebase/firestore';
 import { VideoType } from '../types';
-import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus } from 'lucide-react';
+import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { toast } from 'sonner';
