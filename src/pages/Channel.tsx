@@ -56,7 +56,8 @@ export default function Channel() {
           subscribers: channelData.subscribers || 0,
           joinedAt: channelData.createdAt?.toDate() || new Date(),
           lastPostAt: channelData.lastPostAt,
-          pinnedAchievements: channelData.pinnedAchievements || []
+          pinnedAchievements: channelData.pinnedAchievements || [],
+          isVerified: channelData.isVerified || false
         });
         setSubCount(channelData.subscribers || 0);
       }
@@ -338,7 +339,14 @@ export default function Channel() {
             className="shadow-xl bg-[var(--surface)]"
           />
           <div className="flex-1 space-y-3">
-            <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight drop-shadow-sm">{authorInfo?.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight drop-shadow-sm">{authorInfo?.name}</h1>
+              {authorInfo?.isVerified && (
+                <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-600/20" title="Верифицированный канал">
+                  <Snowflake className="w-5 h-5 text-white animate-pulse" />
+                </div>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">
               <span className="text-blue-600">{authorInfo?.pseudonym || authorInfo?.pseudonim || `@user-${id?.substring(0, 8)}`}</span>
               <span className="w-1 h-1 bg-[var(--border)] rounded-full" />

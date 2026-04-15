@@ -279,7 +279,12 @@ export default function Navbar() {
                         <div className="flex items-center gap-3 mb-3">
                           <img src={activeChannel?.photoURL || user.photoURL} className="w-10 h-10 rounded-full object-cover" alt="" />
                           <div className="overflow-hidden">
-                            <p className="font-bold text-sm text-[var(--text-primary)] truncate">{activeChannel?.displayName || user.displayName}</p>
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                              <p className="font-bold text-sm text-[var(--text-primary)] truncate">{activeChannel?.displayName || user.displayName}</p>
+                              {activeChannel?.isVerified && (
+                                <Snowflake className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              )}
+                            </div>
                             <p className="text-xs text-[var(--text-secondary)] truncate">{user.email}</p>
                           </div>
                         </div>
@@ -307,7 +312,12 @@ export default function Navbar() {
                                 className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${activeChannel?.id === channel.id ? 'bg-blue-50 text-blue-600' : 'hover:bg-[var(--hover)]'}`}
                               >
                                 <img src={channel.photoURL} className="w-6 h-6 rounded-full object-cover" alt="" />
-                                <span className="text-xs font-medium truncate">{channel.displayName}</span>
+                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                  <span className="text-xs font-medium truncate">{channel.displayName}</span>
+                                  {channel.isVerified && (
+                                    <Snowflake className="w-3 h-3 text-blue-600 shrink-0" />
+                                  )}
+                                </div>
                               </button>
                             ))}
                           </div>

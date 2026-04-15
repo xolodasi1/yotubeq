@@ -45,6 +45,7 @@ export interface Channel {
   ices: number; // Reputation points
   bio: string;
   isPrimary: boolean;
+  isVerified?: boolean;
   createdAt: any;
   pseudonym?: string;
   competitors?: string[]; // Array of channel IDs

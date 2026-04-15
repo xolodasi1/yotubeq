@@ -11,6 +11,7 @@ const studioItems = [
   { icon: Users, label: 'Сообщество', path: '/studio/community' },
   { icon: User, label: 'Редактор канала', path: '/studio/profile' },
   { icon: Trophy, label: 'Достижения', path: '/studio/achievements' },
+  { icon: Snowflake, label: 'Верификация', path: '/studio/verification' },
   { icon: Ban, label: 'Скрытые каналы', path: '/studio/hidden' },
 ];
 
