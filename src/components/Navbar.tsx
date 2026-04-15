@@ -1,4 +1,4 @@
-import { Search, Menu, Video, Bell, LogIn, LogOut, X, Plus, HelpCircle, PlaySquare, Settings, Loader2 } from 'lucide-react';
+import { Search, Menu, Video, Bell, LogIn, LogOut, X, Plus, HelpCircle, PlaySquare, Settings, Loader2, Snowflake } from 'lucide-react';
 import { useAuth } from '../App';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
