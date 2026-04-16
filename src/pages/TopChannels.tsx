@@ -48,28 +48,28 @@ export default function TopChannels() {
         const musicTracks = allVideos
           .filter(v => v.isMusic)
           .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
-          .slice(0, 50);
+          .slice(0, 10);
         setTopTracks(musicTracks);
 
         // Set top photos (by likes)
         const popularPhotos = allVideos
           .filter(v => v.isPhoto || v.type === 'photo')
           .sort((a, b) => (Number(b.likes) || 0) - (Number(a.likes) || 0))
-          .slice(0, 50);
+          .slice(0, 10);
         setTopPhotos(popularPhotos);
 
         // Set top videos (regular videos)
         const popularVideos = allVideos
           .filter(v => !v.isShort && !v.isMusic && !v.isPhoto && v.type !== 'photo')
           .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
-          .slice(0, 50);
+          .slice(0, 10);
         setTopVideos(popularVideos);
 
         // Set top shorts
         const popularShorts = allVideos
           .filter(v => v.isShort || v.type === 'short')
           .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
-          .slice(0, 50);
+          .slice(0, 10);
         setTopShorts(popularShorts);
 
         // Aggregate stats per user
@@ -154,7 +154,7 @@ export default function TopChannels() {
       if (sortBy === 'ices') return (b.totalIces || 0) - (a.totalIces || 0);
       if (sortBy === 'likes') return (b.totalLikes || 0) - (a.totalLikes || 0);
       return (b.totalViews || 0) - (a.totalViews || 0);
-    });
+    }).slice(0, 10);
   }, [channels, sortBy]);
 
   if (loading) {
