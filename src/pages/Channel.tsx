@@ -5,7 +5,7 @@ import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { VideoType, CommunityPost, Playlist } from '../types';
-import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Bell, BellOff, Camera, Music as MusicIcon, Trophy, Users } from 'lucide-react';
+import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Youtube, Bell, BellOff, Camera, Music as MusicIcon, Trophy, Users } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, addDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -331,55 +331,66 @@ export default function Channel() {
 
       <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12">
         {/* Channel Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-10 -mt-12 md:-mt-20 mb-10 relative z-10">
-          <MeltingAvatar 
-            photoURL={authorInfo?.photoUrl}
-            lastPostAt={authorInfo?.lastPostAt}
-            size="xl"
-            className="shadow-xl bg-[var(--surface)]"
-          />
-          <div className="flex-1 space-y-3">
+        <div className="flex flex-col md:flex-row items-start gap-5 md:gap-8 mb-10 relative z-10">
+          <div className="-mt-12 md:-mt-20 shrink-0">
+            <MeltingAvatar 
+              photoURL={authorInfo?.photoUrl}
+              lastPostAt={authorInfo?.lastPostAt}
+              size="xl"
+              className="shadow-2xl bg-[var(--surface)] ring-4 ring-[var(--surface)] h-24 w-24 md:h-40 md:w-40"
+            />
+          </div>
+          <div className="flex-1 space-y-4 pt-2 md:pt-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight drop-shadow-sm">{authorInfo?.name}</h1>
+              <h1 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight">{authorInfo?.name}</h1>
               {authorInfo?.isVerified && (
                 <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-600/20" title="Верифицированный канал">
                   <Snowflake className="w-5 h-5 text-white animate-pulse" />
                 </div>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">
-              <span className="text-blue-600">{authorInfo?.pseudonym || authorInfo?.pseudonim || `@user-${id?.substring(0, 8)}`}</span>
-              <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
-              <span>
+            
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+              <span className="text-[var(--text-primary)] bg-[var(--hover)] px-3 py-1.5 rounded-lg">{authorInfo?.pseudonym || authorInfo?.pseudonim || `@user-${id?.substring(0, 8)}`}</span>
+              <span className="flex items-center gap-1.5">
+                <Users className="w-4 h-4" />
                 {subCount} {
                   subCount % 10 === 1 && subCount % 100 !== 11 ? 'подписчик' :
                   [2, 3, 4].includes(subCount % 10) && ![12, 13, 14].includes(subCount % 100) ? 'подписчика' :
                   'подписчиков'
                 }
               </span>
-              <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
-              <div className="flex items-center gap-1.5 text-blue-500 bg-blue-500/5 px-2 py-1 rounded-lg">
-                <Snowflake className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-1.5 text-blue-600 bg-blue-600/10 px-3 py-1.5 rounded-lg">
+                <Snowflake className="w-4 h-4" />
                 <span>{authorInfo?.ices || 0} снежинок</span>
               </div>
-              <span className="w-1 h-1 bg-[var(--border)] rounded-full" />
-              <div className="flex items-center gap-4 bg-[var(--hover)]/50 px-3 py-1 rounded-lg">
-                <span className="flex items-center gap-1.5" title="Видео"><PlaySquare className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {regularVideos.length}</span>
-                <span className="flex items-center gap-1.5" title="Shorts"><Smartphone className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {shortsVideos.length}</span>
-                <span className="flex items-center gap-1.5" title="Музыка"><MusicIcon className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {musicVideos.length}</span>
-                <span className="flex items-center gap-1.5" title="Фото"><Camera className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> {photosVideos.length}</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--text-secondary)]">
+              <div className="flex items-center gap-1.5 bg-[var(--hover)] px-3 py-1.5 rounded-lg">
+                <PlaySquare className="w-4 h-4" /> <span>{regularVideos.length} видео</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-[var(--hover)] px-3 py-1.5 rounded-lg">
+                <Smartphone className="w-4 h-4" /> <span>{shortsVideos.length} shorts</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-[var(--hover)] px-3 py-1.5 rounded-lg">
+                <MusicIcon className="w-4 h-4" /> <span>{musicVideos.length} треков</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-[var(--hover)] px-3 py-1.5 rounded-lg">
+                <Camera className="w-4 h-4" /> <span>{photosVideos.length} фото</span>
               </div>
             </div>
+
             {/* Social Links in Header */}
             {authorInfo?.socialLinks && Object.values(authorInfo.socialLinks).some(link => link) && (
-              <div className="flex flex-wrap gap-3 pt-2">
-                {authorInfo.socialLinks.website && <a href={authorInfo.socialLinks.website} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-600"><Globe className="w-5 h-5" /></a>}
-                {authorInfo.socialLinks.telegram && <a href={`https://t.me/${authorInfo.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-400"><Smartphone className="w-5 h-5" /></a>}
-                {authorInfo.socialLinks.telegramGroup && <a href={authorInfo.socialLinks.telegramGroup.startsWith('http') ? authorInfo.socialLinks.telegramGroup : `https://${authorInfo.socialLinks.telegramGroup}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-400"><Smartphone className="w-5 h-5" /></a>}
-                {authorInfo.socialLinks.rutube && <a href={authorInfo.socialLinks.rutube.startsWith('http') ? authorInfo.socialLinks.rutube : `https://${authorInfo.socialLinks.rutube}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-600"><Globe className="w-5 h-5" /></a>}
-                {authorInfo.socialLinks.youtube && <a href={authorInfo.socialLinks.youtube.startsWith('http') ? authorInfo.socialLinks.youtube : `https://${authorInfo.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-red-600"><PlaySquare className="w-5 h-5" /></a>}
-                {authorInfo.socialLinks.vk && <a href={authorInfo.socialLinks.vk.startsWith('http') ? authorInfo.socialLinks.vk : `https://vk.com/${authorInfo.socialLinks.vk}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-blue-500"><Globe className="w-5 h-5" /></a>}
-                {authorInfo.socialLinks.instagram && <a href={`https://instagram.com/${authorInfo.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-pink-500"><Instagram className="w-5 h-5" /></a>}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {authorInfo.socialLinks.website && <a href={authorInfo.socialLinks.website} target="_blank" rel="noopener noreferrer" className="p-2 bg-[var(--hover)] rounded-full text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 transition-colors"><Globe className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.telegram && <a href={`https://t.me/${authorInfo.socialLinks.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-[var(--hover)] rounded-full text-[var(--text-secondary)] hover:text-blue-500 hover:bg-blue-50 transition-colors"><MessageSquare className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.telegramGroup && <a href={authorInfo.socialLinks.telegramGroup.startsWith('http') ? authorInfo.socialLinks.telegramGroup : `https://${authorInfo.socialLinks.telegramGroup}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-[var(--hover)] rounded-full text-[var(--text-secondary)] hover:text-blue-500 hover:bg-blue-50 transition-colors"><Users className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.rutube && <a href={authorInfo.socialLinks.rutube.startsWith('http') ? authorInfo.socialLinks.rutube : `https://${authorInfo.socialLinks.rutube}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-[var(--hover)] rounded-full text-[var(--text-secondary)] hover:text-blue-400 hover:bg-blue-50 transition-colors"><PlaySquare className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.youtube && <a href={authorInfo.socialLinks.youtube.startsWith('http') ? authorInfo.socialLinks.youtube : `https://${authorInfo.socialLinks.youtube}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-[var(--hover)] rounded-full text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 transition-colors"><Youtube className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.vk && <a href={authorInfo.socialLinks.vk.startsWith('http') ? authorInfo.socialLinks.vk : `https://vk.com/${authorInfo.socialLinks.vk}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-[var(--hover)] rounded-full text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 transition-colors"><Globe className="w-5 h-5" /></a>}
+                {authorInfo.socialLinks.instagram && <a href={`https://instagram.com/${authorInfo.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-[var(--hover)] rounded-full text-[var(--text-secondary)] hover:text-pink-600 hover:bg-pink-50 transition-colors"><Instagram className="w-5 h-5" /></a>}
               </div>
             )}
 
@@ -388,17 +399,17 @@ export default function Channel() {
               <div className="flex flex-wrap gap-2 pt-2">
                 {authorInfo.pinnedAchievements.map(achievementId => {
                   const achievements: Record<string, { title: string, icon: any, color: string }> = {
-                    'subscribers_10': { title: '10 Подписчиков', icon: Users, color: 'text-blue-600 bg-blue-50' },
-                    'long_views_1000': { title: '1000 Просмотров', icon: PlaySquare, color: 'text-green-600 bg-green-50' },
-                    'shorts_views_1000': { title: '1000 Shorts', icon: Smartphone, color: 'text-red-600 bg-red-50' }
+                    'subscribers_10': { title: '10 Подписчиков', icon: Users, color: 'text-blue-600 bg-blue-50 border-blue-600/20' },
+                    'long_views_1000': { title: '1000 Просмотров', icon: PlaySquare, color: 'text-green-600 bg-green-50 border-green-600/20' },
+                    'shorts_views_1000': { title: '1000 Shorts', icon: Smartphone, color: 'text-red-600 bg-red-50 border-red-600/20' }
                   };
                   const achievement = achievements[achievementId];
                   if (!achievement) return null;
                   const Icon = achievement.icon;
                   return (
-                    <div key={achievementId} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-current/10 ${achievement.color} transition-all hover:scale-105 cursor-default shadow-sm`}>
-                      <Trophy className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-black uppercase tracking-wider">{achievement.title}</span>
+                    <div key={achievementId} className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${achievement.color} transition-all hover:scale-105 cursor-default shadow-sm`}>
+                      <Trophy className="w-4 h-4" />
+                      <span className="text-[11px] font-black uppercase tracking-wider">{achievement.title}</span>
                     </div>
                   );
                 })}
@@ -407,7 +418,7 @@ export default function Channel() {
 
             <div className="pt-4 flex flex-wrap gap-3 items-center">
               {user?.uid === authorInfo?.ownerId ? (
-                <Link to="/studio/profile" className="bg-blue-600 text-white px-10 py-3 rounded-full font-black text-xs uppercase tracking-widest transition-all hover:bg-blue-700 shadow-xl shadow-blue-600/20 active:scale-95">
+                <Link to="/studio/profile" className="bg-[var(--text-primary)] text-[var(--surface)] px-8 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-95">
                   Настроить канал
                 </Link>
               ) : (
