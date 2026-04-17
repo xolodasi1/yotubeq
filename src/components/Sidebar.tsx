@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera, Lock, Bell, Ban, Trophy, Snowflake } from 'lucide-react';
+import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera, Lock, Bell, Ban, Trophy, Snowflake, ShieldAlert } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 
@@ -159,6 +159,17 @@ export default function Sidebar() {
               <span className="text-[10px] font-black uppercase tracking-widest">Установить PWA</span>
             </button>
           )}
+
+          {user?.email === 'xolodtop889@gmail.com' && (
+            <Link
+              to="/admin"
+              className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all mb-2 group ${location.pathname === '/admin' ? 'bg-red-600/10 text-red-600' : 'hover:bg-[var(--hover)] text-red-500/70 hover:text-red-500'}`}
+            >
+              <ShieldAlert className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Админ-панель</span>
+            </Link>
+          )}
+
           <SidebarItem icon={HelpCircle} label="Справка" path="/help" isActive={location.pathname === '/help'} />
         </div>
       </aside>

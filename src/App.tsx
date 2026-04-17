@@ -18,6 +18,7 @@ import StudioHiddenChannels from './pages/StudioHiddenChannels';
 import Shorts from './pages/Shorts';
 import Music from './pages/Music';
 import TopChannels from './pages/TopChannels';
+import AdminDashboard from './pages/AdminDashboard';
 import History from './pages/History';
 import WatchLater from './pages/WatchLater';
 import Favorites from './pages/Favorites';
@@ -281,6 +282,7 @@ export default function App() {
                   <Route path="/playlists" element={<Playlists />} />
                   <Route path="/playlist/:id" element={<PlaylistDetail />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
                 </Routes>
               </main>
             </div>

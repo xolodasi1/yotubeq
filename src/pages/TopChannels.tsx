@@ -97,39 +97,34 @@ export default function TopChannels() {
           }
         });
 
-        // Listen to channels for real-time subscriber updates
+        // Fetch channels once instead of listening for real-time updates
         const channelsQuery = query(collection(db, 'channels'));
-        const unsubscribeChannels = onSnapshot(channelsQuery, (channelsSnapshot) => {
-          const channelsData = channelsSnapshot.docs.map(doc => ({
-            uid: doc.id,
-            ...doc.data()
-          })) as any[];
+        const channelsSnapshot = await getDocs(channelsQuery);
+        
+        const channelsData = channelsSnapshot.docs.map(doc => ({
+          uid: doc.id,
+          ...doc.data()
+        })) as any[];
 
-          const combinedData: TopChannel[] = channelsData.map(channel => ({
-            uid: channel.uid,
-            displayName: channel.displayName || 'User',
-            pseudonym: channel.pseudonym || '',
-            photoURL: channel.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.uid}`,
-            bio: channel.bio || '',
-            subscribers: Number(channel.subscribers) || 0,
-            lastPostAt: channel.lastPostAt,
-            totalMusicViews: stats[channel.uid]?.musicViews || 0,
-            musicCount: stats[channel.uid]?.musicCount || 0,
-            totalViews: stats[channel.uid]?.totalViews || 0,
-            totalLikes: stats[channel.uid]?.likes || 0,
-            totalPhotoLikes: stats[channel.uid]?.photoLikes || 0,
-            photoCount: stats[channel.uid]?.photoCount || 0,
-            totalIces: stats[channel.uid]?.totalIces || 0
-          }));
+        const combinedData: TopChannel[] = channelsData.map(channel => ({
+          uid: channel.uid,
+          displayName: channel.displayName || 'User',
+          pseudonym: channel.pseudonym || '',
+          photoURL: channel.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.uid}`,
+          bio: channel.bio || '',
+          subscribers: Number(channel.subscribers) || 0,
+          lastPostAt: channel.lastPostAt,
+          totalMusicViews: stats[channel.uid]?.musicViews || 0,
+          musicCount: stats[channel.uid]?.musicCount || 0,
+          totalViews: stats[channel.uid]?.totalViews || 0,
+          totalLikes: stats[channel.uid]?.likes || 0,
+          totalPhotoLikes: stats[channel.uid]?.photoLikes || 0,
+          photoCount: stats[channel.uid]?.photoCount || 0,
+          totalIces: stats[channel.uid]?.totalIces || 0
+        }));
 
-          setChannels(combinedData);
-          setLoading(false);
-        }, (error) => {
-          console.error("Error in TopChannels snapshot:", error);
-          setLoading(false);
-        });
-
-        return unsubscribeChannels;
+        setChannels(combinedData);
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching videos for TopChannels:", error);
         setLoading(false);
