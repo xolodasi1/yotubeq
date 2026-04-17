@@ -27,6 +27,7 @@ export default function StudioDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [recentSubscribers, setRecentSubscribers] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user || !activeChannel) {
@@ -86,6 +87,28 @@ export default function StudioDashboard() {
         } else {
           setCompetitorsData([]);
         }
+
+        // Fetch recent subscribers
+        const subsQuery = query(
+          collection(db, 'subscriptions'),
+          where('channelId', '==', activeChannel.id),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
+        const subsSnap = await getDocs(subsQuery);
+        
+        const subDataWithProfiles = [];
+        for (const sdoc of subsSnap.docs) {
+          const subData = sdoc.data();
+          const pSnap = await getDoc(firestoreDoc(db, 'users', subData.subscriberId));
+          if (pSnap.exists()) {
+            const pData = pSnap.data();
+            if (pData.isSubscriptionPublic !== false) {
+              subDataWithProfiles.push({ id: pSnap.id, ...pData });
+            }
+          }
+        }
+        setRecentSubscribers(subDataWithProfiles.slice(0, 10)); // Take top 10 public
 
       } catch (error) {
         console.error("Error fetching studio data:", error);
@@ -417,6 +440,45 @@ export default function StudioDashboard() {
             ) : null}
           </div>
         </div>
+      </div>
+
+      {/* Grid for New Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Recent Subscribers Section */}
+        {recentSubscribers && (
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm flex flex-col hover:border-blue-500/50 transition-colors">
+            <h2 className="font-bold text-sm uppercase tracking-widest text-[var(--text-secondary)] mb-6 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-green-500" /> Последние подписчики
+            </h2>
+            <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar">
+              {recentSubscribers.length > 0 ? (
+                recentSubscribers.map((subscriber, idx) => (
+                  <Link key={idx} to={`/channel/${subscriber.id}`} className="flex items-center gap-4 p-3 hover:bg-[var(--hover)] rounded-xl transition-all border border-transparent hover:border-[var(--border)]">
+                    <img src={subscriber.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${subscriber.id}`} alt="" className="w-10 h-10 rounded-full" />
+                    <div>
+                      <h4 className="text-sm font-bold text-[var(--text-primary)] hover:text-blue-600 transition-colors">{subscriber.displayName}</h4>
+                      <p className="text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-widest">{subscriber.subscribers || 0} подп.</p>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-12 text-[var(--text-secondary)]">
+                  <div className="w-12 h-12 bg-[var(--hover)] rounded-full flex items-center justify-center mb-3 opacity-20">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest italic">Новых подписчиков пока нет</p>
+                </div>
+              )}
+            </div>
+            {recentSubscribers.length > 0 && (
+              <div className="pt-4 border-t border-[var(--border)] mt-4 flex justify-between items-center text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-widest">
+                <span>Отображаются только публичные</span>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* Competitors Section */}

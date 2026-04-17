@@ -24,6 +24,8 @@ export default function Settings() {
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
+  const [isSubscriptionPublic, setIsSubscriptionPublic] = useState(true);
+
   useEffect(() => {
     if (!user) return;
     const fetchUser = async () => {
@@ -34,6 +36,9 @@ export default function Settings() {
           setDisplayName(data.displayName || '');
           setPhotoURL(data.photoURL || '');
           setBio(data.bio || '');
+          if (data.isSubscriptionPublic !== undefined) {
+            setIsSubscriptionPublic(data.isSubscriptionPublic);
+          }
           if (data.socialLinks) {
             setSocialLinks({
               website: data.socialLinks.website || '',
@@ -147,6 +152,35 @@ export default function Settings() {
             className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300'}`}
           >
             <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${theme === 'dark' ? 'translate-x-6' : ''}`} />
+          </button>
+        </div>
+
+        <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--studio-muted)] mb-4 mt-8">Приватность</h3>
+        <div className="flex items-center justify-between p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
+          <div className="flex items-center gap-3">
+            <User className="w-5 h-5 text-purple-400" />
+            <div>
+              <p className="font-bold text-[var(--studio-text)] text-sm">Показывать информацию о подписках</p>
+              <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mt-1">Отображать вас в списке новых подписчиков</p>
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={async () => {
+              try {
+                if (!user) return;
+                const newVal = !isSubscriptionPublic;
+                setIsSubscriptionPublic(newVal);
+                await updateDoc(doc(db, 'users', user.uid), { isSubscriptionPublic: newVal });
+                toast.success('Настройки приватности обновлены');
+              } catch(e) {
+                setIsSubscriptionPublic(isSubscriptionPublic);
+                toast.error('Не удалось обновить настройки');
+              }
+            }}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isSubscriptionPublic ? 'bg-blue-600' : 'bg-gray-300'}`}
+          >
+            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${isSubscriptionPublic ? 'translate-x-6' : ''}`} />
           </button>
         </div>
       </div>

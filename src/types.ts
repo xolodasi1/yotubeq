@@ -50,6 +50,7 @@ export interface Channel {
   pseudonym?: string;
   competitors?: string[]; // Array of channel IDs
   pinnedAchievements?: string[]; // Array of achievement IDs
+  isBanned?: boolean;
 }
 
 export interface MusicRegistry {
@@ -79,6 +80,7 @@ export interface UserProfile {
     instagram?: string;
   };
   primaryChannelId?: string;
+  isSubscriptionPublic?: boolean;
 }
 
 export type UserType = UserProfile;

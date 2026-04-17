@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera, Lock, Bell, Ban, Trophy, Snowflake, ShieldAlert } from 'lucide-react';
+import { Home, Layout, BarChart2, MessageSquare, Settings, HelpCircle, User, PlaySquare, Youtube, Clock, Heart, ListMusic, Users, Download, Smartphone, Camera, Lock, Bell, Ban, Trophy, Snowflake, ShieldAlert, Shield, Share2, AlertTriangle, UserCog } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 
@@ -63,8 +63,17 @@ export default function Sidebar() {
   const location = useLocation();
   const { user, activeChannel, isSidebarOpen } = useAuth();
   const isStudio = location.pathname.startsWith('/studio');
+  const isAdminRoute = location.pathname.startsWith('/admin');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstall, setShowInstall] = useState(false);
+
+  const adminItems = [
+    { icon: BarChart2, label: 'Аналитика', path: '/admin' },
+    { icon: Users, label: 'Управление Каналами', path: '/admin/channels' },
+    { icon: AlertTriangle, label: 'Жалобы', path: '/admin/reports' },
+    { icon: UserCog, label: 'Модераторы', path: '/admin/moderators' },
+    { icon: Share2, label: 'Соцсети Платформы', path: '/admin/socials' },
+  ];
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -117,7 +126,24 @@ export default function Sidebar() {
         )}
 
         <div className="flex flex-col flex-1 overflow-y-auto scrollbar-hide">
-          {isStudio ? (
+          {isAdminRoute ? (
+            <div className="space-y-1">
+              <div className="px-8 mb-4 flex items-center gap-3">
+                <div className="h-px bg-[var(--border)] flex-1" />
+                <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.3em]">Консоль</span>
+                <div className="h-px bg-[var(--border)] flex-1" />
+              </div>
+              {adminItems.map((item) => (
+                <SidebarItem 
+                  key={item.path} 
+                  icon={item.icon} 
+                  label={item.label} 
+                  path={item.path} 
+                  isActive={location.pathname === item.path || (location.pathname === '/admin' && item.path === '/admin' )} 
+                />
+              ))}
+            </div>
+          ) : isStudio ? (
             <div className="space-y-1">
               <div className="px-8 mb-4 flex items-center gap-3">
                 <div className="h-px bg-[var(--border)] flex-1" />
@@ -177,9 +203,9 @@ export default function Sidebar() {
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--border)] z-50 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
         <div className="flex items-center justify-around p-2 overflow-x-auto scrollbar-hide">
-          {(isStudio ? studioItems : mainItems).map((item) => {
+          {(isAdminRoute ? adminItems : isStudio ? studioItems : mainItems).map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path || (location.pathname === '/admin' && item.path === '/admin');
             const isLocked = item.path === '/studio/community' && (user?.subscribers || 0) < 10;
             
             if (isLocked) {

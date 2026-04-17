@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, where, orderBy, setDoc, doc, serverTimestamp, getDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { VideoType, Comment } from '../types';
-import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, X, Send, Snowflake, Ban } from 'lucide-react';
+import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, X, Send, Snowflake, Ban, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
@@ -22,7 +22,14 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [authorData, setAuthorData] = useState<{ displayName: string, photoURL: string } | null>(null);
+  const [volume, setVolume] = useState(1);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = volume;
+    }
+  }, [volume]);
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -219,7 +226,7 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
         className="h-full w-full object-contain"
         loop
         playsInline
-        muted={!isActive}
+        muted={!isActive || volume === 0}
         onClick={() => {
           if (videoRef.current) {
             if (videoRef.current.paused) videoRef.current.play();
@@ -278,7 +285,26 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
       </div>
 
       {/* Side Actions */}
-      <div className="absolute right-4 bottom-24 flex flex-col gap-6 items-center text-white z-10">
+      <div className="absolute right-4 bottom-24 flex flex-col gap-6 items-center text-white z-10 pointer-events-auto">
+        <div className="flex flex-col items-center gap-1 group relative">
+          <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white/20 transition-all cursor-pointer" onClick={() => setVolume(v => v === 0 ? 1 : 0)}>
+            {volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+          </div>
+          {/* Volume Slider - appears on hover/focus within the group */}
+          <div className="absolute bottom-[110%] pb-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center bg-black/60 backdrop-blur-xl p-3 rounded-2xl h-32 invisible group-hover:visible">
+            <input 
+              type="range" 
+              min="0" 
+              max="1" 
+              step="0.01" 
+              value={volume} 
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+              className="h-full w-2 bg-white/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+            />
+          </div>
+        </div>
+
         <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
           <div className={`w-12 h-12 backdrop-blur-md rounded-full flex items-center justify-center transition-all ${isLiked ? 'bg-blue-600' : 'bg-white/10 group-hover:bg-white/20'}`}>
             <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />

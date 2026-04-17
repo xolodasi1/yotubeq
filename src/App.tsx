@@ -57,6 +57,7 @@ interface ChannelType {
   ices: number;
   competitors: string[];
   pinnedAchievements?: string[];
+  isBanned?: boolean;
 }
 
 interface AuthContextType {
@@ -250,6 +251,22 @@ export default function App() {
               </div>
             </div>
           </div>
+        ) : activeChannel?.isBanned ? (
+          <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
+            <div className="bg-red-600/10 border-2 border-red-600/50 p-8 rounded-[2rem] max-w-lg w-full text-center shadow-2xl shadow-red-900/50">
+              <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="text-4xl">🛑</span>
+              </div>
+              <h1 className="text-3xl font-black text-white tracking-tight leading-tight mb-4">Канал заблокирован</h1>
+              <p className="text-red-200 font-medium mb-8">
+                Доступ к вашему аккаунту ограничен администрацией за нарушение правил платформы IceTube.
+                Пожалуйста, свяжитесь с поддержкой, если считаете это ошибкой.
+              </p>
+              <button onClick={() => auth.signOut()} className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-2xl w-full transition-colors opacity-90">
+                Выйти из аккаунта
+              </button>
+            </div>
+          </div>
         ) : (
           <div className={`min-h-screen bg-[var(--bg)] text-[var(--text-primary)] flex flex-col transition-colors duration-300`}>
             <Navbar />
@@ -282,7 +299,7 @@ export default function App() {
                   <Route path="/playlists" element={<Playlists />} />
                   <Route path="/playlist/:id" element={<PlaylistDetail />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/*" element={<AdminDashboard />} />
                 </Routes>
               </main>
             </div>

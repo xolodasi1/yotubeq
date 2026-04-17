@@ -127,7 +127,7 @@ export default function StudioAnalytics() {
               { label: 'Просмотры', val: stats.totalViews, icon: Eye, color: 'text-blue-600', bg: 'bg-blue-500/5', trend: '+12%' },
               { label: 'Время (часы)', val: stats.watchTime, icon: Clock, color: 'text-purple-600', bg: 'bg-purple-500/5', trend: '+8%' },
               { label: 'Подписчики', val: stats.subscribers, icon: Users, color: 'text-green-600', bg: 'bg-green-500/5', trend: '+4%' },
-              { label: 'Лайки', val: stats.totalLikes, icon: ThumbsUp, color: 'text-red-600', bg: 'bg-red-500/5', trend: '+5%' },
+              { label: 'Лайки (Всего)', val: stats.totalLikes, icon: ThumbsUp, color: 'text-red-600', bg: 'bg-red-500/5', trend: '+5%' },
               { label: 'Снежинки', val: stats.totalIces, icon: Snowflake, color: 'text-blue-400', bg: 'bg-blue-400/5', trend: '+7%' }
             ].map((s, i) => (
               <div key={i} className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 shadow-sm space-y-6 group hover:border-blue-500/30 transition-all">

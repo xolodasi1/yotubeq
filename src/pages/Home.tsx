@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
-import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users, Music as MusicIcon, Camera } from 'lucide-react';
+import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users, Music as MusicIcon, Camera, Heart } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { useAuth } from '../App';
@@ -158,6 +158,11 @@ export default function Home() {
   }).slice(0, 8);
   const topIcedVideos = [...regularVideos].sort((a, b) => (Number(b.ices) || 0) - (Number(a.ices) || 0)).slice(0, 8);
 
+  const recommendedChannels = [...users]
+    .filter(u => u.uid !== user?.uid)
+    .sort((a, b) => (b.subscribers || 0) - (a.subscribers || 0))
+    .slice(0, 5);
+
   return (
     <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto pb-24 md:pb-10 bg-[var(--bg)] min-h-screen">
       {/* Categories */}
@@ -269,6 +274,67 @@ export default function Home() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-6 gap-y-10">
                 {regularVideos.map((video) => (
                   <VideoCard key={video.id} video={video as any} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* IceTube Loves to Watch Section */}
+          {!searchQuery && activeCategory === 'Все' && topVideos.length > 0 && (
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 md:p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+              
+              <div className="flex items-center gap-3 mb-8 relative z-10">
+                <div className="w-12 h-12 bg-red-600/10 rounded-2xl flex items-center justify-center text-red-500">
+                  <Heart className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-[var(--text-primary)]">На IceTube любят смотреть</h2>
+                  <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-1">Топ просмотров за все время</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 overflow-x-auto pb-4 scrollbar-hide relative z-10 snap-x">
+                {topVideos.map(video => (
+                  <div key={video.id} className="min-w-[280px] w-[280px] snap-center shrink-0">
+                    <VideoCard video={video as any} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Who to Follow Section */}
+          {!searchQuery && activeCategory === 'Все' && recommendedChannels.length > 0 && (
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 md:p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+              
+              <div className="flex items-center gap-3 mb-8 relative z-10">
+                <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-[var(--text-primary)]">Кого смотреть</h2>
+                  <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest mt-1">Интересные авторы</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 overflow-x-auto pb-4 scrollbar-hide relative z-10 snap-x">
+                {recommendedChannels.map(user => (
+                  <Link 
+                    key={user.uid} 
+                    to={`/channel/${user.uid}`} 
+                    className="flex flex-col items-center gap-3 p-6 bg-[var(--bg)] border border-[var(--border)] rounded-2xl hover:border-blue-500/50 hover:shadow-lg transition-all group min-w-[160px] snap-center shrink-0"
+                  >
+                    <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`} alt={user.displayName} className="w-20 h-20 rounded-full object-cover group-hover:scale-105 transition-transform border-4 border-[var(--surface)]" />
+                    <div className="text-center">
+                      <h3 className="font-bold text-[var(--text-primary)] group-hover:text-blue-500 transition-colors line-clamp-1">{user.displayName}</h3>
+                      <p className="text-xs text-[var(--text-secondary)]">{user.subscribers || 0} подп.</p>
+                    </div>
+                    <button className="w-full mt-2 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors dark:bg-blue-500/10 dark:text-blue-400">
+                      Перейти
+                    </button>
+                  </Link>
                 ))}
               </div>
             </section>

@@ -1053,6 +1053,22 @@ export default function VideoPlayer() {
                     </button>
                   </div>
                 </div>
+                
+                {/* Volume Slider for Music */}
+                <div className="w-full max-w-md flex items-center gap-3 bg-white/5 backdrop-blur-sm p-3 rounded-2xl border border-white/10">
+                  <button onClick={toggleMute} className="text-white hover:text-blue-400 transition-colors">
+                    {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={volume}
+                    onChange={handleVolumeChange}
+                    className="flex-1 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+                  />
+                </div>
               </div>
 
               {/* Hidden Video Element */}
@@ -1402,6 +1418,52 @@ export default function VideoPlayer() {
               <>Развернуть <ChevronDown className="w-3 h-3" /></>
             )}
           </button>
+
+          {video.musicMetadata && (
+            <div className="mt-4 pt-4 border-t border-[var(--studio-border)]">
+              <h4 className="text-xs font-black uppercase tracking-widest text-[#1db954] mb-3 flex items-center gap-2">
+                <MusicIcon className="w-4 h-4" /> Метаданные трека
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+                {video.musicMetadata.author && (
+                   <div className="space-y-1">
+                     <p className="font-bold text-[var(--text-secondary)] uppercase tracking-wider text-[10px]">Автор</p>
+                     <p className="text-[var(--text-primary)] font-medium">{video.musicMetadata.author}</p>
+                   </div>
+                )}
+                {video.musicMetadata.composer && (
+                   <div className="space-y-1">
+                     <p className="font-bold text-[var(--text-secondary)] uppercase tracking-wider text-[10px]">Композитор</p>
+                     <p className="text-[var(--text-primary)] font-medium">{video.musicMetadata.composer}</p>
+                   </div>
+                )}
+                {video.musicMetadata.performer && (
+                   <div className="space-y-1">
+                     <p className="font-bold text-[var(--text-secondary)] uppercase tracking-wider text-[10px]">Исполнитель</p>
+                     <p className="text-[var(--text-primary)] font-medium">{video.musicMetadata.performer}</p>
+                   </div>
+                )}
+                {video.musicMetadata.album && (
+                   <div className="space-y-1">
+                     <p className="font-bold text-[var(--text-secondary)] uppercase tracking-wider text-[10px]">Альбом</p>
+                     <p className="text-[var(--text-primary)] font-medium">{video.musicMetadata.album}</p>
+                   </div>
+                )}
+                {video.musicMetadata.releaseYear && (
+                   <div className="space-y-1">
+                     <p className="font-bold text-[var(--text-secondary)] uppercase tracking-wider text-[10px]">Год выпуска</p>
+                     <p className="text-[var(--text-primary)] font-medium">{video.musicMetadata.releaseYear}</p>
+                   </div>
+                )}
+                {video.musicMetadata.otherParticipants && (
+                   <div className="col-span-full space-y-1">
+                     <p className="font-bold text-[var(--text-secondary)] uppercase tracking-wider text-[10px]">Другие участники</p>
+                     <p className="text-[var(--text-primary)] font-medium">{video.musicMetadata.otherParticipants}</p>
+                   </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {musicVideos.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[var(--studio-border)]">

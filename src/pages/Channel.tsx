@@ -454,7 +454,13 @@ export default function Channel() {
 
         {/* Navigation Tabs */}
         <div className="flex gap-8 border-b border-[var(--border)] mb-10 overflow-x-auto scrollbar-hide bg-[var(--surface)]/50 backdrop-blur-sm sticky top-14 z-20 px-4 -mx-4 md:px-0 md:mx-0">
-          {(['home', 'videos', 'shorts', 'music', 'photos', 'playlists', 'community', 'about'] as TabType[]).map((tab) => (
+          {(['home', 'videos', 'shorts', 'music', 'photos', 'playlists', 'community', 'about'] as TabType[]).filter(tab => {
+            if (tab === 'videos') return regularVideos.length > 0;
+            if (tab === 'shorts') return shortsVideos.length > 0;
+            if (tab === 'music') return musicVideos.length > 0;
+            if (tab === 'photos') return photosVideos.length > 0;
+            return true;
+          }).map((tab) => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
