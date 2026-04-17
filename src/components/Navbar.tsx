@@ -89,7 +89,7 @@ export default function Navbar() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: 'https://ais-dev-xshcgn5y7v7f7pfq73gaic-37609258679.us-east1.run.app'
         }
       });
       if (error) throw error;
