@@ -228,7 +228,11 @@ export default function Studio() {
         visibility
       };
 
-      await supabase.from('videos').insert(newVideoData);
+      const { error: insertError } = await supabase.from('videos').insert(newVideoData);
+      if (insertError) {
+        console.error("Supabase insert error:", insertError);
+        throw new Error(`Ошибка базы данных при сохранении: ${insertError.message}`);
+      }
 
       // Save to music registry if metadata is provided
       if (contentType === 'music' || (musicMetadata.author && musicMetadata.album)) {
