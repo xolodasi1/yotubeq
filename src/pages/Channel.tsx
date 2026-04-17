@@ -495,9 +495,14 @@ export default function Channel() {
 
             <div className="pt-4 flex flex-wrap gap-3 items-center">
               {user?.uid === authorInfo?.ownerId ? (
-                <Link to="/studio/profile" className="bg-[var(--text-primary)] text-[var(--surface)] px-8 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-95">
-                  Настроить канал
-                </Link>
+                <>
+                  <Link to="/studio/profile" className="bg-[var(--text-primary)] text-[var(--surface)] px-8 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-95">
+                    Настроить вид канала
+                  </Link>
+                  <Link to="/studio/content" className="bg-[var(--hover)] text-[var(--text-primary)] px-8 py-3 rounded-xl font-bold text-sm transition-all hover:bg-gray-200 active:scale-95">
+                    Управление контентом
+                  </Link>
+                </>
               ) : (
                 <div className="flex items-center gap-2">
                   <button 
@@ -536,6 +541,7 @@ export default function Channel() {
             if (tab === 'shorts') return shortsVideos.length > 0;
             if (tab === 'music') return musicVideos.length > 0;
             if (tab === 'photos') return photosVideos.length > 0;
+            if (tab === 'playlists') return playlists.length > 0;
             return true;
           }).map((tab) => (
             <button 

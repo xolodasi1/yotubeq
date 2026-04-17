@@ -1,1 +1,1 @@
-export const APP_LOGO_URL = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=2070&auto=format&fit=crop";
+export const APP_LOGO_URL = "https://res.cloudinary.com/du6zw4m8g/image/upload/v1776451556/5395585251976877323_gkvgwj.jpg";

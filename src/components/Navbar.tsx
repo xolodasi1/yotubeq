@@ -138,11 +138,7 @@ export default function Navbar() {
             <span className="text-xl font-bold tracking-tight hidden xs:block text-[var(--text-primary)]">
               {isStudio ? 'IceStudio' : 'IceTube'}
             </span>
-            {process.env.icceeeee && (
-              <span className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded uppercase tracking-tighter hidden lg:block animate-pulse">
-                {process.env.icceeeee}
-              </span>
-            )}
+            
           </Link>
         </div>
 

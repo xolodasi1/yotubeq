@@ -35,9 +35,10 @@ export default function StudioAnalytics() {
         let ices = 0;
         let topV = data[0] || null;
 
+        // ... (lines 38-45)
         data.forEach(v => {
           views += v.views || 0;
-          likes += v.likes || 0;
+          likes += v.likes || 0; // Включает лайки видео, фото и музыки
           ices += v.ices || 0;
           if (topV && (v.views || 0) > (topV.views || 0)) {
             topV = v;
