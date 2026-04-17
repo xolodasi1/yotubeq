@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, getDoc } from 'firebase/firestore';
-import { Comment, VideoType } from '../types';
-import { MessageSquare, Trash2, Heart, Reply, ExternalLink, Search, MoreVertical } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { databaseService } from '../lib/databaseService';
+import { Comment } from '../types';
+import { MessageSquare, Trash2, Heart, Reply, ExternalLink, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -26,11 +25,11 @@ export default function StudioComments() {
 
     const fetchComments = async () => {
       try {
-        const vq = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
-        const vSnapshot = await getDocs(vq);
-        const videoIds = vSnapshot.docs.map(doc => doc.id);
-        const videoTitlesMap = vSnapshot.docs.reduce((acc, doc) => {
-          acc[doc.id] = doc.data().title;
+        // Fetch videos for this channel
+        const videos = await databaseService.getVideos({ authorId: activeChannel.id }) as any[];
+        const videoIds = videos.map(v => v.id);
+        const videoTitlesMap = videos.reduce((acc, v) => {
+          acc[v.id] = v.title;
           return acc;
         }, {} as Record<string, string>);
 
@@ -39,39 +38,26 @@ export default function StudioComments() {
           return;
         }
 
-        const cq = query(
-          collection(db, 'comments'),
-          where('videoId', 'in', videoIds.slice(0, 30)),
-          orderBy('createdAt', 'desc'),
-          limit(100)
-        );
-        const cSnapshot = await getDocs(cq);
-        const rawComments = cSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Comment[];
+        // Fetch comments for these videos
+        const rawComments = await databaseService.getCommentsByVideoIds(videoIds) as any[];
 
         // Fetch parent comments for replies
         const parentIds = rawComments.filter(c => c.parentId).map(c => c.parentId!);
         const parentCommentsMap: Record<string, Comment> = {};
         
         if (parentIds.length > 0) {
-          // Firestore 'in' query limit is 10, but we might have more. 
-          // For now let's just fetch the first 10 or do multiple batches if needed.
-          // Or just fetch them individually if it's easier for now.
-          const parentPromises = parentIds.map(pid => getDoc(doc(db, 'comments', pid)));
-          const parentSnaps = await Promise.all(parentPromises);
-          parentSnaps.forEach(snap => {
-            if (snap.exists()) {
-              parentCommentsMap[snap.id] = { id: snap.id, ...snap.data() } as Comment;
-            }
+          // Unique parent IDs
+          const uniqueParentIds = Array.from(new Set(parentIds));
+          const parentPromises = uniqueParentIds.map(pid => databaseService.getCommentById(pid).catch(() => null));
+          const parentComments = await Promise.all(parentPromises);
+          parentComments.forEach(pc => {
+            if (pc) parentCommentsMap[pc.id] = pc as Comment;
           });
         }
 
         const cData = rawComments.map(commentData => {
           return {
             ...commentData,
-            createdAt: commentData.createdAt?.toDate?.()?.toISOString() || commentData.createdAt,
             videoTitle: videoTitlesMap[commentData.videoId],
             parentComment: commentData.parentId ? parentCommentsMap[commentData.parentId] : undefined
           } as CommentWithVideo;
@@ -86,13 +72,13 @@ export default function StudioComments() {
     };
 
     fetchComments();
-  }, [user]);
+  }, [user, activeChannel]);
 
   const handleDelete = async (commentId: string) => {
     if (!window.confirm('Удалить этот комментарий?')) return;
 
     try {
-      await deleteDoc(doc(db, 'comments', commentId));
+      await databaseService.deleteComment(commentId);
       setComments(comments.filter(c => c.id !== commentId));
       toast.success('Комментарий удален');
     } catch (error) {

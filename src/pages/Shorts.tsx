@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, getDocs, query, where, orderBy, setDoc, doc, serverTimestamp, getDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { VideoType, Comment } from '../types';
 import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, X, Send, Snowflake, Ban, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,9 +34,16 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   useEffect(() => {
     const fetchAuthor = async () => {
       try {
-        const authorSnap = await getDoc(doc(db, 'channels', short.authorId));
-        if (authorSnap.exists()) {
-          setAuthorData(authorSnap.data() as any);
+        const { data } = await supabase
+          .from('channels')
+          .select('display_name, photo_url')
+          .eq('id', short.authorId)
+          .single();
+        if (data) {
+          setAuthorData({
+            displayName: data.display_name,
+            photoURL: data.photo_url
+          } as any);
         }
       } catch (e) {
         console.error("Error fetching author data:", e);
@@ -58,17 +65,26 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
     if (!user) return;
     const fetchInteractions = async () => {
       try {
-        const likeId = `${user.uid}_${short.id}`;
-        const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
-        setIsLiked(likeSnap.exists() && likeSnap.data().type === 'like');
+        const { data: likeData } = await supabase
+          .from('video_likes')
+          .select('type')
+          .eq('user_id', user.uid)
+          .eq('video_id', short.id);
+        setIsLiked((likeData || []).some(d => d.type === 'like'));
 
-        const iceId = `${user.uid}_${short.id}`;
-        const iceSnap = await getDoc(doc(db, 'video_ices', iceId));
-        setIsIced(iceSnap.exists());
+        const { data: iceData } = await supabase
+          .from('video_ices')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('video_id', short.id);
+        setIsIced((iceData || []).length > 0);
 
-        const subId = `${user.uid}_${short.authorId}`;
-        const subSnap = await getDoc(doc(db, 'subscriptions', subId));
-        setIsSubscribed(subSnap.exists());
+        const { data: subData } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('channel_id', short.authorId);
+        setIsSubscribed((subData || []).length > 0);
       } catch (err) {
         console.error("Error fetching interactions:", err);
       }
@@ -78,9 +94,21 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
   const fetchComments = async () => {
     try {
-      const q = query(collection(db, 'comments'), where('videoId', '==', short.id), orderBy('createdAt', 'desc'));
-      const snap = await getDocs(q);
-      setComments(snap.docs.map(d => ({ ...d.data(), createdAt: d.data().createdAt?.toDate?.()?.toISOString() || d.data().createdAt })) as Comment[]);
+      const { data, error } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('video_id', short.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setComments((data || []).map(c => ({
+        ...c,
+        videoId: c.video_id,
+        authorId: c.author_id,
+        authorName: c.author_name,
+        authorPhotoUrl: c.author_photo_url,
+        createdAt: c.created_at
+      })) as any);
     } catch (err) {
       console.error("Error fetching comments:", err);
     }
@@ -94,19 +122,25 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
   const handleLike = async () => {
     if (!user) return toast.error('Войдите, чтобы ставить лайки');
-    const likeId = `${user.uid}_${short.id}`;
-    const likeRef = doc(db, 'video_likes', likeId);
-    const videoRef = doc(db, 'videos', short.id);
-
+    
     try {
       if (isLiked) {
-        await deleteDoc(likeRef);
-        await updateDoc(videoRef, { likes: Math.max(0, likesCount - 1) });
+        await supabase
+          .from('video_likes')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('video_id', short.id);
+          
+        await supabase.from('videos').update({ likes: Math.max(0, likesCount - 1) }).eq('id', short.id);
         setLikesCount(Math.max(0, likesCount - 1));
         setIsLiked(false);
       } else {
-        await setDoc(likeRef, { id: likeId, userId: user.uid, videoId: short.id, type: 'like' });
-        await updateDoc(videoRef, { likes: likesCount + 1 });
+        await supabase.from('video_likes').insert({ 
+          user_id: user.uid, 
+          video_id: short.id, 
+          type: 'like' 
+        });
+        await supabase.from('videos').update({ likes: likesCount + 1 }).eq('id', short.id);
         setLikesCount(likesCount + 1);
         setIsLiked(true);
       }
@@ -118,19 +152,25 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   const handleIce = async () => {
     if (!user) return toast.error('Войдите, чтобы ставить снежинки');
     if (user.uid === short.authorId) return toast.error('Вы не можете ставить снежинки своим видео');
-    const iceId = `${user.uid}_${short.id}`;
-    const iceRef = doc(db, 'video_ices', iceId);
-    const videoRef = doc(db, 'videos', short.id);
 
     try {
       if (isIced) {
-        await deleteDoc(iceRef);
-        await updateDoc(videoRef, { ices: Math.max(0, icesCount - 1) });
+        await supabase
+          .from('video_ices')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('video_id', short.id);
+          
+        await supabase.from('videos').update({ ices: Math.max(0, icesCount - 1) }).eq('id', short.id);
         setIcesCount(Math.max(0, icesCount - 1));
         setIsIced(false);
       } else {
-        await setDoc(iceRef, { id: iceId, userId: user.uid, videoId: short.id, createdAt: serverTimestamp() });
-        await updateDoc(videoRef, { ices: icesCount + 1 });
+        await supabase.from('video_ices').insert({ 
+          user_id: user.uid, 
+          video_id: short.id, 
+          created_at: new Date().toISOString() 
+        });
+        await supabase.from('videos').update({ ices: icesCount + 1 }).eq('id', short.id);
         setIcesCount(icesCount + 1);
         setIsIced(true);
       }
@@ -140,28 +180,43 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   };
 
   const handleSubscribe = async () => {
-
     if (!user) return toast.error('Войдите, чтобы подписаться');
     if (user.uid === short.authorId) return toast.error('Нельзя подписаться на себя');
 
-    const subId = `${user.uid}_${short.authorId}`;
-    const subRef = doc(db, 'subscriptions', subId);
-    const channelRef = doc(db, 'channels', short.authorId);
-
     try {
       if (isSubscribed) {
-        await deleteDoc(subRef);
-        await updateDoc(channelRef, { subscribers: increment(-1) }).catch(() => {});
+        await supabase
+          .from('subscriptions')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('channel_id', short.authorId);
+          
+        await supabase.rpc('decrement_subscribers', { channel_id_input: short.authorId });
         setIsSubscribed(false);
         toast.success('Вы отписались');
       } else {
-        await setDoc(subRef, { id: subId, subscriberId: user.uid, channelId: short.authorId, createdAt: serverTimestamp() });
-        await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
+        await supabase.from('subscriptions').insert({ 
+          user_id: user.uid, 
+          channel_id: short.authorId, 
+          created_at: new Date().toISOString() 
+        });
+        await supabase.rpc('increment_subscribers', { channel_id_input: short.authorId });
         setIsSubscribed(true);
         toast.success('Вы подписались!');
       }
     } catch (err) {
-      toast.error('Не удалось обновить подписку');
+      // Fallback if RPC is not set up
+      try {
+        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', short.authorId).single();
+        if (channelData) {
+          const newCount = isSubscribed ? Math.max(0, channelData.subscribers - 1) : channelData.subscribers + 1;
+          await supabase.from('channels').update({ subscribers: newCount }).eq('id', short.authorId);
+          setIsSubscribed(!isSubscribed);
+          toast.success(isSubscribed ? 'Вы отписались' : 'Вы подписались!');
+        }
+      } catch (e) {
+        toast.error('Не удалось обновить подписку');
+      }
     }
   };
 
@@ -174,14 +229,13 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
     if (!user) return toast.error('Войдите, чтобы скрыть канал');
     try {
       const hiddenId = `${user.uid}_${short.authorId}`;
-      await setDoc(doc(db, 'hidden_channels', hiddenId), {
+      await supabase.from('hidden_channels').upsert({
         id: hiddenId,
-        userId: user.uid,
-        channelId: short.authorId,
-        addedAt: serverTimestamp()
+        user_id: user.uid,
+        channel_id: short.authorId,
+        added_at: new Date().toISOString()
       });
       toast.success('Канал больше не будет рекомендоваться');
-      // Ideally we'd remove it from the UI immediately, but a reload or state update is needed
       window.location.reload();
     } catch (err) {
       toast.error('Не удалось скрыть канал');
@@ -198,17 +252,29 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
       const commentId = crypto.randomUUID();
       const commentData = {
         id: commentId,
+        video_id: short.id,
+        author_id: user.uid,
+        author_name: user.displayName || 'User',
+        author_photo_url: user.photoURL || '',
+        text: newComment.trim(),
+        created_at: new Date().toISOString(),
+        likes: 0,
+        dislikes: 0
+      };
+      await supabase.from('comments').insert(commentData);
+      
+      setComments([{
+        id: commentId,
         videoId: short.id,
         authorId: user.uid,
         authorName: user.displayName || 'User',
         authorPhotoUrl: user.photoURL || '',
         text: newComment.trim(),
-        createdAt: new Date(),
+        createdAt: commentData.created_at,
         likes: 0,
         dislikes: 0
-      };
-      await setDoc(doc(db, 'comments', commentId), commentData);
-      setComments([{ ...commentData, createdAt: commentData.createdAt.toISOString() } as any, ...comments]);
+      } as any, ...comments]);
+      
       setNewComment('');
       toast.success('Комментарий добавлен');
     } catch (err) {
@@ -411,42 +477,34 @@ export default function Shorts() {
 
   useEffect(() => {
     const fetchShorts = async () => {
+      setLoading(true);
       try {
         let hiddenChannelIds: string[] = [];
         if (user) {
-          const hiddenQ = query(collection(db, 'hidden_channels'), where('userId', '==', user.uid));
-          const hiddenSnap = await getDocs(hiddenQ);
-          hiddenChannelIds = hiddenSnap.docs.map(doc => doc.data().channelId);
+          const { data: hiddenData } = await supabase
+            .from('hidden_channels')
+            .select('channel_id')
+            .eq('user_id', user.uid);
+          hiddenChannelIds = (hiddenData || []).map(d => d.channel_id);
         }
 
-        const q = query(
-          collection(db, 'videos'), 
-          where('isShort', '==', true),
-          orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        let data = querySnapshot.docs.map(doc => {
-          const videoData = doc.data();
-          let createdAt = videoData.createdAt;
-          if (createdAt?.toDate) {
-            createdAt = createdAt.toDate().toISOString();
-          } else if (createdAt?.seconds) {
-            createdAt = new Date(createdAt.seconds * 1000).toISOString();
-          }
-          return {
-            ...videoData,
-            id: doc.id,
-            createdAt
-          };
-        }) as VideoType[];
+        const { data: shortsDataRaw, error: shortsError } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('is_short', true)
+          .order('created_at', { ascending: false });
+
+        if (shortsError) throw shortsError;
+
+        let mappedShorts = (shortsDataRaw || []).map(v => databaseService.mapVideo(v));
         
         if (hiddenChannelIds.length > 0) {
-          data = data.filter(video => !hiddenChannelIds.includes(video.authorId));
+          mappedShorts = mappedShorts.filter(video => !hiddenChannelIds.includes(video.authorId));
         }
         
-        setShorts(data);
+        setShorts(mappedShorts as any);
       } catch (error) {
-        console.error("Error fetching shorts:", error);
+        console.error("Error fetching shorts from Supabase:", error);
       } finally {
         setLoading(false);
       }
@@ -482,19 +540,20 @@ export default function Shorts() {
     const addToHistory = async () => {
       try {
         const historyId = `${user.uid}_${currentShort.id}`;
-        await setDoc(doc(db, 'history', historyId), {
+        await supabase.from('history').upsert({
           id: historyId,
-          userId: user.uid,
-          videoId: currentShort.id,
-          watchedAt: serverTimestamp()
+          user_id: user.uid,
+          video_id: currentShort.id,
+          watched_at: new Date().toISOString()
         });
         
         // Increment views
-        await updateDoc(doc(db, 'videos', currentShort.id), {
-          views: increment(1)
-        });
+        const { data: currentViews } = await supabase.from('videos').select('views').eq('id', currentShort.id).single();
+        if (currentViews) {
+          await supabase.from('videos').update({ views: (Number(currentViews.views) || 0) + 1 }).eq('id', currentShort.id);
+        }
       } catch (err) {
-        console.error("Failed to add short to history or increment views:", err);
+        console.error("Failed to add short to history or increment views in Supabase:", err);
       }
     };
     addToHistory();

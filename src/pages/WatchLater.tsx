@@ -3,8 +3,9 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, Clock, Trash2, Search, X } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
+// Supabase refactored
 import { toast } from 'sonner';
 
 export default function WatchLater() {
@@ -18,25 +19,24 @@ export default function WatchLater() {
     const fetchWatchLater = async () => {
       try {
         setLoading(true);
-        const q = query(collection(db, 'watch_later'), where('userId', '==', user.uid), orderBy('addedAt', 'desc'));
-        const snap = await getDocs(q);
+        const { data, error } = await supabase
+          .from('watch_later')
+          .select('*, videos(*)')
+          .eq('user_id', user.uid)
+          .order('added_at', { ascending: false });
         
-        const videoPromises = snap.docs.map(async (d) => {
-          const videoDoc = await getDoc(doc(db, 'videos', d.data().videoId));
-          if (videoDoc.exists()) {
-            return {
-              ...videoDoc.data(),
-              id: videoDoc.id,
-              createdAt: videoDoc.data().createdAt?.toDate()?.toISOString(),
-              addedAt: d.data().addedAt?.toDate(),
-              watchLaterId: d.id
-            } as VideoType & { addedAt: any, watchLaterId: string };
-          }
-          return null;
-        });
+        if (error) throw error;
+        
+        const results = (data || []).map(item => {
+          if (!item.videos) return null;
+          return {
+            ...databaseService.mapVideo(item.videos),
+            addedAt: new Date(item.added_at),
+            watchLaterId: item.id
+          } as VideoType & { addedAt: any, watchLaterId: string };
+        }).filter(v => v !== null);
 
-        const results = await Promise.all(videoPromises);
-        setVideos(results.filter(v => v !== null) as (VideoType & { addedAt: any, watchLaterId: string })[]);
+        setVideos(results as (VideoType & { addedAt: any, watchLaterId: string })[]);
       } catch (error) {
         console.error("Error fetching watch later:", error);
       } finally {
@@ -49,7 +49,7 @@ export default function WatchLater() {
 
   const removeWatchLaterItem = async (watchLaterId: string) => {
     try {
-      await deleteDoc(doc(db, 'watch_later', watchLaterId));
+      await supabase.from('watch_later').delete().eq('id', watchLaterId);
       setVideos(videos.filter(v => v.watchLaterId !== watchLaterId));
       toast.success('Удалено из "Смотреть позже"');
     } catch (error) {

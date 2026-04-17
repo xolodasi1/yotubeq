@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
-import { Loader2, Music as MusicIcon, Play, Heart, Share2, MoreVertical, ListMusic } from 'lucide-react';
+import { Loader2, Music as MusicIcon, ListMusic } from 'lucide-react';
 import VideoCard from '../components/VideoCard';
 
 export default function Music() {
@@ -12,17 +11,8 @@ export default function Music() {
   useEffect(() => {
     const fetchMusic = async () => {
       try {
-        const q = query(
-          collection(db, 'videos'), 
-          where('isMusic', '==', true),
-          orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
-        })) as VideoType[];
-        setMusic(data);
+        const data = await databaseService.getVideos({ isMusic: true });
+        setMusic(data as unknown as VideoType[]);
       } catch (error) {
         console.error("Error fetching music:", error);
       } finally {

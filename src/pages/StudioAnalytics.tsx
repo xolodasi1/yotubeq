@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, onSnapshot, doc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { Eye, ThumbsUp, TrendingUp, BarChart2, PieChart, Calendar, ChevronRight, Clock, Users, Globe, UserCheck, UserMinus, MapPin, Search, Snowflake } from 'lucide-react';
 import { format } from 'date-fns';
@@ -26,17 +26,9 @@ export default function StudioAnalytics() {
   useEffect(() => {
     if (!user || !activeChannel) return;
 
-    const unsubscribeSub = onSnapshot(doc(db, 'channels', activeChannel.id), (docSnap) => {
-      if (docSnap.exists()) {
-        setStats(prev => ({ ...prev, subscribers: docSnap.data().subscribers || 0 }));
-      }
-    });
-
     const fetchAnalytics = async () => {
       try {
-        const q = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoType));
+        const data = await databaseService.getVideosByChannelId(activeChannel.id) as any[];
         
         let views = 0;
         let likes = 0;
@@ -63,6 +55,7 @@ export default function StudioAnalytics() {
           totalIces: ices,
           watchTime: watchTime,
           avgViews: data.length > 0 ? Math.round(views / data.length) : 0,
+          subscribers: activeChannel.subscribers || 0,
           topVideo: topV
         }));
       } catch (error) {
@@ -73,8 +66,7 @@ export default function StudioAnalytics() {
     };
 
     fetchAnalytics();
-    return () => unsubscribeSub();
-  }, [user, activeChannel?.id]);
+  }, [user, activeChannel?.id, activeChannel?.subscribers]);
 
   if (loading) {
     return (

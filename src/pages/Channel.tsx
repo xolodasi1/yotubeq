@@ -6,8 +6,9 @@ import ShortCard from '../components/ShortCard';
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { VideoType, CommunityPost, Playlist } from '../types';
 import { Loader2, Snowflake, Smartphone, MessageSquare, ThumbsUp, Plus, BarChart2, PlaySquare, Info, Calendar, Mail, Globe, Instagram, Youtube, Bell, BellOff, Camera, Music as MusicIcon, Trophy, Users } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, addDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
+// Supabase migration in progress
 import { toast } from 'sonner';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 
@@ -38,55 +39,91 @@ export default function Channel() {
   useEffect(() => {
     if (!id) return;
     
-    // Real-time channel info
-    const unsubscribeChannel = onSnapshot(doc(db, 'channels', id), (channelDoc) => {
-      if (channelDoc.exists()) {
-        const channelData = channelDoc.data();
-        setAuthorInfo({
-          id: channelDoc.id,
-          ownerId: channelData.ownerId,
-          name: channelData.displayName || 'Ice Creator',
-          pseudonym: channelData.pseudonym || channelData.pseudonim || '',
-          photoUrl: channelData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
-          bannerUrl: channelData.bannerUrl || null,
-          bio: channelData.bio || '',
-          ices: channelData.ices || 0,
-          socialLinks: channelData.socialLinks || {},
-          homeLayout: channelData.homeLayout || ['videos', 'shorts', 'music', 'photos'],
-          subscribers: channelData.subscribers || 0,
-          joinedAt: channelData.createdAt?.toDate() || new Date(),
-          lastPostAt: channelData.lastPostAt,
-          pinnedAchievements: channelData.pinnedAchievements || [],
-          isVerified: channelData.isVerified || false
-        });
-        setSubCount(channelData.subscribers || 0);
+    // Initial fetch for channel info
+    const fetchChannelInfo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('channels')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (data) {
+          setAuthorInfo({
+            id: data.id,
+            ownerId: data.owner_id,
+            name: data.display_name,
+            pseudonym: data.pseudonym || '',
+            photoUrl: data.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
+            bannerUrl: data.banner_url || null,
+            bio: data.bio || '',
+            ices: data.ices || 0,
+            socialLinks: data.social_links || {},
+            homeLayout: data.home_layout || ['videos', 'shorts', 'music', 'photos'],
+            subscribers: data.subscribers || 0,
+            joinedAt: new Date(data.created_at),
+            lastPostAt: data.last_post_at,
+            pinnedAchievements: data.pinned_achievements || [],
+            isVerified: data.is_verified || false
+          });
+          setSubCount(data.subscribers || 0);
+        }
+      } catch (err) {
+        console.error("Error fetching channel info:", err);
       }
-    });
+    };
+
+    fetchChannelInfo();
+
+    // Subscribe to channel changes
+    const channelSubscription = supabase
+      .channel(`channel_${id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'channels', filter: `id=eq.${id}` }, payload => {
+        const data = payload.new as any;
+        setAuthorInfo((prev: any) => ({
+          ...prev,
+          name: data.display_name,
+          pseudonym: data.pseudonym,
+          photoUrl: data.photo_url,
+          bannerUrl: data.banner_url,
+          bio: data.bio,
+          ices: data.ices,
+          socialLinks: data.social_links,
+          homeLayout: data.home_layout,
+          subscribers: data.subscribers,
+          lastPostAt: data.last_post_at,
+          pinnedAchievements: data.pinned_achievements,
+          isVerified: data.is_verified
+        }));
+        setSubCount(data.subscribers);
+      })
+      .subscribe();
 
     const fetchChannelVideos = async () => {
       try {
         setLoading(true);
-        const q = query(
-          collection(db, 'videos'),
-          where('authorId', '==', id),
-          orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => {
-          const videoData = doc.data();
-          return {
-            ...videoData,
-            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
-          };
-        }) as VideoType[];
-        setVideos(data || []);
+        const { data: videosDataRaw, error: videosError } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('author_id', id)
+          .order('created_at', { ascending: false });
+
+        if (videosError) throw videosError;
+
+        const mappedVideos = (videosDataRaw || []).map(v => databaseService.mapVideo(v));
+        setVideos(mappedVideos as any);
 
         if (user) {
-          const subId = `${user.uid}_${id}`;
-          const subSnap = await getDoc(doc(db, 'subscriptions', subId));
-          if (subSnap.exists()) {
+          const { data: subData } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', user.uid)
+            .eq('channel_id', id)
+            .maybeSingle();
+
+          if (subData) {
             setIsSubscribed(true);
-            setNotificationsEnabled(subSnap.data().notificationsEnabled || false);
+            setNotificationsEnabled(subData.notifications_enabled || false);
           } else {
             setIsSubscribed(false);
             setNotificationsEnabled(false);
@@ -103,31 +140,49 @@ export default function Channel() {
     };
 
     fetchChannelVideos();
-    return () => unsubscribeChannel();
+    return () => {
+      supabase.removeChannel(channelSubscription);
+    };
   }, [id, user]);
 
   // Real-time Community Posts
   useEffect(() => {
     if (!id || activeTab !== 'community') return;
 
-    const q = query(
-      collection(db, 'community_posts'),
-      where('authorId', '==', id),
-      orderBy('createdAt', 'desc')
-    );
+    const fetchPosts = async () => {
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select('*')
+        .eq('author_id', id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching posts:", error);
+        return;
+      }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const posts = snapshot.docs.map(doc => {
-        const postData = doc.data();
-        return {
-          ...postData,
-          createdAt: postData.createdAt?.toDate?.()?.toISOString() || postData.createdAt
-        };
-      }) as CommunityPost[];
-      setCommunityPosts(posts);
-    });
+      setCommunityPosts((data || []).map(p => ({
+        ...p,
+        authorId: p.author_id,
+        authorName: p.author_name,
+        authorPhotoUrl: p.author_photo_url,
+        createdAt: p.created_at,
+        pollOptions: p.poll_options
+      })) as any);
+    };
 
-    return () => unsubscribe();
+    fetchPosts();
+
+    const postsSubscription = supabase
+      .channel(`community_posts_${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_posts', filter: `author_id=eq.${id}` }, () => {
+        fetchPosts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(postsSubscription);
+    };
   }, [id, activeTab]);
 
   // Fetch Playlists
@@ -135,13 +190,23 @@ export default function Channel() {
     if (!id || activeTab !== 'playlists') return;
 
     const fetchPlaylists = async () => {
-      const q = query(
-        collection(db, 'playlists'),
-        where('authorId', '==', id),
-        orderBy('createdAt', 'desc')
-      );
-      const snap = await getDocs(q);
-      setPlaylists(snap.docs.map(doc => doc.data() as Playlist));
+      const { data, error } = await supabase
+        .from('playlists')
+        .select('*')
+        .eq('author_id', id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching playlists:", error);
+        return;
+      }
+
+      setPlaylists((data || []).map(pl => ({
+        ...pl,
+        authorId: pl.author_id,
+        createdAt: pl.created_at,
+        videoIds: pl.video_ids
+      })) as any);
     };
 
     fetchPlaylists();
@@ -149,11 +214,14 @@ export default function Channel() {
 
   const handleToggleNotifications = async () => {
     if (!user || !id || !isSubscribed) return;
-    const subId = `${user.uid}_${id}`;
-    const subRef = doc(db, 'subscriptions', subId);
     try {
       const newState = !notificationsEnabled;
-      await updateDoc(subRef, { notificationsEnabled: newState });
+      await supabase
+        .from('subscriptions')
+        .update({ notifications_enabled: newState })
+        .eq('user_id', user.uid)
+        .eq('channel_id', id);
+        
       setNotificationsEnabled(newState);
       toast.success(newState ? 'Уведомления включены' : 'Уведомления выключены');
     } catch (error) {
@@ -167,51 +235,48 @@ export default function Channel() {
       return;
     }
 
-    // Restriction: Only primary channel can interact
     if (!activeChannel?.isPrimary) {
       toast.error('Подписываться можно только с основного канала');
       return;
     }
 
-    // Restriction: Cannot subscribe to own channels
     if (user.uid === authorInfo.ownerId || user.uid === id) {
       toast.error("Вы не можете подписаться на свои каналы");
       return;
     }
 
-    const subId = `${user.uid}_${id}`;
-    const subRef = doc(db, 'subscriptions', subId);
-    const channelRef = doc(db, 'channels', id);
-
     try {
       if (isSubscribed) {
-        await deleteDoc(subRef);
-        await updateDoc(channelRef, { subscribers: increment(-1) }).catch(() => {});
+        await supabase
+          .from('subscriptions')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('channel_id', id);
+          
+        await supabase.rpc('decrement_subscribers', { channel_id_input: id });
         setIsSubscribed(false);
         setNotificationsEnabled(false);
         setSubCount(Math.max(0, subCount - 1));
         toast.success('Вы отписались');
       } else {
-        await Promise.all([
-          setDoc(subRef, {
-            id: subId,
-            subscriberId: user.uid,
-            channelId: id,
-            createdAt: new Date(),
-            notificationsEnabled: false
-          }),
-          updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {})
-        ]);
+        await supabase.from('subscriptions').insert({
+          user_id: user.uid,
+          channel_id: id,
+          created_at: new Date().toISOString(),
+          notifications_enabled: false
+        });
+        
+        await supabase.rpc('increment_subscribers', { channel_id_input: id });
         
         // Add notification
         try {
-          await addDoc(collection(db, 'notifications'), {
-            userId: id,
+          await supabase.from('notifications').insert({
+            user_id: id,
             type: 'subscribe',
-            fromUserId: user.uid,
-            fromUserName: user.displayName,
-            fromUserAvatar: user.photoURL,
-            createdAt: new Date(),
+            from_user_id: user.uid,
+            from_user_name: user.displayName,
+            from_user_avatar: user.photoURL,
+            created_at: new Date().toISOString(),
             read: false
           });
         } catch (err) {
@@ -224,8 +289,20 @@ export default function Channel() {
         toast.success('Вы подписались!');
       }
     } catch (error) {
-      console.error("Error toggling subscription:", error);
-      toast.error('Не удалось обновить подписку');
+      // Fallback update
+      try {
+        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', id).single();
+        if (channelData) {
+          const newCount = isSubscribed ? Math.max(0, channelData.subscribers - 1) : channelData.subscribers + 1;
+          await supabase.from('channels').update({ subscribers: newCount }).eq('id', id);
+          setIsSubscribed(!isSubscribed);
+          setSubCount(newCount);
+          toast.success(isSubscribed ? 'Вы отписались' : 'Вы подписались!');
+        }
+      } catch (e) {
+        console.error("Error toggling subscription Fallback:", e);
+        toast.error('Не удалось обновить подписку');
+      }
     }
   };
 
@@ -233,8 +310,6 @@ export default function Channel() {
     e.preventDefault();
     if (!user || !activeChannel || !newPostText.trim() || isPosting) return;
 
-    // Restriction: Community posts are per-channel, but user said interactions are primary only.
-    // However, posting on your own channel should be allowed from that channel.
     if (activeChannel.id !== id) {
       toast.error('Вы можете публиковать посты только от имени этого канала');
       return;
@@ -243,24 +318,24 @@ export default function Channel() {
     setIsPosting(true);
     try {
       const postId = crypto.randomUUID();
-      const postData: CommunityPost = {
+      const postData = {
         id: postId,
-        authorId: activeChannel.id,
-        authorName: activeChannel.displayName,
-        authorPhotoUrl: activeChannel.photoURL,
+        author_id: activeChannel.id,
+        author_name: activeChannel.displayName,
+        author_photo_url: activeChannel.photoURL,
         text: newPostText,
         type: postType,
-        createdAt: new Date(),
+        created_at: new Date().toISOString(),
         likes: 0
-      };
+      } as any;
 
       if (postType === 'poll') {
-        postData.pollOptions = pollOptions
+        postData.poll_options = pollOptions
           .filter(opt => opt.trim() !== '')
           .map(opt => ({ text: opt, votes: 0, voters: [] }));
       }
 
-      await setDoc(doc(db, 'community_posts', postId), postData);
+      await supabase.from('community_posts').insert(postData);
       setNewPostText('');
       setPollOptions(['', '']);
       setPostType('text');
@@ -278,7 +353,6 @@ export default function Channel() {
       return;
     }
 
-    const postRef = doc(db, 'community_posts', postId);
     const post = communityPosts.find(p => p.id === postId);
     if (!post || !post.pollOptions) return;
 
@@ -289,12 +363,15 @@ export default function Channel() {
       return;
     }
 
-    const newOptions = [...post.pollOptions];
+    const newOptions = JSON.parse(JSON.stringify(post.pollOptions));
     newOptions[optionIndex].votes += 1;
     newOptions[optionIndex].voters.push(user.uid);
 
     try {
-      await updateDoc(postRef, { pollOptions: newOptions });
+      await supabase
+        .from('community_posts')
+        .update({ poll_options: newOptions })
+        .eq('id', postId);
     } catch (error) {
       toast.error('Ошибка при голосовании');
     }

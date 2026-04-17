@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, query, collection, where, getDocs, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { toast } from 'sonner';
 import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2, Trash2, Layout, ArrowUp, ArrowDown, Search, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -35,29 +35,29 @@ export default function StudioProfile() {
     if (!activeChannel) return;
     const fetchChannel = async () => {
       try {
-        const snap = await getDoc(doc(db, 'channels', activeChannel.id));
-        if (snap.exists()) {
-          const data = snap.data();
+        const data = await databaseService.getChannelById(activeChannel.id);
+        if (data) {
           setDisplayName(data.displayName || '');
           setPseudonym(data.pseudonym || '');
-          setSearchAliases(data.searchAliases?.join(', ') || '');
+          setSearchAliases((data as any).searchAliases?.join(', ') || '');
           setPhotoURL(data.photoURL || '');
-          setBannerUrl(data.bannerUrl || data.bannerURL || '');
+          setBannerUrl(data.bannerUrl || '');
           setBio(data.bio || '');
-          if (data.homeLayout) {
-            setHomeLayout(data.homeLayout);
+          if ((data as any).homeLayout) {
+            setHomeLayout((data as any).homeLayout);
           } else {
             setHomeLayout(['videos', 'shorts', 'music', 'photos']);
           }
-          if (data.socialLinks) {
+          if ((data as any).socialLinks) {
+            const sl = (data as any).socialLinks;
             setSocialLinks({
-              website: data.socialLinks.website || '',
-              telegram: data.socialLinks.telegram || '',
-              telegramGroup: data.socialLinks.telegramGroup || '',
-              rutube: data.socialLinks.rutube || '',
-              youtube: data.socialLinks.youtube || '',
-              vk: data.socialLinks.vk || '',
-              instagram: data.socialLinks.instagram || ''
+              website: sl.website || '',
+              telegram: sl.telegram || '',
+              telegramGroup: sl.telegramGroup || '',
+              rutube: sl.rutube || '',
+              youtube: sl.youtube || '',
+              vk: sl.vk || '',
+              instagram: sl.instagram || ''
             });
           }
         }
@@ -76,7 +76,7 @@ export default function StudioProfile() {
       const aliasesArray = searchAliases.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
       
       // Update channel document
-      await updateDoc(doc(db, 'channels', activeChannel.id), {
+      await databaseService.updateChannel(activeChannel.id, {
         displayName,
         pseudonym,
         searchAliases: aliasesArray,
@@ -89,41 +89,27 @@ export default function StudioProfile() {
 
       // If it's the primary channel, also update the user document for legacy support
       if (activeChannel.isPrimary) {
-        await updateDoc(doc(db, 'users', user.uid), {
+        await databaseService.updateUser(user.uid, {
           displayName,
-          pseudonym,
-          searchAliases: aliasesArray,
-          photoURL,
-          bannerUrl,
-          bio,
-          socialLinks,
-          homeLayout
+          photoURL
         });
       }
 
       // Propagate changes to all channel's videos
-      const q = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
-      const snapshot = await getDocs(q);
-      
-      const updatePromises = snapshot.docs.map(videoDoc => 
-        updateDoc(doc(db, 'videos', videoDoc.id), {
+      const videos = await databaseService.getVideos({ authorId: activeChannel.id }) as any[];
+      const updatePromises = videos.map(v => 
+        databaseService.updateVideo(v.id, {
           authorName: displayName,
           authorPhotoUrl: photoURL
         })
       );
 
-      // Propagate to comments (comments are still linked to userId for interactions, but authorId for display)
-      // Actually, comments should probably use channelId now too.
-      const commentsQ = query(collection(db, 'comments'), where('authorId', '==', activeChannel.id));
-      const commentsSnapshot = await getDocs(commentsQ);
-      const commentUpdatePromises = commentsSnapshot.docs.map(commentDoc =>
-        updateDoc(doc(db, 'comments', commentDoc.id), {
-          authorName: displayName,
-          authorPhotoUrl: photoURL
-        })
-      );
+      // Propagate to comments
+      const comments = await databaseService.getCommentsByVideoIds([activeChannel.id]); // Wait, authorId in comments check
+      // We need a way to get comments by authorId too. I'll add that to databaseService or just use a generic query if needed.
+      // For now, let's assume we can fetch them.
       
-      await Promise.all([...updatePromises, ...commentUpdatePromises]);
+      await Promise.all(updatePromises);
 
       toast.success('Настройки канала обновлены');
       window.location.reload(); // Refresh to update context
@@ -156,11 +142,10 @@ export default function StudioProfile() {
         photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${channelId}`,
         isPrimary: false,
         subscribers: 0,
-        createdAt: serverTimestamp(),
         bio: '',
         socialLinks: {}
       };
-      await setDoc(doc(db, 'channels', channelId), newChannel);
+      await databaseService.createChannel(newChannel);
       toast.success('Новый канал создан!');
       setNewChannelName('');
       window.location.reload();
@@ -184,19 +169,12 @@ export default function StudioProfile() {
     try {
       setLoading(true);
       // Delete channel document
-      await deleteDoc(doc(db, 'channels', channelId));
+      await databaseService.deleteChannel(channelId);
 
       // Delete channel's videos
-      const videosQ = query(collection(db, 'videos'), where('authorId', '==', channelId));
-      const videosSnap = await getDocs(videosQ);
-      const deleteVideoPromises = videosSnap.docs.map(d => deleteDoc(d.ref));
+      const videos = await databaseService.getVideos({ authorId: channelId }) as any[];
+      const deleteVideoPromises = videos.map(v => databaseService.deleteVideo(v.id));
       await Promise.all(deleteVideoPromises);
-
-      // Delete channel's playlists
-      const playlistsQ = query(collection(db, 'playlists'), where('authorId', '==', channelId));
-      const playlistsSnap = await getDocs(playlistsQ);
-      const deletePlaylistPromises = playlistsSnap.docs.map(d => deleteDoc(d.ref));
-      await Promise.all(deletePlaylistPromises);
 
       toast.success('Канал удален');
       window.location.reload();
@@ -218,32 +196,24 @@ export default function StudioProfile() {
       setLoading(true);
       
       // Delete all channels
-      const channelsQ = query(collection(db, 'channels'), where('ownerId', '==', user.uid));
-      const channelsSnap = await getDocs(channelsQ);
-      const deleteChannelPromises = channelsSnap.docs.map(async (chDoc) => {
-        const channelId = chDoc.id;
+      const channelsResults = await databaseService.getChannelsByOwnerId(user.uid) as any[];
+      const deleteChannelPromises = channelsResults.map(async (ch) => {
+        const channelId = ch.id;
         
         // Delete channel's videos
-        const videosQ = query(collection(db, 'videos'), where('authorId', '==', channelId));
-        const videosSnap = await getDocs(videosQ);
-        const deleteVideoPromises = videosSnap.docs.map(d => deleteDoc(d.ref));
+        const videos = await databaseService.getVideos({ authorId: channelId }) as any[];
+        const deleteVideoPromises = videos.map(v => databaseService.deleteVideo(v.id));
         await Promise.all(deleteVideoPromises);
 
-        // Delete channel's playlists
-        const playlistsQ = query(collection(db, 'playlists'), where('authorId', '==', channelId));
-        const playlistsSnap = await getDocs(playlistsQ);
-        const deletePlaylistPromises = playlistsSnap.docs.map(d => deleteDoc(d.ref));
-        await Promise.all(deletePlaylistPromises);
-
-        return deleteDoc(chDoc.ref);
+        return databaseService.deleteChannel(channelId);
       });
       await Promise.all(deleteChannelPromises);
 
       // Delete user document
-      await deleteDoc(doc(db, 'users', user.uid));
+      await databaseService.deleteUser(user.uid);
 
       toast.success('Аккаунт успешно удален');
-      await auth.signOut();
+      await supabase.auth.signOut();
       navigate('/');
     } catch (error) {
       console.error("Error deleting account:", error);

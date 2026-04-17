@@ -4,8 +4,9 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType, Playlist } from '../types';
 import { Loader2, PlaySquare, ChevronRight } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
+// Supabase refactored
 
 export default function PlaylistDetail() {
   const { id } = useParams<{ id: string }>();
@@ -19,17 +20,32 @@ export default function PlaylistDetail() {
     const fetchPlaylist = async () => {
       try {
         setLoading(true);
-        const snap = await getDoc(doc(db, 'playlists', id));
-        if (snap.exists()) {
-          const data = snap.data() as Playlist;
-          setPlaylist(data);
+        const { data, error } = await supabase
+          .from('playlists')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (data) {
+          setPlaylist({
+            ...data,
+            authorId: data.author_id,
+            createdAt: data.created_at,
+            videoIds: data.video_ids
+          } as Playlist);
 
-          const videoPromises = data.videoIds.map(vid => getDoc(doc(db, 'videos', vid)));
-          const videoSnaps = await Promise.all(videoPromises);
-          setVideos(videoSnaps.filter(s => s.exists()).map(s => ({
-            ...s.data(),
-            createdAt: s.data().createdAt?.toDate()?.toISOString()
-          })) as VideoType[]);
+          if (data.video_ids && data.video_ids.length > 0) {
+            const { data: videosData, error: videosError } = await supabase
+              .from('videos')
+              .select('*')
+              .in('id', data.video_ids);
+            
+            if (videosError) throw videosError;
+            
+            setVideos((videosData || []).map(v => databaseService.mapVideo(v)) as any);
+          } else {
+            setVideos([]);
+          }
         }
       } catch (error) {
         console.error("Error fetching playlist detail:", error);

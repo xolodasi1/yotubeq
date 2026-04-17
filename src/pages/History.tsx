@@ -3,8 +3,9 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, History as HistoryIcon, Trash2, Search, Calendar, Clock, X, Settings } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
+// Supabase refactored
 import { toast } from 'sonner';
 import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -21,25 +22,24 @@ export default function History() {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        const q = query(collection(db, 'history'), where('userId', '==', activeChannel.id), orderBy('watchedAt', 'desc'));
-        const snap = await getDocs(q);
+        const { data, error } = await supabase
+          .from('history')
+          .select('*, videos(*)')
+          .eq('user_id', activeChannel.id)
+          .order('watched_at', { ascending: false });
         
-        const videoPromises = snap.docs.map(async (d) => {
-          const videoDoc = await getDoc(doc(db, 'videos', d.data().videoId));
-          if (videoDoc.exists()) {
-            return {
-              ...videoDoc.data(),
-              id: videoDoc.id,
-              createdAt: videoDoc.data().createdAt?.toDate()?.toISOString(),
-              watchedAt: d.data().watchedAt?.toDate(),
-              historyId: d.id
-            } as VideoType & { watchedAt: any, historyId: string };
-          }
-          return null;
-        });
+        if (error) throw error;
+        
+        const results = (data || []).map(item => {
+          if (!item.videos) return null;
+          return {
+            ...databaseService.mapVideo(item.videos),
+            watchedAt: new Date(item.watched_at),
+            historyId: item.id
+          } as VideoType & { watchedAt: any, historyId: string };
+        }).filter(v => v !== null);
 
-        const results = await Promise.all(videoPromises);
-        setVideos(results.filter(v => v !== null) as (VideoType & { watchedAt: any, historyId: string })[]);
+        setVideos(results as (VideoType & { watchedAt: any, historyId: string })[]);
       } catch (error) {
         console.error("Error fetching history:", error);
       } finally {
@@ -48,11 +48,11 @@ export default function History() {
     };
 
     fetchHistory();
-  }, [user]);
+  }, [user, activeChannel]);
 
   const removeHistoryItem = async (historyId: string) => {
     try {
-      await deleteDoc(doc(db, 'history', historyId));
+      await supabase.from('history').delete().eq('id', historyId);
       setVideos(videos.filter(v => v.historyId !== historyId));
       toast.success('Удалено из истории');
     } catch (error) {
@@ -64,10 +64,7 @@ export default function History() {
     if (!user || !activeChannel) return;
     if (!window.confirm('Очистить всю историю просмотров?')) return;
     try {
-      const q = query(collection(db, 'history'), where('userId', '==', activeChannel.id));
-      const snap = await getDocs(q);
-      const deletePromises = snap.docs.map(d => deleteDoc(d.ref));
-      await Promise.all(deletePromises);
+      await supabase.from('history').delete().eq('user_id', activeChannel.id);
       setVideos([]);
       toast.success('История очищена');
     } catch (error) {

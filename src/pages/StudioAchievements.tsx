@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Users, ArrowRight, Play, Smartphone, Pin, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { toast } from 'sonner';
 
@@ -13,9 +13,14 @@ export default function StudioAchievements() {
   useEffect(() => {
     if (!activeChannel) return;
     const fetchVideos = async () => {
-      const q = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
-      const snapshot = await getDocs(q);
-      setVideos(snapshot.docs.map(doc => doc.data() as VideoType));
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('author_id', activeChannel.id);
+      
+      if (!error && data) {
+        setVideos(data.map(d => databaseService.mapVideo(d)));
+      }
     };
     fetchVideos();
   }, [activeChannel]);
@@ -26,38 +31,33 @@ export default function StudioAchievements() {
       return;
     }
 
-    const isPinned = activeChannel.pinnedAchievements?.includes(achievementId);
-    const channelRef = doc(db, 'channels', activeChannel.id);
-
-    console.log(`Toggling pin for ${achievementId}. Current pinned:`, activeChannel.pinnedAchievements);
+    const currentPinned = activeChannel.pinnedAchievements || [];
+    const isPinned = currentPinned.includes(achievementId);
 
     try {
+      let updatedPinned: string[] = [];
       if (isPinned) {
-        await updateDoc(channelRef, {
-          pinnedAchievements: arrayRemove(achievementId)
-        });
-        const updatedPinned = activeChannel.pinnedAchievements?.filter(id => id !== achievementId) || [];
-        setActiveChannel({
-          ...activeChannel,
-          pinnedAchievements: updatedPinned
-        });
-        toast.success('Достижение убрано с канала');
+        updatedPinned = currentPinned.filter(id => id !== achievementId);
       } else {
-        const currentPinnedCount = activeChannel.pinnedAchievements?.length || 0;
-        if (currentPinnedCount >= 3) {
+        if (currentPinned.length >= 3) {
           toast.error('Можно закрепить не более 3 достижений');
           return;
         }
-        await updateDoc(channelRef, {
-          pinnedAchievements: arrayUnion(achievementId)
-        });
-        const updatedPinned = [...(activeChannel.pinnedAchievements || []), achievementId];
-        setActiveChannel({
-          ...activeChannel,
-          pinnedAchievements: updatedPinned
-        });
-        toast.success('Достижение закреплено на канале');
+        updatedPinned = [...currentPinned, achievementId];
       }
+
+      const { error } = await supabase
+        .from('channels')
+        .update({ pinned_achievements: updatedPinned })
+        .eq('id', activeChannel.id);
+      
+      if (error) throw error;
+
+      setActiveChannel({
+        ...activeChannel,
+        pinnedAchievements: updatedPinned
+      });
+      toast.success(isPinned ? 'Достижение убрано с канала' : 'Достижение закреплено на канале');
     } catch (error: any) {
       console.error('Error updating pinned achievements:', error);
       toast.error(`Ошибка: ${error.message || 'Не удалось обновить достижения'}`);

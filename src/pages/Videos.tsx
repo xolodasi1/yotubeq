@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { Loader2, PlaySquare } from 'lucide-react';
 import VideoCard from '../components/VideoCard';
@@ -14,28 +14,19 @@ export default function Videos() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const q = query(
-          collection(db, 'videos'), 
-          orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => {
-          const videoData = doc.data();
-          let createdAt = videoData.createdAt;
-          if (createdAt?.toDate) {
-            createdAt = createdAt.toDate().toISOString();
-          } else if (createdAt?.seconds) {
-            createdAt = new Date(createdAt.seconds * 1000).toISOString();
-          }
-          return {
-            ...videoData,
-            id: doc.id,
-            createdAt
-          };
-        }) as VideoType[];
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        const mappedData = (data || []).map(d => databaseService.mapVideo(d));
         
         // Filter only regular videos
-        const regularVideos = data.filter(v => !v.isShort && !v.isMusic && !v.isPhoto && v.type !== 'photo');
+        const regularVideos = mappedData.filter(v => 
+          !v.isShort && !v.isMusic && !v.isPhoto && v.type !== 'photo'
+        );
         setVideos(regularVideos);
       } catch (error) {
         console.error("Error fetching videos:", error);

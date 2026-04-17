@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { Eye, ThumbsUp, MessageSquare, Trash2, Edit, ExternalLink, Search, Filter, MoreVertical, BarChart2, X, Save, Snowflake, Plus, Loader2, AlertCircle, Layout, Video as VideoIcon, Image as ImageIcon, Music as MusicIcon, Smartphone, Clock, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -43,21 +43,15 @@ export default function StudioContent() {
 
     const fetchVideos = async () => {
       try {
-        const q = query(
-          collection(db, 'videos'),
-          where('authorId', '==', activeChannel.id),
-          orderBy('createdAt', 'desc')
-        );
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => {
-          const videoData = doc.data();
-          return {
-            id: doc.id,
-            ...videoData,
-            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
-          } as VideoType;
-        });
-        setVideos(data);
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('author_id', activeChannel.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setVideos((data || []).map(v => databaseService.mapVideo(v)) as any);
       } catch (error) {
         console.error("Error fetching studio content:", error);
       } finally {
@@ -72,7 +66,7 @@ export default function StudioContent() {
     if (!window.confirm('Вы уверены, что хотите удалить это видео?')) return;
 
     try {
-      await deleteDoc(doc(db, 'videos', videoId));
+      await supabase.from('videos').delete().eq('id', videoId);
       setVideos(videos.filter(v => v.id !== videoId));
       toast.success('Видео успешно удалено');
     } catch (error) {
@@ -85,9 +79,18 @@ export default function StudioContent() {
 
     const fetchPlaylists = async () => {
       try {
-        const q = query(collection(db, 'playlists'), where('authorId', '==', activeChannel.id));
-        const snap = await getDocs(q);
-        setPlaylists(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const { data, error } = await supabase
+          .from('playlists')
+          .select('*')
+          .eq('author_id', activeChannel.id);
+        
+        if (error) throw error;
+        setPlaylists((data || []).map(p => ({
+          ...p,
+          authorId: p.author_id,
+          createdAt: p.created_at,
+          videoIds: p.video_ids
+        })));
       } catch (error) {
         console.error("Error fetching playlists:", error);
       }
@@ -152,10 +155,37 @@ export default function StudioContent() {
         setUploadingThumbnail(false);
       }
 
-      const videoRef = doc(db, 'videos', editingVideo.id);
       const hashtagsArray = editHashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
       
       const updateData: any = {
+        title: editTitle,
+        description: editDescription,
+        thumbnail_url: thumbnailUrl,
+        category: editCategory,
+        hashtags: hashtagsArray,
+        audience: editAudience,
+        visibility: editVisibility,
+        timestamps: editTimestamps
+      };
+
+      await supabase.from('videos').update(updateData).eq('id', editingVideo.id);
+
+      // Handle Playlist update
+      if (editPlaylistId) {
+        const { data: pData } = await supabase.from('playlists').select('video_ids').eq('id', editPlaylistId).single();
+        if (pData) {
+          const videoIds = pData.video_ids || [];
+          if (!videoIds.includes(editingVideo.id)) {
+            await supabase
+              .from('playlists')
+              .update({ video_ids: [...videoIds, editingVideo.id] })
+              .eq('id', editPlaylistId);
+          }
+        }
+      }
+
+      setVideos(videos.map(v => v.id === editingVideo.id ? { 
+        ...v, 
         title: editTitle,
         description: editDescription,
         thumbnailUrl,
@@ -164,28 +194,6 @@ export default function StudioContent() {
         audience: editAudience,
         visibility: editVisibility,
         timestamps: editTimestamps
-      };
-
-      await updateDoc(videoRef, updateData);
-
-      // Handle Playlist update
-      if (editPlaylistId) {
-        const playlistRef = doc(db, 'playlists', editPlaylistId);
-        const playlistSnap = await getDoc(playlistRef);
-        if (playlistSnap.exists()) {
-          const pData = playlistSnap.data();
-          const videoIds = pData.videoIds || [];
-          if (!videoIds.includes(editingVideo.id)) {
-            await updateDoc(playlistRef, {
-              videoIds: [...videoIds, editingVideo.id]
-            });
-          }
-        }
-      }
-
-      setVideos(videos.map(v => v.id === editingVideo.id ? { 
-        ...v, 
-        ...updateData
       } : v));
       toast.success('Видео успешно обновлено');
       setEditingVideo(null);

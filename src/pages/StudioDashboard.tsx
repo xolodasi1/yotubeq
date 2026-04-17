@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit, getDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, RefreshCw, ChevronDown, Trophy } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { toast } from 'sonner';
-import { arrayUnion, arrayRemove, doc as firestoreDoc, updateDoc as firestoreUpdateDoc } from 'firebase/firestore';
 
 import { APP_LOGO_URL } from '../constants';
 
@@ -41,31 +40,29 @@ export default function StudioDashboard() {
 
     const fetchStudioData = async () => {
       try {
-        // ... existing video fetching ...
-        const vq = query(
-          collection(db, 'videos'),
-          where('authorId', '==', activeChannel.id),
-          orderBy('createdAt', 'desc'),
-          limit(5)
-        );
-        const vSnapshot = await getDocs(vq);
-        const vData = vSnapshot.docs.map(doc => {
-          const videoData = doc.data();
-          return {
-            id: doc.id,
-            ...videoData,
-            createdAt: videoData.createdAt?.toDate?.()?.toISOString() || videoData.createdAt
-          } as VideoType;
-        });
-        setVideos(vData);
+        // Fetch last 5 videos
+        const { data: lastVideos, error: vError } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('author_id', activeChannel.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (vError) throw vError;
+        setVideos((lastVideos || []).map(d => databaseService.mapVideo(d)));
 
-        const allVq = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
-        const allVSnapshot = await getDocs(allVq);
+        // Fetch all videos for stats
+        const { data: allVideos, error: allVError } = await supabase
+          .from('videos')
+          .select('views, likes, ices')
+          .eq('author_id', activeChannel.id);
+        
+        if (allVError) throw allVError;
+        
         let views = 0;
         let likes = 0;
         let ices = 0;
-        allVSnapshot.docs.forEach(doc => {
-          const d = doc.data();
+        (allVideos || []).forEach(d => {
           views += d.views || 0;
           likes += d.likes || 0;
           ices += d.ices || 0;
@@ -80,35 +77,38 @@ export default function StudioDashboard() {
 
         // Fetch competitors data
         if (activeChannel.competitors && activeChannel.competitors.length > 0) {
-          const compPromises = activeChannel.competitors.map(id => getDoc(firestoreDoc(db, 'channels', id)));
-          const compSnaps = await Promise.all(compPromises);
-          const compData = compSnaps.filter(s => s.exists()).map(s => ({ id: s.id, ...s.data() }));
-          setCompetitorsData(compData);
+          const { data: compData, error: compError } = await supabase
+            .from('channels')
+            .select('*')
+            .in('id', activeChannel.competitors);
+          
+          if (!compError && compData) {
+            setCompetitorsData(compData.map(d => databaseService.mapChannel(d)));
+          }
         } else {
           setCompetitorsData([]);
         }
 
         // Fetch recent subscribers
-        const subsQuery = query(
-          collection(db, 'subscriptions'),
-          where('channelId', '==', activeChannel.id),
-          orderBy('createdAt', 'desc'),
-          limit(20)
-        );
-        const subsSnap = await getDocs(subsQuery);
+        const { data: subsData, error: subsError } = await supabase
+          .from('subscriptions')
+          .select('*, users(*)')
+          .eq('channel_id', activeChannel.id)
+          .order('created_at', { ascending: false })
+          .limit(30);
         
-        const subDataWithProfiles = [];
-        for (const sdoc of subsSnap.docs) {
-          const subData = sdoc.data();
-          const pSnap = await getDoc(firestoreDoc(db, 'users', subData.subscriberId));
-          if (pSnap.exists()) {
-            const pData = pSnap.data();
-            if (pData.isSubscriptionPublic !== false) {
-              subDataWithProfiles.push({ id: pSnap.id, ...pData });
-            }
-          }
+        if (!subsError && subsData) {
+          const publicSubs = subsData
+            .filter(item => item.users?.is_subscription_public !== false)
+            .map(item => ({
+               id: item.users?.id,
+               displayName: item.users?.display_name,
+               photoURL: item.users?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.users?.id}`,
+               subscribers: item.users?.subscribers || 0
+            }))
+            .slice(0, 10);
+          setRecentSubscribers(publicSubs);
         }
-        setRecentSubscribers(subDataWithProfiles.slice(0, 10)); // Take top 10 public
 
       } catch (error) {
         console.error("Error fetching studio data:", error);
@@ -129,25 +129,18 @@ export default function StudioDashboard() {
     
     setIsSearching(true);
     try {
-      console.log('Searching for competitors with query:', searchQuery);
-      const q = query(collection(db, 'channels'), limit(20));
-      const snap = await getDocs(q);
+      const { data, error } = await supabase
+        .from('channels')
+        .select('*')
+        .ilike('display_name', `%${searchQuery}%`)
+        .limit(20);
       
-      const results = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter((c: any) => {
-          try {
-            const isNotSelf = c.id !== activeChannel.id;
-            const matchesQuery = (c.displayName || '').toLowerCase().includes(searchQuery.toLowerCase());
-            const isNotAlreadyCompetitor = !(activeChannel.competitors || []).includes(c.id);
-            return isNotSelf && matchesQuery && isNotAlreadyCompetitor;
-          } catch (e) {
-            console.error('Error filtering channel:', c, e);
-            return false;
-          }
-        });
+      if (error) throw error;
+      
+      const results = (data || [])
+        .map(c => databaseService.mapChannel(c))
+        .filter(c => c.id !== activeChannel.id && !(activeChannel.competitors || []).includes(c.id));
         
-      console.log('Search results:', results);
       setSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
@@ -160,15 +153,18 @@ export default function StudioDashboard() {
   const addCompetitor = async (channelId: string) => {
     if (!activeChannel) return;
     try {
-      await firestoreUpdateDoc(firestoreDoc(db, 'channels', activeChannel.id), {
-        competitors: arrayUnion(channelId)
-      });
+      const updatedCompetitors = [...(activeChannel.competitors || []), channelId];
+      const { error } = await supabase
+        .from('channels')
+        .update({ competitors: updatedCompetitors })
+        .eq('id', activeChannel.id);
+      
+      if (error) throw error;
+
       toast.success('Конкурент добавлен');
       setSearchQuery('');
       setSearchResults([]);
-      // Refresh will happen via useAuth if it listens to real-time, 
-      // but for now let's manually update local state or wait for refresh
-      window.location.reload(); 
+      setActiveChannel({ ...activeChannel, competitors: updatedCompetitors });
     } catch (error) {
       toast.error('Не удалось добавить конкурента');
     }
@@ -177,11 +173,16 @@ export default function StudioDashboard() {
   const removeCompetitor = async (channelId: string) => {
     if (!activeChannel) return;
     try {
-      await firestoreUpdateDoc(firestoreDoc(db, 'channels', activeChannel.id), {
-        competitors: arrayRemove(channelId)
-      });
+      const updatedCompetitors = (activeChannel.competitors || []).filter(id => id !== channelId);
+      const { error } = await supabase
+        .from('channels')
+        .update({ competitors: updatedCompetitors })
+        .eq('id', activeChannel.id);
+      
+      if (error) throw error;
+
       toast.success('Конкурент удален');
-      window.location.reload();
+      setActiveChannel({ ...activeChannel, competitors: updatedCompetitors });
     } catch (error) {
       toast.error('Не удалось удалить конкурента');
     }

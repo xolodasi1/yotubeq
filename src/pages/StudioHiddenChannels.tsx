@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { databaseService } from '../lib/databaseService';
 import { Ban, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -23,41 +22,8 @@ export default function StudioHiddenChannels() {
 
     const fetchHiddenChannels = async () => {
       try {
-        const q = query(
-          collection(db, 'hidden_channels'),
-          where('userId', '==', user.uid)
-        );
-        const snapshot = await getDocs(q);
-        
-        const channelsData: HiddenChannel[] = [];
-        for (const docSnap of snapshot.docs) {
-          const data = docSnap.data();
-          
-          // Fetch channel details
-          let displayName = 'Неизвестный канал';
-          let photoURL = `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.channelId}`;
-          
-          try {
-            const channelDoc = await getDoc(doc(db, 'channels', data.channelId));
-            if (channelDoc.exists()) {
-              const channelData = channelDoc.data();
-              displayName = channelData.displayName || displayName;
-              photoURL = channelData.photoURL || photoURL;
-            }
-          } catch (err) {
-            console.error("Error fetching channel details:", err);
-          }
-
-          channelsData.push({
-            id: docSnap.id,
-            channelId: data.channelId,
-            displayName,
-            photoURL,
-            addedAt: data.addedAt?.toDate?.()?.toISOString() || new Date().toISOString()
-          });
-        }
-        
-        setHiddenChannels(channelsData);
+        const data = await databaseService.getHiddenChannels(user.uid);
+        setHiddenChannels(data as any[]);
       } catch (error) {
         console.error("Error fetching hidden channels:", error);
         toast.error('Не удалось загрузить список скрытых каналов');
@@ -71,7 +37,7 @@ export default function StudioHiddenChannels() {
 
   const handleRestore = async (id: string, displayName: string) => {
     try {
-      await deleteDoc(doc(db, 'hidden_channels', id));
+      await databaseService.unhideChannel(id);
       setHiddenChannels(hiddenChannels.filter(c => c.id !== id));
       toast.success(`Канал "${displayName}" снова будет рекомендоваться`);
     } catch (error) {

@@ -3,8 +3,9 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, Heart, Play, Shuffle, ListFilter, Search, Clock, Trash2 } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
+// Supabase refactored
 import { toast } from 'sonner';
 
 export default function Favorites() {
@@ -20,25 +21,24 @@ export default function Favorites() {
     const fetchFavorites = async () => {
       try {
         setLoading(true);
-        const q = query(collection(db, 'favorites'), where('userId', '==', user.uid), orderBy('addedAt', 'desc'));
-        const snap = await getDocs(q);
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('*, videos(*)')
+          .eq('user_id', user.uid)
+          .order('added_at', { ascending: false });
         
-        const videoPromises = snap.docs.map(async (d) => {
-          const videoDoc = await getDoc(doc(db, 'videos', d.data().videoId));
-          if (videoDoc.exists()) {
-            return {
-              ...videoDoc.data(),
-              id: videoDoc.id,
-              createdAt: videoDoc.data().createdAt?.toDate()?.toISOString(),
-              addedAt: d.data().addedAt?.toDate(),
-              favoriteId: d.id
-            } as VideoType & { addedAt: any, favoriteId: string };
-          }
-          return null;
-        });
+        if (error) throw error;
+        
+        const results = (data || []).map(item => {
+          if (!item.videos) return null;
+          return {
+            ...databaseService.mapVideo(item.videos),
+            addedAt: new Date(item.added_at),
+            favoriteId: item.id
+          } as VideoType & { addedAt: any, favoriteId: string };
+        }).filter(v => v !== null);
 
-        const results = await Promise.all(videoPromises);
-        setVideos(results.filter(v => v !== null) as (VideoType & { addedAt: any, favoriteId: string })[]);
+        setVideos(results as (VideoType & { addedAt: any, favoriteId: string })[]);
       } catch (error) {
         console.error("Error fetching favorites:", error);
       } finally {
@@ -51,7 +51,7 @@ export default function Favorites() {
 
   const removeFavorite = async (favoriteId: string) => {
     try {
-      await deleteDoc(doc(db, 'favorites', favoriteId));
+      await supabase.from('favorites').delete().eq('id', favoriteId);
       setVideos(videos.filter(v => v.favoriteId !== favoriteId));
       toast.success('Удалено из понравившихся');
     } catch (error) {

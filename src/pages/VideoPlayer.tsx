@@ -6,61 +6,10 @@ import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake,
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { ru } from 'date-fns/locale';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, collection, query, where, limit, getDocs, setDoc, deleteDoc, orderBy, increment, serverTimestamp, onSnapshot, addDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId: string | undefined;
-    email: string | null | undefined;
-    emailVerified: boolean | undefined;
-    isAnonymous: boolean | undefined;
-    tenantId: string | null | undefined;
-    providerInfo: {
-      providerId: string;
-      displayName: string | null;
-      email: string | null;
-      photoUrl: string | null;
-    }[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 export default function VideoPlayer() {
   const { id } = useParams<{ id: string }>();
@@ -272,107 +221,94 @@ export default function VideoPlayer() {
   useEffect(() => {
     if (!id) return;
     
-    const fetchVideo = async () => {
+    const fetchVideoData = async () => {
       try {
         setLoading(true);
-        const videoDocRef = doc(db, 'videos', id);
-        const videoSnap = await getDoc(videoDocRef);
         
-        if (!videoSnap.exists()) {
+        // Fetch Video from Supabase
+        const { data: vData, error: vError } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (vError || !vData) {
           throw new Error('Video not found');
         }
         
-        const data = {
-          id: videoSnap.id,
-          ...videoSnap.data(),
-          createdAt: videoSnap.data().createdAt?.toDate?.()?.toISOString() || videoSnap.data().createdAt
-        } as VideoType;
-        
-        setVideo(data);
+        const data = databaseService.mapVideo(vData);
+        setVideo(data as any);
 
         // Fetch author data
-        const authorSnap = await getDoc(doc(db, 'channels', data.authorId));
-        if (authorSnap.exists()) {
-          setAuthorData(authorSnap.data());
+        const { data: authorDataRaw } = await supabase
+          .from('channels')
+          .select('*')
+          .eq('id', data.authorId)
+          .single();
+        
+        if (authorDataRaw) {
+          setAuthorData(databaseService.mapChannel(authorDataRaw));
         }
 
-        // Increment views
+        // Increment views in Supabase
         try {
-          await updateDoc(videoDocRef, {
-            views: increment(1)
-          });
+          await supabase.from('videos').update({ views: (Number(vData.views) || 0) + 1 }).eq('id', id);
         } catch (err) {
           console.error("Failed to increment views:", err);
         }
 
-        // Fetch related videos of the same type and category
-        let relatedQ;
+        // Fetch related videos
+        let relatedQuery = supabase.from('videos').select('*');
         if (data.isShort) {
-          relatedQ = query(collection(db, 'videos'), where('isShort', '==', true), limit(20));
+          relatedQuery = relatedQuery.eq('is_short', true);
         } else if (data.isMusic) {
-          relatedQ = query(collection(db, 'videos'), where('isMusic', '==', true), limit(20));
+          relatedQuery = relatedQuery.eq('is_music', true);
         } else if (data.isPhoto || data.type === 'photo') {
-          relatedQ = query(collection(db, 'videos'), where('type', '==', 'photo'), limit(20));
+          relatedQuery = relatedQuery.eq('is_photo', true);
         } else {
-          // Try to get videos from the same category first
-          relatedQ = query(
-            collection(db, 'videos'), 
-            where('category', '==', data.category),
-            where('isShort', '==', false),
-            where('isMusic', '==', false),
-            where('type', '!=', 'photo'),
-            limit(20)
-          );
+          relatedQuery = relatedQuery
+            .eq('category', data.category)
+            .eq('is_short', false)
+            .eq('is_music', false);
         }
-
-        const relatedSnap = await getDocs(relatedQ);
-        let relatedData = relatedSnap.docs
-          .map(d => {
-            const vData = d.data();
-            return {
-              id: d.id,
-              ...(vData as any),
-              createdAt: (vData as any).createdAt?.toDate?.()?.toISOString() || (vData as any).createdAt
-            };
-          })
-          .filter((v: any) => v.id !== id) as VideoType[];
+        
+        const { data: relatedDataRaw } = await relatedQuery.limit(20);
+        let relatedData = (relatedDataRaw || [])
+          .map(d => databaseService.mapVideo(d))
+          .filter(v => v.id !== id);
           
-        // If not enough related videos from same category, fetch some general ones
         if (relatedData.length < 5 && !data.isShort && !data.isMusic && !data.isPhoto && data.type !== 'photo') {
-          const generalQ = query(
-            collection(db, 'videos'),
-            where('isShort', '==', false),
-            where('isMusic', '==', false),
-            where('type', '!=', 'photo'),
-            limit(20)
-          );
-          const generalSnap = await getDocs(generalQ);
-          const generalData = generalSnap.docs
-            .map(d => {
-              const vData = d.data();
-              return {
-                id: d.id,
-                ...(vData as any),
-                createdAt: (vData as any).createdAt?.toDate?.()?.toISOString() || (vData as any).createdAt
-              };
-            })
-            .filter((v: any) => v.id !== id && !relatedData.find(rv => rv.id === v.id)) as VideoType[];
+          const { data: generalDataRaw } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('is_short', false)
+            .eq('is_music', false)
+            .limit(20);
+            
+          const generalData = (generalDataRaw || [])
+            .map(d => databaseService.mapVideo(d))
+            .filter(v => v.id !== id && !relatedData.find(rv => rv.id === v.id));
           
           relatedData = [...relatedData, ...generalData].slice(0, 15);
         }
 
-        setRelatedVideos(relatedData);
+        setRelatedVideos(relatedData as any);
 
         // Fetch comments
-        const commentsQ = query(collection(db, 'comments'), where('videoId', '==', id), orderBy('createdAt', 'desc'));
-        const commentsSnap = await getDocs(commentsQ);
-        setComments(commentsSnap.docs.map(d => {
-          const cData = d.data();
-          return {
-            ...cData,
-            createdAt: cData.createdAt?.toDate?.()?.toISOString() || cData.createdAt
-          };
-        }) as Comment[]);
+        const { data: commentsDataRaw } = await supabase
+          .from('comments')
+          .select('*')
+          .eq('video_id', id)
+          .order('created_at', { ascending: false });
+          
+        setComments((commentsDataRaw || []).map(c => ({
+          ...c,
+          videoId: c.video_id,
+          authorId: c.author_id,
+          authorName: c.author_name,
+          authorPhotoUrl: c.author_photo_url,
+          createdAt: c.created_at
+        })) as any);
 
       } catch (error) {
         console.error("Error fetching video:", error);
@@ -381,7 +317,7 @@ export default function VideoPlayer() {
       }
     };
 
-    fetchVideo();
+    fetchVideoData();
     window.scrollTo(0, 0);
   }, [id]);
 
@@ -398,48 +334,66 @@ export default function VideoPlayer() {
 
     const fetchInteractions = async () => {
       try {
-        // Add to History
-        try {
-          const historyId = `${activeChannel?.id || user.uid}_${id}`;
-          await setDoc(doc(db, 'history', historyId), {
-            id: historyId,
-            userId: activeChannel?.id || user.uid,
-            videoId: id,
-            watchedAt: serverTimestamp()
-          });
-        } catch (err) {
-          console.error("Failed to add to history:", err);
-        }
+        // Add to History - Upsert in Supabase
+        const historyId = `${activeChannel?.id || user.uid}_${id}`;
+        await supabase.from('history').upsert({
+          id: historyId,
+          user_id: activeChannel?.id || user.uid,
+          video_id: id,
+          watched_at: new Date().toISOString()
+        });
 
         // Check like/dislike
-        const likeId = `${user.uid}_${id}`;
-        const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
-        if (likeSnap.exists()) {
-          const type = likeSnap.data().type;
-          setIsLiked(type === 'like');
-          setIsDisliked(type === 'dislike');
+        const { data: likeData } = await supabase
+          .from('video_likes')
+          .select('type')
+          .eq('user_id', user.uid)
+          .eq('video_id', id)
+          .maybeSingle();
+          
+        if (likeData) {
+          setIsLiked(likeData.type === 'like');
+          setIsDisliked(likeData.type === 'dislike');
         } else {
           setIsLiked(false);
           setIsDisliked(false);
         }
 
         // Check ice
-        const iceId = `${user.uid}_${id}`;
-        const iceSnap = await getDoc(doc(db, 'video_ices', iceId));
-        setIsIced(iceSnap.exists());
+        const { data: iceData } = await supabase
+          .from('video_ices')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('video_id', id)
+          .maybeSingle();
+        setIsIced(!!iceData);
 
         // Check favorite
-        const favSnap = await getDoc(doc(db, 'favorites', likeId));
-        setIsFavorited(favSnap.exists());
+        const { data: favData } = await supabase
+          .from('favorites')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('video_id', id)
+          .maybeSingle();
+        setIsFavorited(!!favData);
 
         // Check watch later
-        const wlSnap = await getDoc(doc(db, 'watch_later', likeId));
-        setIsWatchLater(wlSnap.exists());
+        const { data: wlData } = await supabase
+          .from('watch_later')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('video_id', id)
+          .maybeSingle();
+        setIsWatchLater(!!wlData);
 
         // Check subscription
-        const subId = `${user.uid}_${video.authorId}`;
-        const subSnap = await getDoc(doc(db, 'subscriptions', subId));
-        setIsSubscribed(subSnap.exists());
+        const { data: subData } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('channel_id', video.authorId)
+          .maybeSingle();
+        setIsSubscribed(!!subData);
       } catch (error) {
         console.error("Error fetching interactions:", error);
       }
@@ -453,28 +407,23 @@ export default function VideoPlayer() {
 
     const fetchMusicVideos = async () => {
       try {
-        let q;
+        let mq = supabase.from('videos').select('*').limit(10);
+        
         if (video.soundName) {
-          q = query(
-            collection(db, 'videos'),
-            where('soundName', '==', video.soundName),
-            limit(10)
-          );
+          mq = mq.eq('sound_name', video.soundName);
         } else if (video.musicMetadata?.author) {
-          q = query(
-            collection(db, 'videos'),
-            where('musicMetadata.author', '==', video.musicMetadata.author),
-            limit(10)
-          );
+          mq = mq.eq('music_metadata->author', video.musicMetadata.author);
         } else {
           return;
         }
 
-        const snap = await getDocs(q);
-        const data = snap.docs
-          .map(d => ({ id: d.id, ...(d.data() as any) } as VideoType))
+        const { data, error } = await mq;
+        if (error) throw error;
+        
+        const musicData = (data || [])
+          .map(d => databaseService.mapVideo(d))
           .filter(v => v.id !== video.id);
-        setMusicVideos(data);
+        setMusicVideos(musicData as any);
       } catch (err) {
         console.error("Error fetching music videos:", err);
       }
@@ -489,60 +438,68 @@ export default function VideoPlayer() {
       return;
     }
 
-    // Restriction: Only primary channel can interact
     if (!activeChannel?.isPrimary) {
       toast.error('Взаимодействовать с контентом можно только с основного канала');
       return;
     }
     
-    const likeId = `${user.uid}_${video.id}`;
-    const likeRef = doc(db, 'video_likes', likeId);
-    const videoRef = doc(db, 'videos', video.id);
-
     try {
       const currentType = isLiked ? 'like' : isDisliked ? 'dislike' : null;
 
       if (currentType === type) {
         // Remove interaction
-        await deleteDoc(likeRef);
-        await updateDoc(videoRef, { [type === 'like' ? 'likes' : 'dislikes']: increment(-1) });
-        setVideo({ ...video, [type === 'like' ? 'likes' : 'dislikes']: Math.max(0, (video[type === 'like' ? 'likes' : 'dislikes'] || 0) - 1) });
+        await supabase
+          .from('video_likes')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('video_id', video.id);
+          
+        const updateObj = { [type === 'like' ? 'likes' : 'dislikes']: Math.max(0, (video[type === 'like' ? 'likes' : 'dislikes'] || 0) - 1) };
+        await supabase.from('videos').update(updateObj).eq('id', video.id);
+        
+        setVideo({ ...video, ...updateObj });
         if (type === 'like') setIsLiked(false);
         else setIsDisliked(false);
       } else if (currentType) {
         // Switch interaction
-        await updateDoc(likeRef, { type });
-        await updateDoc(videoRef, { 
-          [type === 'like' ? 'likes' : 'dislikes']: increment(1),
-          [currentType === 'like' ? 'likes' : 'dislikes']: increment(-1)
-        });
-        setVideo({ 
-          ...video, 
+        await supabase
+          .from('video_likes')
+          .update({ type })
+          .eq('user_id', user.uid)
+          .eq('video_id', video.id);
+          
+        const updateObj = { 
           [type === 'like' ? 'likes' : 'dislikes']: (video[type === 'like' ? 'likes' : 'dislikes'] || 0) + 1,
           [currentType === 'like' ? 'likes' : 'dislikes']: Math.max(0, (video[currentType === 'like' ? 'likes' : 'dislikes'] || 0) - 1)
-        });
+        };
+        await supabase.from('videos').update(updateObj).eq('id', video.id);
+        
+        setVideo({ ...video, ...updateObj });
         setIsLiked(type === 'like');
         setIsDisliked(type === 'dislike');
       } else {
         // New interaction
-        await setDoc(likeRef, { id: likeId, userId: user.uid, videoId: video.id, type });
-        await updateDoc(videoRef, { [type === 'like' ? 'likes' : 'dislikes']: increment(1) });
+        await supabase
+          .from('video_likes')
+          .insert({ user_id: user.uid, video_id: video.id, type });
+          
+        const updateObj = { [type === 'like' ? 'likes' : 'dislikes']: (video[type === 'like' ? 'likes' : 'dislikes'] || 0) + 1 };
+        await supabase.from('videos').update(updateObj).eq('id', video.id);
         
         if (type === 'like' && video.authorId !== user.uid) {
-          await addDoc(collection(db, 'notifications'), {
-            userId: video.authorId,
+          await supabase.from('notifications').insert({
+            user_id: video.authorId,
             type: 'like',
-            videoId: video.id,
-            videoTitle: video.title,
-            fromUserId: user.uid,
-            fromUserName: user.displayName,
-            fromUserAvatar: user.photoURL,
-            createdAt: new Date(),
+            video_id: video.id,
+            video_title: video.title,
+            from_user_id: user.uid,
+            from_user_name: user.displayName,
+            from_user_avatar: user.photoURL,
             read: false
           });
         }
 
-        setVideo({ ...video, [type === 'like' ? 'likes' : 'dislikes']: (video[type === 'like' ? 'likes' : 'dislikes'] || 0) + 1 });
+        setVideo({ ...video, ...updateObj });
         setIsLiked(type === 'like');
         setIsDisliked(type === 'dislike');
       }
@@ -563,23 +520,20 @@ export default function VideoPlayer() {
       return;
     }
 
-    const iceId = `${user.uid}_${video.id}`;
-    const iceRef = doc(db, 'video_ices', iceId);
-    const videoRef = doc(db, 'videos', video.id);
-    const channelRef = doc(db, 'channels', video.authorId);
-
     try {
       if (isIced) {
-        await deleteDoc(iceRef);
-        await updateDoc(videoRef, { ices: increment(-1) });
-        await updateDoc(channelRef, { ices: increment(-1) }).catch(() => {});
-        setVideo({ ...video, ices: Math.max(0, (video.ices || 0) - 1) });
+        await supabase.from('video_ices').delete().eq('user_id', user.uid).eq('video_id', video.id);
+        const newIces = Math.max(0, (video.ices || 0) - 1);
+        await supabase.from('videos').update({ ices: newIces }).eq('id', video.id);
+        
+        setVideo({ ...video, ices: newIces });
         setIsIced(false);
       } else {
-        await setDoc(iceRef, { id: iceId, userId: user.uid, videoId: video.id, createdAt: serverTimestamp() });
-        await updateDoc(videoRef, { ices: increment(1) });
-        await updateDoc(channelRef, { ices: increment(1) }).catch(() => {});
-        setVideo({ ...video, ices: (video.ices || 0) + 1 });
+        await supabase.from('video_ices').insert({ user_id: user.uid, video_id: video.id });
+        const newIces = (video.ices || 0) + 1;
+        await supabase.from('videos').update({ ices: newIces }).eq('id', video.id);
+        
+        setVideo({ ...video, ices: newIces });
         setIsIced(true);
       }
     } catch (error) {
@@ -590,15 +544,13 @@ export default function VideoPlayer() {
 
   const toggleFavorite = async () => {
     if (!user || !id) return toast.error('Войдите, чтобы добавить в избранное');
-    const favId = `${user.uid}_${id}`;
-    const favRef = doc(db, 'favorites', favId);
     try {
       if (isFavorited) {
-        await deleteDoc(favRef);
+        await supabase.from('favorites').delete().eq('user_id', user.uid).eq('video_id', id);
         setIsFavorited(false);
         toast.success('Удалено из избранного');
       } else {
-        await setDoc(favRef, { id: favId, userId: user.uid, videoId: id, addedAt: serverTimestamp() });
+        await supabase.from('favorites').insert({ user_id: user.uid, video_id: id });
         setIsFavorited(true);
         toast.success('Добавлено в избранное');
       }
@@ -607,15 +559,13 @@ export default function VideoPlayer() {
 
   const toggleWatchLater = async () => {
     if (!user || !id) return toast.error('Войдите, чтобы посмотреть позже');
-    const wlId = `${user.uid}_${id}`;
-    const wlRef = doc(db, 'watch_later', wlId);
     try {
       if (isWatchLater) {
-        await deleteDoc(wlRef);
+        await supabase.from('watch_later').delete().eq('user_id', user.uid).eq('video_id', id);
         setIsWatchLater(false);
         toast.success('Удалено из "Смотреть позже"');
       } else {
-        await setDoc(wlRef, { id: wlId, userId: user.uid, videoId: id, addedAt: serverTimestamp() });
+        await supabase.from('watch_later').insert({ user_id: user.uid, video_id: id });
         setIsWatchLater(true);
         toast.success('Добавлено в "Смотреть позже"');
       }
@@ -624,33 +574,35 @@ export default function VideoPlayer() {
 
   const handleAddToPlaylist = async (playlistId: string) => {
     if (!id) return;
-    const playlistRef = doc(db, 'playlists', playlistId);
     try {
-      const snap = await getDoc(playlistRef);
-      if (snap.exists()) {
-        const videoIds = snap.data().videoIds || [];
-        if (videoIds.includes(id)) {
-          toast.info('Уже в плейлисте');
-          return;
-        }
-        await updateDoc(playlistRef, { videoIds: [...videoIds, id] });
-        toast.success('Добавлено в плейлист');
-        setShowPlaylistModal(false);
+      const { data, error } = await supabase
+        .from('playlists')
+        .select('video_ids')
+        .eq('id', playlistId)
+        .single();
+      
+      if (error) throw error;
+      
+      const videoIds = data.video_ids || [];
+      if (videoIds.includes(id)) {
+        toast.info('Уже в плейлисте');
+        return;
       }
+      
+      await supabase.from('playlists').update({ video_ids: [...videoIds, id] }).eq('id', playlistId);
+      toast.success('Добавлено в плейлист');
+      setShowPlaylistModal(false);
     } catch (error) { toast.error('Ошибка'); }
   };
 
   const createPlaylist = async () => {
-    if (!user || !activeChannel || !newPlaylistTitle.trim() || !id) return;
+    if (!user || !activeChannel || !newPlaylistTitle.trim() || !id || !video) return;
     try {
-      const playlistId = crypto.randomUUID();
-      await setDoc(doc(db, 'playlists', playlistId), {
-        id: playlistId,
+      await supabase.from('playlists').insert({
         title: newPlaylistTitle,
-        authorId: activeChannel.id,
-        videoIds: [id],
+        author_id: activeChannel.id,
+        video_ids: [id],
         visibility: playlistVisibility,
-        createdAt: serverTimestamp(),
         type: video.type || 'video'
       });
       toast.success('Плейлист создан');
@@ -661,9 +613,21 @@ export default function VideoPlayer() {
 
   const fetchUserPlaylists = async () => {
     if (!user || !activeChannel) return;
-    const q = query(collection(db, 'playlists'), where('authorId', '==', activeChannel.id));
-    const snap = await getDocs(q);
-    setUserPlaylists(snap.docs.map(d => d.data() as Playlist));
+    const { data, error } = await supabase
+      .from('playlists')
+      .select('*')
+      .eq('author_id', activeChannel.id);
+    
+    if (!error && data) {
+      setUserPlaylists(data.map(d => ({
+        id: d.id,
+        title: d.title,
+        authorId: d.author_id,
+        videoIds: d.video_ids || [],
+        visibility: d.visibility,
+        createdAt: d.created_at
+      } as Playlist)));
+    }
     setShowPlaylistModal(true);
   };
 
@@ -673,52 +637,40 @@ export default function VideoPlayer() {
       return;
     }
 
-    // Restriction: Only primary channel can interact
     if (!activeChannel?.isPrimary) {
       toast.error('Подписываться можно только с основного канала');
       return;
     }
 
-    // Restriction: Cannot subscribe to own channels
     if (user.uid === authorData.ownerId || user.uid === video.authorId) {
       toast.error("Вы не можете подписаться на свои каналы");
       return;
     }
 
-    const subId = `${user.uid}_${video.authorId}`;
-    const subRef = doc(db, 'subscriptions', subId);
-    const channelRef = doc(db, 'channels', video.authorId);
-
     try {
       if (isSubscribed) {
-        await deleteDoc(subRef);
-        await updateDoc(channelRef, { subscribers: increment(-1) }).catch(() => {});
+        await supabase.from('subscriptions').delete().eq('user_id', user.uid).eq('channel_id', video.authorId);
+        const newSubscribersCount = Math.max(0, (authorData.subscribers || 0) - 1);
+        await supabase.from('channels').update({ subscribers: newSubscribersCount }).eq('id', video.authorId);
+        
+        setAuthorData({ ...authorData, subscribers: newSubscribersCount });
         setIsSubscribed(false);
         toast.success('Вы отписались');
       } else {
-        await setDoc(subRef, {
-          id: subId,
-          subscriberId: user.uid,
-          channelId: video.authorId,
-          createdAt: new Date()
-        });
-        await updateDoc(channelRef, { subscribers: increment(1) }).catch(() => {});
+        await supabase.from('subscriptions').insert({ user_id: user.uid, channel_id: video.authorId });
+        const newSubscribersCount = (authorData.subscribers || 0) + 1;
+        await supabase.from('channels').update({ subscribers: newSubscribersCount }).eq('id', video.authorId);
         
-        // Add notification
-        try {
-          await addDoc(collection(db, 'notifications'), {
-            userId: video.authorId,
-            type: 'subscribe',
-            fromUserId: user.uid,
-            fromUserName: user.displayName,
-            fromUserAvatar: user.photoURL,
-            createdAt: new Date(),
-            read: false
-          });
-        } catch (err) {
-          console.error("Error adding notification:", err);
-        }
+        await supabase.from('notifications').insert({
+          user_id: video.authorId,
+          type: 'subscribe',
+          from_user_id: user.uid,
+          from_user_name: user.displayName,
+          from_user_avatar: user.photoURL,
+          read: false
+        });
 
+        setAuthorData({ ...authorData, subscribers: newSubscribersCount });
         setIsSubscribed(true);
         toast.success('Вы подписались!');
       }
@@ -744,50 +696,53 @@ export default function VideoPlayer() {
       let authorId = 'anonymous';
 
       if (user) {
-        // Fetch current user data to get the latest display name
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        authorName = userDoc.exists() && userDoc.data().displayName ? userDoc.data().displayName : (user.displayName || 'User');
-        authorPhotoUrl = userDoc.exists() && userDoc.data().photoURL ? userDoc.data().photoURL : (user.photoURL || '');
+        const { data: userData } = await supabase.from('users').select('display_name, photo_url').eq('id', user.uid).single();
+        authorName = userData?.display_name || user.displayName || 'User';
+        authorPhotoUrl = userData?.photo_url || user.photoURL || '';
         authorId = user.uid;
       }
 
-      const commentId = crypto.randomUUID();
-      const commentData = {
-        id: commentId,
-        videoId: video.id,
-        videoAuthorId: video.authorId,
-        authorId: authorId,
-        authorName: authorName,
-        authorPhotoUrl: authorPhotoUrl,
-        text: newComment.trim(),
-        createdAt: new Date(),
-        likes: 0,
-        dislikes: 0
-      };
-
-      await setDoc(doc(db, 'comments', commentId), commentData);
+      const { data: commentData, error: commentError } = await supabase
+        .from('comments')
+        .insert({
+          video_id: video.id,
+          video_author_id: video.authorId,
+          author_id: authorId,
+          author_name: authorName,
+          author_photo_url: authorPhotoUrl,
+          text: newComment.trim(),
+          likes: 0,
+          dislikes: 0
+        })
+        .select()
+        .single();
       
-      // Add notification
+      if (commentError) throw commentError;
+      
       if (user && video.authorId !== user.uid) {
-        try {
-          await addDoc(collection(db, 'notifications'), {
-            userId: video.authorId,
-            type: 'comment',
-            videoId: video.id,
-            videoTitle: video.title,
-            fromUserId: user.uid,
-            fromUserName: authorName,
-            fromUserAvatar: authorPhotoUrl,
-            commentText: newComment.trim(),
-            createdAt: new Date(),
-            read: false
-          });
-        } catch (err) {
-          console.error("Error adding notification:", err);
-        }
+        await supabase.from('notifications').insert({
+          user_id: video.authorId,
+          type: 'comment',
+          video_id: video.id,
+          video_title: video.title,
+          from_user_id: user.uid,
+          from_user_name: authorName,
+          from_user_avatar: authorPhotoUrl,
+          comment_text: newComment.trim(),
+          read: false
+        });
       }
 
-      setComments([{ ...commentData, createdAt: commentData.createdAt.toISOString() } as any, ...comments]);
+      const mappedComment = {
+        ...commentData,
+        videoId: commentData.video_id,
+        authorId: commentData.author_id,
+        authorName: commentData.author_name,
+        authorPhotoUrl: commentData.author_photo_url,
+        createdAt: commentData.created_at
+      } as Comment;
+      
+      setComments([mappedComment, ...comments]);
       setNewComment('');
       toast.success('Комментарий опубликован');
     } catch (error) {
@@ -801,16 +756,22 @@ export default function VideoPlayer() {
   const handleEditComment = async (commentId: string) => {
     if (!editCommentText.trim()) return;
     try {
-      await updateDoc(doc(db, 'comments', commentId), {
-        text: editCommentText.trim(),
-        isEdited: true
-      });
+      const { error } = await supabase
+        .from('comments')
+        .update({
+          text: editCommentText.trim(),
+          is_edited: true
+        })
+        .eq('id', commentId);
+      
+      if (error) throw error;
+      
       setComments(comments.map(c => c.id === commentId ? { ...c, text: editCommentText.trim(), isEdited: true } : c));
       setEditingCommentId(null);
       setEditCommentText('');
       toast.success('Комментарий обновлен');
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `comments/${commentId}`);
+      console.error("Error editing comment:", error);
       toast.error('Не удалось обновить комментарий');
     }
   };
@@ -818,7 +779,13 @@ export default function VideoPlayer() {
   const handleDeleteComment = async (commentId: string) => {
     if (!window.confirm('Вы уверены, что хотите удалить этот комментарий?')) return;
     try {
-      await deleteDoc(doc(db, 'comments', commentId));
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId);
+      
+      if (error) throw error;
+      
       setComments(comments.filter(c => c.id !== commentId && c.parentId !== commentId));
       toast.success('Комментарий удален');
     } catch (error) {
@@ -835,33 +802,46 @@ export default function VideoPlayer() {
       let authorId = 'anonymous';
 
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        authorName = userDoc.exists() && userDoc.data().displayName ? userDoc.data().displayName : (user.displayName || 'User');
-        authorPhotoUrl = userDoc.exists() && userDoc.data().photoURL ? userDoc.data().photoURL : (user.photoURL || '');
+        const { data: userData } = await supabase.from('users').select('display_name, photo_url').eq('id', user.uid).single();
+        authorName = userData?.display_name || user.displayName || 'User';
+        authorPhotoUrl = userData?.photo_url || user.photoURL || '';
         authorId = user.uid;
       }
 
-      const commentId = crypto.randomUUID();
-      const commentData = {
-        id: commentId,
-        videoId: video.id,
-        videoAuthorId: video.authorId,
-        authorId: authorId,
-        authorName: authorName,
-        authorPhotoUrl: authorPhotoUrl,
-        text: replyCommentText.trim(),
-        createdAt: new Date(),
-        parentId: parentId,
-        likes: 0,
-        dislikes: 0
-      };
+      const { data: commentData, error: commentError } = await supabase
+        .from('comments')
+        .insert({
+          video_id: video.id,
+          video_author_id: video.authorId,
+          author_id: authorId,
+          author_name: authorName,
+          author_photo_url: authorPhotoUrl,
+          text: replyCommentText.trim(),
+          parent_id: parentId,
+          likes: 0,
+          dislikes: 0
+        })
+        .select()
+        .single();
+      
+      if (commentError) throw commentError;
 
-      await setDoc(doc(db, 'comments', commentId), commentData);
-      setComments([{ ...commentData, createdAt: commentData.createdAt.toISOString() } as any, ...comments]);
+      const mappedComment = {
+        ...commentData,
+        videoId: commentData.video_id,
+        authorId: commentData.author_id,
+        authorName: commentData.author_name,
+        authorPhotoUrl: commentData.author_photo_url,
+        createdAt: commentData.created_at,
+        parentId: commentData.parent_id
+      } as Comment;
+      
+      setComments([mappedComment, ...comments]);
       setReplyingCommentId(null);
       setReplyCommentText('');
       toast.success('Ответ опубликован');
     } catch (error) {
+      console.error("Error replying to comment:", error);
       toast.error('Не удалось опубликовать ответ');
     }
   };
@@ -875,54 +855,75 @@ export default function VideoPlayer() {
     if (!comment) return;
 
     try {
-      const commentRef = doc(db, 'comments', commentId);
-      
       if (action === 'heart') {
         if (user?.uid !== video?.authorId) return;
         const newHearted = !comment.authorHearted;
-        await updateDoc(commentRef, { authorHearted: newHearted });
+        
+        const { error } = await supabase
+          .from('comments')
+          .update({ author_hearted: newHearted })
+          .eq('id', commentId);
+          
+        if (error) throw error;
+        
         setComments(comments.map(c => c.id === commentId ? { ...c, authorHearted: newHearted } : c));
         return;
       }
 
       // Handle Like/Dislike with persistence
-      const actionId = `${user.uid}_${commentId}`;
-      const actionRef = doc(db, 'commentActions', actionId);
-      const actionSnap = await getDoc(actionRef);
-      const currentAction = actionSnap.exists() ? actionSnap.data().type : null;
+      const { data: actionData } = await supabase
+        .from('comment_actions')
+        .select('type')
+        .eq('user_id', user.uid)
+        .eq('comment_id', commentId)
+        .maybeSingle();
+        
+      const currentAction = actionData?.type;
 
       if (currentAction === action) {
         // Remove action
-        await deleteDoc(actionRef);
-        const updateData: any = { [action === 'like' ? 'likes' : 'dislikes']: increment(-1) };
-        await updateDoc(commentRef, updateData);
-        setComments(comments.map(c => c.id === commentId ? { ...c, [action === 'like' ? 'likes' : 'dislikes']: (c[action === 'like' ? 'likes' : 'dislikes'] || 0) - 1 } : c));
+        await supabase
+          .from('comment_actions')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('comment_id', commentId);
+          
+        const updateObj = { [action === 'like' ? 'likes' : 'dislikes']: Math.max(0, (comment[action === 'like' ? 'likes' : 'dislikes'] || 0) - 1) };
+        await supabase.from('comments').update(updateObj).eq('id', commentId);
+        
+        setComments(comments.map(c => c.id === commentId ? { ...c, ...updateObj } : c));
       } else if (currentAction) {
         // Switch action
-        await updateDoc(actionRef, { type: action });
-        const updateData: any = {
-          [action === 'like' ? 'likes' : 'dislikes']: increment(1),
-          [action === 'like' ? 'dislikes' : 'likes']: increment(-1)
+        await supabase
+          .from('comment_actions')
+          .update({ type: action })
+          .eq('user_id', user.uid)
+          .eq('comment_id', commentId);
+          
+        const updateObj = {
+          [action === 'like' ? 'likes' : 'dislikes']: (comment[action === 'like' ? 'likes' : 'dislikes'] || 0) + 1,
+          [action === 'like' ? 'dislikes' : 'likes']: Math.max(0, (comment[action === 'like' ? 'dislikes' : 'likes'] || 0) - 1)
         };
-        await updateDoc(commentRef, updateData);
-        setComments(comments.map(c => c.id === commentId ? { 
-          ...c, 
-          [action === 'like' ? 'likes' : 'dislikes']: (c[action === 'like' ? 'likes' : 'dislikes'] || 0) + 1,
-          [action === 'like' ? 'dislikes' : 'likes']: (c[action === 'like' ? 'dislikes' : 'likes'] || 0) - 1
-        } : c));
+        await supabase.from('comments').update(updateObj).eq('id', commentId);
+        
+        setComments(comments.map(c => c.id === commentId ? { ...c, ...updateObj } : c));
       } else {
         // New action
-        await setDoc(actionRef, {
-          userId: user.uid,
-          commentId,
-          type: action
-        });
-        const updateData: any = { [action === 'like' ? 'likes' : 'dislikes']: increment(1) };
-        await updateDoc(commentRef, updateData);
-        setComments(comments.map(c => c.id === commentId ? { ...c, [action === 'like' ? 'likes' : 'dislikes']: (c[action === 'like' ? 'likes' : 'dislikes'] || 0) + 1 } : c));
+        await supabase
+          .from('comment_actions')
+          .insert({
+            user_id: user.uid,
+            comment_id: commentId,
+            type: action
+          });
+          
+        const updateObj = { [action === 'like' ? 'likes' : 'dislikes']: (comment[action === 'like' ? 'likes' : 'dislikes'] || 0) + 1 };
+        await supabase.from('comments').update(updateObj).eq('id', commentId);
+        
+        setComments(comments.map(c => c.id === commentId ? { ...c, ...updateObj } : c));
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `comments/${commentId}`);
+      console.error("Error toggling comment action:", error);
       toast.error('Не удалось обновить реакцию');
     }
   };

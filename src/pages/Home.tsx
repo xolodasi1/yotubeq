@@ -4,8 +4,8 @@ import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
 import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users, Music as MusicIcon, Camera, Heart } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { useAuth } from '../App';
 
 import { APP_LOGO_URL } from '../constants';
@@ -24,45 +24,37 @@ export default function Home() {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         let hiddenChannelIds: string[] = [];
         if (user) {
-          const hiddenQ = query(collection(db, 'hidden_channels'), where('userId', '==', user.uid));
-          const hiddenSnap = await getDocs(hiddenQ);
-          hiddenChannelIds = hiddenSnap.docs.map(doc => doc.data().channelId);
+          const { data: hiddenData } = await supabase
+            .from('hidden_channels')
+            .select('channel_id')
+            .eq('user_id', user.uid);
+          hiddenChannelIds = (hiddenData || []).map(d => d.channel_id);
         }
 
-        const videosQuery = query(collection(db, 'videos'), orderBy('createdAt', 'desc'));
-        const videosSnapshot = await getDocs(videosQuery);
-        let videosData = videosSnapshot.docs.map(doc => {
-          const videoData = doc.data();
-          let createdAt = videoData.createdAt;
-          if (createdAt?.toDate) {
-            createdAt = createdAt.toDate().toISOString();
-          } else if (createdAt?.seconds) {
-            createdAt = new Date(createdAt.seconds * 1000).toISOString();
-          }
-          return {
-            ...videoData,
-            id: doc.id,
-            createdAt
-          };
-        }) as VideoType[];
+        // Fetch Videos from Supabase
+        let { data: videosData, error: videosError } = await supabase
+          .from('videos')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (videosError) throw videosError;
+
+        let mappedVideos = (videosData || []).map(v => databaseService.mapVideo(v));
         
         if (hiddenChannelIds.length > 0) {
-          videosData = videosData.filter(video => !hiddenChannelIds.includes(video.authorId));
+          mappedVideos = mappedVideos.filter(video => !hiddenChannelIds.includes(video.authorId));
         }
         
-        setVideos(videosData);
-
         // Extract unique categories from videos
         const uniqueCategories = new Set<string>();
-        videosData.forEach(video => {
+        mappedVideos.forEach(video => {
           if (video.category && typeof video.category === 'string') {
             const cat = video.category.trim();
-            // Don't add base categories again (case-insensitive check)
             if (cat && !BASE_CATEGORIES.some(baseCat => baseCat.toLowerCase() === cat.toLowerCase())) {
-              // Capitalize first letter for display
               const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1);
               uniqueCategories.add(formattedCat);
             }
@@ -71,27 +63,38 @@ export default function Home() {
         
         setDynamicCategories([...BASE_CATEGORIES, ...Array.from(uniqueCategories)]);
 
-        const usersQuery = query(collection(db, 'users'));
-        const usersSnapshot = await getDocs(usersQuery);
-        let usersData = usersSnapshot.docs.map(doc => ({
-          ...doc.data(),
-          uid: doc.id
-        }));
+        // Fetch Users (Channels) for recommendations/metadata
+        const { data: channelsDataRaw, error: channelsError } = await supabase
+          .from('channels')
+          .select('*');
 
-        const channelsQuery = query(collection(db, 'channels'));
-        const channelsSnapshot = await getDocs(channelsQuery);
-        const channelsData = channelsSnapshot.docs.reduce((acc: any, doc) => {
-          acc[doc.id] = doc.data();
+        if (channelsError) throw channelsError;
+
+        const channelsMap = (channelsDataRaw || []).reduce((acc: any, c) => {
+          acc[c.id] = c;
           return acc;
         }, {});
+
+        const { data: usersDataRaw, error: usersError } = await supabase
+          .from('users')
+          .select('*');
+
+        if (usersError) throw usersError;
+
+        let usersData = (usersDataRaw || []).map(u => ({
+          ...u,
+          uid: u.id,
+          displayName: u.display_name,
+          photoURL: u.photo_url
+        }));
         
         if (hiddenChannelIds.length > 0) {
           usersData = usersData.filter(u => !hiddenChannelIds.includes(u.uid));
         }
 
         // Calculate recommendation score for each video
-        videosData = videosData.map(video => {
-          const channelReputation = channelsData[video.authorId]?.ices || 0;
+        mappedVideos = mappedVideos.map(video => {
+          const channelReputation = channelsMap[video.authorId]?.ices || 0;
           const views = Number(video.views) || 0;
           const likes = Number(video.likes) || 0;
           const ices = Number(video.ices) || 0;
@@ -99,13 +102,15 @@ export default function Home() {
           // Score formula: views (40%) + likes (30%) + reputation (30%)
           const score = (views * 0.4) + (likes * 10 * 0.3) + (channelReputation * 5 * 0.3) + (ices * 20 * 0.1);
           
-          return { ...video, recommendationScore: score };
+          return { ...video, recommendationScore: score } as any;
         });
         
-        setVideos(videosData);
+        setVideos(mappedVideos as any);
         setUsers(usersData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
+      } catch (error: any) {
+        console.error("Error fetching data from Supabase:", error);
+        // Supabase often fails if tables are not created. 
+        // We should warn the user to run the migration.
       } finally {
         setLoading(false);
       }

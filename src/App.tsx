@@ -28,9 +28,7 @@ import PlaylistDetail from './pages/PlaylistDetail';
 import Settings from './pages/Settings';
 import Studio from './pages/Studio';
 import Photos from './pages/Photos';
-import { auth, db } from './lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 
 import { APP_LOGO_URL } from './constants';
 
@@ -127,11 +125,18 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("Auth state changed:", firebaseUser?.uid);
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Supabase Auth state changed:", event, session?.user?.id);
       
-      if (!firebaseUser) {
-        console.log("No firebase user, clearing state");
+      const supabaseUser = session?.user;
+      
+      if (!supabaseUser) {
+        console.log("No supabase user, clearing state");
         setUser(null);
         setChannels([]);
         setActiveChannel(null);
@@ -141,92 +146,172 @@ export default function App() {
 
       setLoading(true);
       try {
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-        let userData: any;
-        let isNewUser = false;
+        // Fetch User from Supabase
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', supabaseUser.id)
+          .single();
 
-        if (userSnap.exists()) {
-          userData = userSnap.data();
-          console.log("User document found:", userData);
-        } else {
-          isNewUser = true;
-          userData = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-            pseudonym: '',
-            photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
-            subscribers: 0,
-            ices: 0,
-            createdAt: new Date().toISOString()
-          };
-          console.log("Creating new user document data:", userData);
-          // Save user doc immediately if new
-          await setDoc(userRef, userData);
+        let finalUserData: any = userData;
+
+        if (userError || !userData) {
+          console.log("Supabase user document missing or error, creating init values...");
+          // New user logic
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .upsert({
+              id: supabaseUser.id,
+              uid: supabaseUser.id,
+              email: supabaseUser.email || '',
+              display_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+              photo_url: supabaseUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${supabaseUser.id}`,
+              subscribers: 0,
+              ices: 0,
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          finalUserData = newUser;
         }
 
-        // Set user state early so the UI updates
-        setUser({ ...userData, uid: firebaseUser.uid });
+        // Map to internal User interface (camelCase)
+        const mappedUser: User = {
+          uid: supabaseUser.id,
+          email: finalUserData.email,
+          displayName: finalUserData.display_name,
+          photoURL: finalUserData.photo_url,
+          bannerUrl: finalUserData.banner_url,
+          subscribers: finalUserData.subscribers || 0,
+          ices: finalUserData.ices || 0,
+          primaryChannelId: finalUserData.primary_channel_id
+        };
 
-        // Fetch channels
-        const channelsRef = collection(db, 'channels');
-        const q = query(channelsRef, where('ownerId', '==', firebaseUser.uid));
-        const channelsSnap = await getDocs(q);
-        let userChannels: ChannelType[] = channelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ChannelType));
-        console.log("Fetched channels:", userChannels.length);
+        setUser(mappedUser);
+
+        // Fetch Channels
+        const { data: userChannelsData, error: channelsError } = await supabase
+          .from('channels')
+          .select('*')
+          .eq('owner_id', supabaseUser.id);
+
+        if (channelsError) throw channelsError;
+
+        let userChannels: ChannelType[] = (userChannelsData || []).map(c => ({
+          id: c.id,
+          ownerId: c.owner_id,
+          displayName: c.display_name,
+          photoURL: c.photo_url,
+          bannerUrl: c.banner_url,
+          isPrimary: c.is_primary,
+          subscribers: c.subscribers || 0,
+          ices: c.ices || 0,
+          competitors: c.competitors || [],
+          pinnedAchievements: c.pinned_achievements || [],
+          isBanned: c.is_banned
+        }));
 
         // Ensure there is a primary channel
-        const hasUidChannel = userChannels.some(c => c.id === firebaseUser.uid);
-        
-        if (!hasUidChannel) {
-          console.log("Primary channel missing, creating...");
-          const primaryChannel: ChannelType = {
-            id: firebaseUser.uid,
-            ownerId: firebaseUser.uid,
-            displayName: userData.displayName,
-            photoURL: userData.photoURL,
-            isPrimary: true,
-            subscribers: userData.subscribers || 0,
-            ices: userData.ices || 0,
+        if (userChannels.length === 0) {
+          console.log("Primary channel missing in Supabase, creating...");
+          const { data: newChannel, error: channelCreateError } = await supabase
+            .from('channels')
+            .insert({
+              id: supabaseUser.id,
+              owner_id: supabaseUser.id,
+              display_name: mappedUser.displayName,
+              photo_url: mappedUser.photoURL,
+              is_primary: true,
+              subscribers: 0,
+              ices: 0,
+              bio: '',
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (channelCreateError) throw channelCreateError;
+          
+          const mappedChannel: ChannelType = {
+            id: newChannel.id,
+            ownerId: newChannel.owner_id,
+            displayName: newChannel.display_name,
+            photoURL: newChannel.photo_url,
+            isPrimary: newChannel.is_primary,
+            subscribers: newChannel.subscribers,
+            ices: newChannel.ices,
             competitors: [],
             pinnedAchievements: []
           };
+          userChannels.push(mappedChannel);
           
-          await setDoc(doc(db, 'channels', firebaseUser.uid), {
-            ...primaryChannel,
-            bio: '',
-            createdAt: new Date().toISOString()
-          });
-          
-          userChannels.push(primaryChannel);
-          if (!userData.primaryChannelId) {
-            await updateDoc(userRef, { primaryChannelId: firebaseUser.uid });
-            userData.primaryChannelId = firebaseUser.uid;
-            setUser({ ...userData, uid: firebaseUser.uid });
+          if (!mappedUser.primaryChannelId) {
+            await supabase
+              .from('users')
+              .update({ primary_channel_id: newChannel.id })
+              .eq('id', supabaseUser.id);
+            mappedUser.primaryChannelId = newChannel.id;
+            setUser({ ...mappedUser });
           }
         }
 
         setChannels(userChannels);
-        const primary = userChannels.find(c => c.isPrimary) || userChannels.find(c => c.id === firebaseUser.uid) || userChannels[0];
+        const primary = userChannels.find(c => c.isPrimary) || userChannels[0];
         setActiveChannel(primary);
+
       } catch (error: any) {
-        console.error("Error during auth initialization:", error);
-        toast.error(`Ошибка профиля: ${error.message || 'Не удалось загрузить данные'}`);
-        // We don't necessarily clear the user here, as they are authenticated in Firebase
-        // but we might want to if the app can't function without the user doc
+        console.error("Error during Supabase auth initialization:", error);
+        toast.error(`Ошибка профиля: ${error.message || 'Не удалось загрузить данные из Supabase'}`);
       } finally {
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   return (
     <AuthContext.Provider value={{ user, channels, activeChannel, setActiveChannel: handleSetActiveChannel, loading, theme, toggleTheme, isSidebarOpen, toggleSidebar }}>
       <Router>
-        {loading ? (
+        {!isSupabaseConfigured ? (
+          <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-[var(--card)] border border-blue-500/20 rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center gap-6">
+              <div className="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center">
+                <img 
+                  src={APP_LOGO_URL} 
+                  alt="Logo" 
+                  className="w-12 h-12 rounded-xl"
+                  crossOrigin="anonymous"
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-[var(--text)] mb-2">Setup Required</h1>
+                <p className="text-[var(--text-muted)] text-sm leading-relaxed">
+                  IceTube is now powered by Supabase. To get started, you need to connect your own database.
+                </p>
+              </div>
+              <div className="w-full space-y-4 text-left">
+                <div className="p-4 bg-blue-600/5 rounded-xl border border-blue-600/10">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">How to connect:</h3>
+                  <ol className="text-sm list-decimal list-inside space-y-2 text-[var(--text)]">
+                    <li>Go to the <span className="font-bold">Settings</span> menu in this editor</li>
+                    <li>Open the <span className="font-bold">Secrets/Environment Variables</span> tab</li>
+                    <li>Add <code className="bg-blue-600/10 px-1 rounded text-blue-600 font-mono">VITE_SUPABASE_URL</code></li>
+                    <li>Add <code className="bg-blue-600/10 px-1 rounded text-blue-600 font-mono">VITE_SUPABASE_ANON_KEY</code></li>
+                  </ol>
+                </div>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98]"
+                >
+                  I've added the secrets
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-6">
             <div className="relative">
               <img 
@@ -262,7 +347,7 @@ export default function App() {
                 Доступ к вашему аккаунту ограничен администрацией за нарушение правил платформы IceTube.
                 Пожалуйста, свяжитесь с поддержкой, если считаете это ошибкой.
               </p>
-              <button onClick={() => auth.signOut()} className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-2xl w-full transition-colors opacity-90">
+              <button onClick={() => supabase.auth.signOut()} className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-2xl w-full transition-colors opacity-90">
                 Выйти из аккаунта
               </button>
             </div>

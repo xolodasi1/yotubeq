@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
-import { collection, getDocs, query, orderBy, where, doc, getDoc, setDoc, deleteDoc, updateDoc, addDoc, serverTimestamp, increment, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { VideoType, Comment, Playlist } from '../types';
 import { Loader2, Camera, Heart, MessageCircle, Share2, Download, Plus, X, Globe, Lock, Send } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -34,18 +34,14 @@ export default function Photos() {
   useEffect(() => {
     const fetchPhotos = async () => {
       try {
-        const q = query(
-          collection(db, 'videos'),
-          where('type', '==', 'photo'),
-          orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id,
-          createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt
-        })) as VideoType[];
-        setPhotos(data);
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('type', 'photo')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setPhotos((data || []).map(d => databaseService.mapVideo(d)));
       } catch (error) {
         console.error("Error fetching photos:", error);
       } finally {
@@ -65,31 +61,65 @@ export default function Photos() {
 
     const fetchInteractions = async () => {
       if (user) {
-        const likeId = `${user.uid}_${selectedPhoto.id}`;
-        const likeSnap = await getDoc(doc(db, 'video_likes', likeId));
-        setIsLiked(likeSnap.exists());
+        const { data: likeData } = await supabase
+          .from('video_likes')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('video_id', selectedPhoto.id)
+          .single();
+        setIsLiked(!!likeData);
 
-        const favId = `${user.uid}_${selectedPhoto.id}`;
-        const favSnap = await getDoc(doc(db, 'favorites', favId));
-        setIsFavorited(favSnap.exists());
+        const { data: favData } = await supabase
+          .from('favorites')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('video_id', selectedPhoto.id)
+          .single();
+        setIsFavorited(!!favData);
       }
 
       // Fetch comments
-      const q = query(
-        collection(db, 'comments'),
-        where('videoId', '==', selectedPhoto.id),
-        orderBy('createdAt', 'desc')
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt
-        })) as Comment[];
-        setComments(data);
-      });
+      const { data: commentsData } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('video_id', selectedPhoto.id)
+        .order('created_at', { ascending: false });
+      
+      if (commentsData) {
+        setComments(commentsData.map(d => ({
+          ...d,
+          createdAt: d.created_at,
+          authorId: d.author_id,
+          authorName: d.author_name,
+          authorPhotoUrl: d.author_photo_url,
+          videoId: d.video_id
+        })));
+      }
 
-      return unsubscribe;
+      // Realtime comments
+      const channel = supabase
+        .channel(`photo_comments_${selectedPhoto.id}`)
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'comments', 
+          filter: `video_id=eq.${selectedPhoto.id}` 
+        }, (payload) => {
+          const newComment = {
+            ...payload.new,
+            createdAt: payload.new.created_at,
+            authorId: payload.new.author_id,
+            authorName: payload.new.author_name,
+            authorPhotoUrl: payload.new.author_photo_url,
+            videoId: payload.new.video_id
+          } as Comment;
+          setComments(prev => [newComment, ...prev]);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     };
 
     fetchInteractions();
@@ -97,20 +127,39 @@ export default function Photos() {
 
   const handleLike = async () => {
     if (!user || !selectedPhoto) return toast.error('Войдите, чтобы ставить лайки');
-    const likeId = `${user.uid}_${selectedPhoto.id}`;
-    const likeRef = doc(db, 'video_likes', likeId);
-    const photoRef = doc(db, 'videos', selectedPhoto.id);
 
     try {
       if (isLiked) {
-        await deleteDoc(likeRef);
-        await updateDoc(photoRef, { likes: Math.max(0, selectedPhoto.likes - 1) });
-        setSelectedPhoto({ ...selectedPhoto, likes: Math.max(0, selectedPhoto.likes - 1) });
+        await supabase
+          .from('video_likes')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('video_id', selectedPhoto.id);
+          
+        const newLikes = Math.max(0, selectedPhoto.likes - 1);
+        await supabase
+          .from('videos')
+          .update({ likes: newLikes })
+          .eq('id', selectedPhoto.id);
+          
+        setSelectedPhoto({ ...selectedPhoto, likes: newLikes });
         setIsLiked(false);
       } else {
-        await setDoc(likeRef, { id: likeId, userId: user.uid, videoId: selectedPhoto.id, type: 'like' });
-        await updateDoc(photoRef, { likes: selectedPhoto.likes + 1 });
-        setSelectedPhoto({ ...selectedPhoto, likes: selectedPhoto.likes + 1 });
+        await supabase
+          .from('video_likes')
+          .insert({
+            user_id: user.uid,
+            video_id: selectedPhoto.id,
+            type: 'like'
+          });
+          
+        const newLikes = selectedPhoto.likes + 1;
+        await supabase
+          .from('videos')
+          .update({ likes: newLikes })
+          .eq('id', selectedPhoto.id);
+          
+        setSelectedPhoto({ ...selectedPhoto, likes: newLikes });
         setIsLiked(true);
       }
     } catch (error) { toast.error('Ошибка'); }
@@ -118,15 +167,22 @@ export default function Photos() {
 
   const toggleFavorite = async () => {
     if (!user || !selectedPhoto) return toast.error('Войдите, чтобы добавить в избранное');
-    const favId = `${user.uid}_${selectedPhoto.id}`;
-    const favRef = doc(db, 'favorites', favId);
     try {
       if (isFavorited) {
-        await deleteDoc(favRef);
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('video_id', selectedPhoto.id);
         setIsFavorited(false);
         toast.success('Удалено из избранного');
       } else {
-        await setDoc(favRef, { id: favId, userId: user.uid, videoId: selectedPhoto.id, addedAt: serverTimestamp() });
+        await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.uid,
+            video_id: selectedPhoto.id
+          });
         setIsFavorited(true);
         toast.success('Добавлено в избранное');
       }
@@ -138,22 +194,25 @@ export default function Photos() {
     if (!selectedPhoto || !newComment.trim()) return;
     setSubmittingComment(true);
     try {
-      const commentId = crypto.randomUUID();
-      await setDoc(doc(db, 'comments', commentId), {
-        id: commentId,
-        videoId: selectedPhoto.id,
-        authorId: user?.uid || 'anonymous',
-        authorName: user?.displayName || 'Аноним',
-        authorPhotoUrl: user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`,
-        text: newComment,
-        createdAt: serverTimestamp(),
-        likes: 0
-      });
+      const { error } = await supabase
+        .from('comments')
+        .insert({
+          video_id: selectedPhoto.id,
+          author_id: user?.uid || 'anonymous',
+          author_name: user?.displayName || 'Аноним',
+          author_photo_url: user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`,
+          text: newComment,
+          likes: 0
+        });
+      
+      if (error) throw error;
       
       // Update comment count on the photo
-      await updateDoc(doc(db, 'videos', selectedPhoto.id), {
-        commentsCount: increment(1)
-      });
+      const newCount = (selectedPhoto as any).commentsCount ? (selectedPhoto as any).commentsCount + 1 : 1;
+      await supabase
+        .from('videos')
+        .update({ comments_count: newCount })
+        .eq('id', selectedPhoto.id);
 
       setNewComment('');
       toast.success('Комментарий добавлен');
@@ -162,39 +221,59 @@ export default function Photos() {
 
   const fetchUserPlaylists = async () => {
     if (!user) return toast.error('Войдите, чтобы управлять плейлистами');
-    const q = query(collection(db, 'playlists'), where('authorId', '==', user.uid));
-    const snap = await getDocs(q);
-    setUserPlaylists(snap.docs.map(d => d.data() as Playlist));
+    const { data, error } = await supabase
+      .from('playlists')
+      .select('*')
+      .eq('author_id', user.uid);
+    
+    if (!error && data) {
+      setUserPlaylists(data.map(d => ({
+        id: d.id,
+        title: d.title,
+        authorId: d.author_id,
+        videoIds: d.video_ids || [],
+        visibility: d.visibility,
+        createdAt: d.created_at
+      } as Playlist)));
+    }
     setShowPlaylistModal(true);
   };
 
   const handleAddToPlaylist = async (playlistId: string) => {
     if (!selectedPhoto) return;
-    const playlistRef = doc(db, 'playlists', playlistId);
     try {
-      const snap = await getDoc(playlistRef);
-      if (snap.exists()) {
-        const videoIds = snap.data().videoIds || [];
-        if (videoIds.includes(selectedPhoto.id)) return toast.info('Уже в плейлисте');
-        await updateDoc(playlistRef, { videoIds: [...videoIds, selectedPhoto.id] });
-        toast.success('Добавлено в плейлист');
-        setShowPlaylistModal(false);
-      }
+      const { data, error } = await supabase
+        .from('playlists')
+        .select('video_ids')
+        .eq('id', playlistId)
+        .single();
+      
+      if (error) throw error;
+
+      const videoIds = data.video_ids || [];
+      if (videoIds.includes(selectedPhoto.id)) return toast.info('Уже в плейлисте');
+      
+      await supabase
+        .from('playlists')
+        .update({ video_ids: [...videoIds, selectedPhoto.id] })
+        .eq('id', playlistId);
+        
+      toast.success('Добавлено в плейлист');
+      setShowPlaylistModal(false);
     } catch (error) { toast.error('Ошибка'); }
   };
 
   const createPlaylist = async () => {
     if (!user || !newPlaylistTitle.trim() || !selectedPhoto) return;
     try {
-      const playlistId = crypto.randomUUID();
-      await setDoc(doc(db, 'playlists', playlistId), {
-        id: playlistId,
-        title: newPlaylistTitle,
-        authorId: user.uid,
-        videoIds: [selectedPhoto.id],
-        visibility: playlistVisibility,
-        createdAt: serverTimestamp()
-      });
+      await supabase
+        .from('playlists')
+        .insert({
+          title: newPlaylistTitle,
+          author_id: user.uid,
+          video_ids: [selectedPhoto.id],
+          visibility: playlistVisibility
+        });
       toast.success('Плейлист создан');
       setNewPlaylistTitle('');
       setShowPlaylistModal(false);

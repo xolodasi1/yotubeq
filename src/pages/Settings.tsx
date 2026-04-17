@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { Loader2, Settings as SettingsIcon, User, Camera, Save, Moon, Sun, Globe, Smartphone, MessageSquare, Instagram, Trash2, AlertTriangle, X } from 'lucide-react';
-import { db, auth as firebaseAuth } from '../lib/firebase';
-import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { deleteUser } from 'firebase/auth';
 
 export default function Settings() {
   const { user, theme, toggleTheme } = useAuth();
@@ -30,21 +29,27 @@ export default function Settings() {
     if (!user) return;
     const fetchUser = async () => {
       try {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        if (snap.exists()) {
-          const data = snap.data();
-          setDisplayName(data.displayName || '');
-          setPhotoURL(data.photoURL || '');
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.uid)
+          .single();
+        
+        if (!error && data) {
+          setDisplayName(data.display_name || '');
+          setPhotoURL(data.photo_url || '');
           setBio(data.bio || '');
-          if (data.isSubscriptionPublic !== undefined) {
-            setIsSubscriptionPublic(data.isSubscriptionPublic);
+          if (data.is_subscription_public !== undefined) {
+            setIsSubscriptionPublic(data.is_subscription_public);
           }
-          if (data.socialLinks) {
+          // Assuming social_links is a JSON field or separate columns
+          // The current code assumes it's an object in the document
+          if (data.social_links) {
             setSocialLinks({
-              website: data.socialLinks.website || '',
-              telegram: data.socialLinks.telegram || '',
-              vk: data.socialLinks.vk || '',
-              instagram: data.socialLinks.instagram || ''
+              website: data.social_links.website || '',
+              telegram: data.social_links.telegram || '',
+              vk: data.social_links.vk || '',
+              instagram: data.social_links.instagram || ''
             });
           }
         }
@@ -60,12 +65,17 @@ export default function Settings() {
     if (!user) return;
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        displayName,
-        photoURL,
-        bio,
-        socialLinks
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({
+          display_name: displayName,
+          photo_url: photoURL,
+          bio,
+          social_links: socialLinks
+        })
+        .eq('id', user.uid);
+      
+      if (error) throw error;
       toast.success('Настройки сохранены');
     } catch (error) {
       toast.error('Ошибка при сохранении');
@@ -78,28 +88,17 @@ export default function Settings() {
     if (!user) return;
     setDeleting(true);
     try {
-      const batch = writeBatch(db);
-
       // 1. Delete all user's videos/photos/music
-      const videosQuery = query(collection(db, 'videos'), where('authorId', '==', user.uid));
-      const videosSnap = await getDocs(videosQuery);
-      videosSnap.forEach((doc) => batch.delete(doc.ref));
+      await supabase.from('videos').delete().eq('author_id', user.uid);
 
       // 2. Delete all user's community posts
-      const postsQuery = query(collection(db, 'community_posts'), where('authorId', '==', user.uid));
-      const postsSnap = await getDocs(postsQuery);
-      postsSnap.forEach((doc) => batch.delete(doc.ref));
+      await supabase.from('community_posts').delete().eq('author_id', user.uid);
 
       // 3. Delete user document
-      batch.delete(doc(db, 'users', user.uid));
+      await supabase.from('users').delete().eq('id', user.uid);
 
-      await batch.commit();
-
-      // 4. Delete auth user (optional, but good practice if possible)
-      // Note: deleteUser might fail if the session is old. We'll try but at least the data is gone.
-      if (firebaseAuth.currentUser) {
-        await deleteUser(firebaseAuth.currentUser).catch(err => console.error("Auth delete failed:", err));
-      }
+      // 4. Sign out
+      await supabase.auth.signOut();
 
       toast.success('Канал полностью удален');
       navigate('/');
@@ -171,7 +170,13 @@ export default function Settings() {
                 if (!user) return;
                 const newVal = !isSubscriptionPublic;
                 setIsSubscriptionPublic(newVal);
-                await updateDoc(doc(db, 'users', user.uid), { isSubscriptionPublic: newVal });
+                
+                const { error } = await supabase
+                  .from('users')
+                  .update({ is_subscription_public: newVal })
+                  .eq('id', user.uid);
+                
+                if (error) throw error;
                 toast.success('Настройки приватности обновлены');
               } catch(e) {
                 setIsSubscriptionPublic(isSubscriptionPublic);

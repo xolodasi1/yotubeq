@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { CommunityPost } from '../types';
 import { MessageSquare, Send, Trash2, Heart, BarChart2, Loader2, AlertCircle, Lock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,18 +25,14 @@ export default function StudioCommunity() {
 
     const fetchPosts = async () => {
       try {
-        const q = query(
-          collection(db, 'community_posts'),
-          where('authorId', '==', activeChannel.id),
-          orderBy('createdAt', 'desc')
-        );
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt
-        })) as CommunityPost[];
-        setPosts(data);
+        const { data, error } = await supabase
+          .from('community_posts')
+          .select('*')
+          .eq('author_id', activeChannel.id)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setPosts((data || []).map(d => databaseService.mapCommunityPost(d)));
       } catch (error) {
         console.error("Error fetching community posts:", error);
       } finally {
@@ -53,18 +49,22 @@ export default function StudioCommunity() {
 
     setSubmitting(true);
     try {
-      const postData = {
-        authorId: activeChannel?.id || user.uid,
-        authorName: activeChannel?.displayName || user.displayName,
-        authorPhotoUrl: activeChannel?.photoURL || user.photoURL,
-        text: newPostText,
-        type: 'text',
-        createdAt: serverTimestamp(),
-        likes: 0
-      };
+      const { data, error } = await supabase
+        .from('community_posts')
+        .insert({
+          author_id: activeChannel?.id || user.uid,
+          author_name: activeChannel?.displayName || user.displayName,
+          author_photo_url: activeChannel?.photoURL || user.photoURL,
+          text: newPostText,
+          type: 'text',
+          likes: 0
+        })
+        .select()
+        .single();
 
-      const docRef = await addDoc(collection(db, 'community_posts'), postData);
-      const newPost = { id: docRef.id, ...postData, createdAt: new Date().toISOString() } as CommunityPost;
+      if (error) throw error;
+      
+      const newPost = databaseService.mapCommunityPost(data);
       setPosts([newPost, ...posts]);
       setNewPostText('');
       toast.success('Запись опубликована!');
@@ -78,7 +78,12 @@ export default function StudioCommunity() {
   const handleDeletePost = async (postId: string) => {
     if (!window.confirm('Удалить эту запись?')) return;
     try {
-      await deleteDoc(doc(db, 'community_posts', postId));
+      const { error } = await supabase
+        .from('community_posts')
+        .delete()
+        .eq('id', postId);
+        
+      if (error) throw error;
       setPosts(posts.filter(p => p.id !== postId));
       toast.success('Запись удалена');
     } catch (error) {

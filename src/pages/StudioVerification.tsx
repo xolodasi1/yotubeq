@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Snowflake, Users, Play, Heart, CheckCircle2, ShieldCheck, Info } from 'lucide-react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { toast } from 'sonner';
 
@@ -15,9 +15,13 @@ export default function StudioVerification() {
     if (!activeChannel) return;
     const fetchVideos = async () => {
       try {
-        const q = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
-        const snapshot = await getDocs(q);
-        setVideos(snapshot.docs.map(doc => doc.data() as VideoType));
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('author_id', activeChannel.id);
+        
+        if (error) throw error;
+        setVideos((data || []).map(d => databaseService.mapVideo(d)));
       } catch (error) {
         console.error("Error fetching videos for verification:", error);
       } finally {
@@ -45,8 +49,13 @@ export default function StudioVerification() {
     if (!isEligible || !activeChannel) return;
     
     try {
-      const channelRef = doc(db, 'channels', activeChannel.id);
-      await updateDoc(channelRef, { isVerified: true });
+      const { error } = await supabase
+        .from('channels')
+        .update({ is_verified: true })
+        .eq('id', activeChannel.id);
+      
+      if (error) throw error;
+      
       toast.success('Поздравляем! Ваш канал верифицирован. Статус «Ледяной куб» получен!');
       window.location.reload();
     } catch (error) {

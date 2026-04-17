@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../App';
 import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, ListMusic, Music as MusicIcon, Camera, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { db } from '../lib/firebase';
-import { setDoc, doc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 
 const MAX_VIDEO_SIZE_MB = 50;
@@ -46,11 +45,16 @@ export default function Studio() {
     if (!activeChannel) return;
     const fetchUserCategories = async () => {
       try {
-        const q = query(collection(db, 'videos'), where('authorId', '==', activeChannel.id));
-        const snap = await getDocs(q);
+        const { data, error } = await supabase
+          .from('videos')
+          .select('category')
+          .eq('author_id', activeChannel.id);
+        
+        if (error) throw error;
+        
         const cats = new Set<string>();
-        snap.docs.forEach(doc => {
-          if (doc.data().category) cats.add(doc.data().category);
+        (data || []).forEach(doc => {
+          if (doc.category) cats.add(doc.category);
         });
         setUserCategories(Array.from(cats));
       } catch (error) {
@@ -104,22 +108,24 @@ export default function Studio() {
       try {
         // Simple fingerprint: name + size
         const fingerprint = `${file.name}_${file.size}`;
-        const q = query(collection(db, 'music_registry'), where('fingerprint', '==', fingerprint));
-        const snap = await getDocs(q);
+        const { data, error } = await supabase
+          .from('music_registry')
+          .select('*')
+          .eq('fingerprint', fingerprint)
+          .maybeSingle();
         
-        if (!snap.empty) {
-          const musicData = snap.docs[0].data();
-          toast.success(`Обнаружена музыка: ${musicData.title} - ${musicData.author}`);
+        if (data) {
+          toast.success(`Обнаружена музыка: ${data.title} - ${data.author}`);
           setMusicMetadata({
-            author: musicData.author || '',
-            composer: musicData.composer || '',
-            performer: musicData.performer || '',
-            otherParticipants: musicData.otherParticipants || '',
-            album: musicData.album || '',
-            releaseYear: musicData.releaseYear || ''
+            author: data.author || '',
+            composer: data.composer || '',
+            performer: data.performer || '',
+            otherParticipants: data.other_participants || '',
+            album: data.album || '',
+            releaseYear: data.release_year || ''
           });
           if (contentType !== 'music') {
-            setSoundName(`${musicData.author} - ${musicData.title}`);
+            setSoundName(`${data.author} - ${data.title}`);
           }
         }
       } catch (error) {
@@ -199,96 +205,84 @@ export default function Studio() {
         title,
         description: description || '',
         category,
-        videoUrl,
-        thumbnailUrl,
-        authorId: activeChannel?.id || user.uid,
-        authorName: activeChannel?.displayName || user.displayName,
-        authorPhotoUrl: activeChannel?.photoURL || user.photoURL,
+        video_url: videoUrl,
+        thumbnail_url: thumbnailUrl,
+        author_id: activeChannel?.id || user.uid,
+        author_name: activeChannel?.displayName || user.displayName,
+        author_photo_url: activeChannel?.photoURL || user.photoURL,
         views: 0,
         likes: 0,
         dislikes: 0,
-        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         duration: videoDuration,
         type: contentType,
-        isShort: contentType === 'short',
-        isMusic: contentType === 'music',
-        isPhoto: contentType === 'photo',
+        is_short: contentType === 'short',
+        is_music: contentType === 'music',
+        is_photo: contentType === 'photo',
         tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
-        soundName: contentType === 'short' ? soundName : '',
+        sound_name: contentType === 'short' ? soundName : '',
         hashtags: contentType === 'short' ? hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [],
-        musicMetadata: contentType === 'music' ? musicMetadata : undefined,
+        music_metadata: contentType === 'music' ? musicMetadata : undefined,
         timestamps: contentType === 'video' ? timestamps : [],
         audience,
         visibility
       };
 
-      // Remove undefined fields to prevent Firestore errors
-      Object.keys(newVideoData).forEach(key => {
-        if ((newVideoData as any)[key] === undefined) {
-          delete (newVideoData as any)[key];
-        }
-      });
-
-      await setDoc(doc(db, 'videos', videoId), newVideoData);
+      await supabase.from('videos').insert(newVideoData);
 
       // Save to music registry if metadata is provided
       if (contentType === 'music' || (musicMetadata.author && musicMetadata.album)) {
         const fingerprint = `${videoFile.name}_${videoFile.size}`;
-        await addDoc(collection(db, 'music_registry'), {
+        await supabase.from('music_registry').insert({
           title: title,
           author: musicMetadata.author || 'Unknown',
           composer: musicMetadata.composer || '',
           performer: musicMetadata.performer || '',
-          otherParticipants: musicMetadata.otherParticipants || '',
+          other_participants: musicMetadata.otherParticipants || '',
           album: musicMetadata.album || '',
-          releaseYear: musicMetadata.releaseYear || '',
-          originalVideoId: videoId,
+          release_year: musicMetadata.releaseYear || '',
+          original_video_id: videoId,
           fingerprint: fingerprint,
-          createdAt: serverTimestamp()
+          created_at: new Date().toISOString()
         });
       }
 
       // Update lastPostAt in user profile and channel
       try {
-        await updateDoc(doc(db, 'users', user.uid), {
-          lastPostAt: serverTimestamp()
-        });
+        const now = new Date().toISOString();
+        await supabase.from('users').update({ last_post_at: now }).eq('id', user.uid);
         if (activeChannel) {
-          await updateDoc(doc(db, 'channels', activeChannel.id), {
-            lastPostAt: serverTimestamp()
-          });
+          await supabase.from('channels').update({ last_post_at: now }).eq('id', activeChannel.id);
         }
       } catch (err) {
-        console.error("Error updating lastPostAt:", err);
+        console.error("Error updating last_post_at:", err);
       }
 
       // Send notifications to subscribers who have notifications enabled
       try {
         const targetId = activeChannel?.id || user.uid;
-        const subsQuery = query(
-          collection(db, 'subscriptions'),
-          where('channelId', '==', targetId),
-          where('notificationsEnabled', '==', true)
-        );
-        const subsSnap = await getDocs(subsQuery);
+        const { data: subsData } = await supabase
+          .from('subscriptions')
+          .select('user_id')
+          .eq('channel_id', targetId)
+          .eq('notifications_enabled', true);
         
-        const notificationPromises = subsSnap.docs.map(subDoc => {
-          const subData = subDoc.data();
-          return addDoc(collection(db, 'notifications'), {
-            userId: subData.subscriberId,
+        if (subsData && subsData.length > 0) {
+          const notificationEntries = subsData.map(sub => ({
+            user_id: sub.user_id,
             type: 'new_content',
-            contentType: contentType,
-            videoId: videoId,
-            videoTitle: title,
-            fromUserId: targetId,
-            fromUserName: activeChannel?.displayName || user.displayName,
-            fromUserAvatar: activeChannel?.photoURL || user.photoURL,
-            createdAt: new Date(),
+            content_type: contentType,
+            video_id: videoId,
+            video_title: title,
+            from_user_id: targetId,
+            from_user_name: activeChannel?.displayName || user.displayName,
+            from_user_avatar: activeChannel?.photoURL || user.photoURL,
+            created_at: new Date().toISOString(),
             read: false
-          });
-        });
-        
-        await Promise.all(notificationPromises);
+          }));
+          
+          await supabase.from('notifications').insert(notificationEntries);
+        }
       } catch (err) {
         console.error("Error sending subscriber notifications:", err);
       }

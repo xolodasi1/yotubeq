@@ -6,8 +6,7 @@ import { ru } from 'date-fns/locale';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { Eye, ThumbsUp, Snowflake, Ban, Clock, Music as MusicIcon } from 'lucide-react';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { doc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { databaseService } from '../lib/databaseService';
 import { toast } from 'sonner';
 
 export default function VideoCard({ video }: { video: Video; key?: React.Key }) {
@@ -24,13 +23,7 @@ export default function VideoCard({ video }: { video: Video; key?: React.Key }) 
     
     setIsHiding(true);
     try {
-      const hiddenId = `${user.uid}_${video.authorId}`;
-      await setDoc(doc(db, 'hidden_channels', hiddenId), {
-        id: hiddenId,
-        userId: user.uid,
-        channelId: video.authorId,
-        addedAt: serverTimestamp()
-      });
+      await databaseService.hideChannel(user.uid, video.authorId);
       toast.success('Канал больше не будет рекомендоваться');
       window.location.reload();
     } catch (err) {
@@ -45,13 +38,7 @@ export default function VideoCard({ video }: { video: Video; key?: React.Key }) 
     
     setIsAdding(true);
     try {
-      const watchLaterId = `${user.uid}_${video.id}`;
-      await setDoc(doc(db, 'watch_later', watchLaterId), {
-        id: watchLaterId,
-        userId: user.uid,
-        videoId: video.id,
-        addedAt: serverTimestamp()
-      });
+      await databaseService.addToWatchLater(user.uid, video.id);
       toast.success('Добавлено в "Смотреть позже"');
     } catch (err) {
       toast.error('Не удалось добавить');

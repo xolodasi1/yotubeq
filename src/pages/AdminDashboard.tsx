@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
-import { db } from '../lib/firebase';
-import { collection, query, where, getCountFromServer, getDocs, limit, orderBy, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { ShieldAlert, Users, Video, Music, Camera, PlayCircle, Clock, Search, Activity, ShieldCheck, Shield, Share2, AlertTriangle, UserCog, Ban, CheckCircle, Trash2 } from 'lucide-react';
+import { databaseService } from '../lib/databaseService';
+import { ShieldAlert, Users, Video, Music, Camera, PlayCircle, Clock, Search, Activity, Trash2, ShieldCheck, Shield, Share2, AlertTriangle, UserCog } from 'lucide-react';
 import { useAuth } from '../App';
 import { toast } from 'sonner';
 
@@ -25,8 +24,8 @@ export default function AdminDashboard() {
     }
 
     // Role check logic for regular mods (if they try to enter by URL)
-    getDoc(doc(db, 'admin', 'settings')).then(snap => {
-      const mods = snap.data()?.moderators || [];
+    databaseService.getAdminSettings().then(settings => {
+      const mods = settings.moderators || [];
       if (mods.includes(user.email)) {
         setIsMod(true);
       } else {
@@ -70,35 +69,11 @@ function AdminAnalytics() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const channelsSnap = await getCountFromServer(collection(db, 'channels'));
-        const totalChannels = channelsSnap.data().count;
+        const statsData = await databaseService.getStats();
+        setStats(statsData);
 
-        const videosQuery = query(collection(db, 'videos'), where('type', '==', 'video'));
-        const videosCount = (await getCountFromServer(videosQuery)).data().count;
-
-        const shortsQuery = query(collection(db, 'videos'), where('type', '==', 'short'));
-        const shortsCount = (await getCountFromServer(shortsQuery)).data().count;
-
-        const photoQuery = query(collection(db, 'videos'), where('type', '==', 'photo'));
-        const photoCount = (await getCountFromServer(photoQuery)).data().count;
-
-        const musicQuery = query(collection(db, 'videos'), where('isMusic', '==', true));
-        const musicCount = (await getCountFromServer(musicQuery)).data().count;
-
-        const activeUsersQuery = query(collection(db, 'channels'), orderBy('createdAt', 'desc'), limit(15));
-        const activeDocs = await getDocs(activeUsersQuery);
-        const onlineApproximation = Math.floor(Math.random() * 5) + 1; 
-
-        setStats({
-          totalChannels,
-          totalVideos: videosCount,
-          totalShorts: shortsCount,
-          totalMusic: musicCount,
-          totalPhotos: photoCount,
-          onlineNow: onlineApproximation + activeDocs.size 
-        });
-
-        setRecentChannels(activeDocs.docs.map(d => ({id: d.id, ...d.data()})));
+        const recentChannelsData = await databaseService.getChannels({ limit: 15 });
+        setRecentChannels(recentChannelsData);
       } catch (error) {
         console.error("Failed to load admin stats:", error);
       }
@@ -161,9 +136,8 @@ function AdminChannels({ isMaster }: { isMaster: boolean }) {
   useEffect(() => {
     const fetchChannels = async () => {
       try {
-        const q = query(collection(db, 'channels'), orderBy('subscribers', 'desc'), limit(50));
-        const res = await getDocs(q);
-        setChannels(res.docs.map(d => ({id: d.id, ...d.data()})));
+        const res = await databaseService.getChannels({ limit: 50 });
+        setChannels(res);
       } catch(err) {
         toast.error("Ошибка при загрузке каналов");
       } finally {
@@ -179,7 +153,7 @@ function AdminChannels({ isMaster }: { isMaster: boolean }) {
         toast.error("Невозможно заблокировать системный аккаунт");
         return;
       }
-      await updateDoc(doc(db, 'channels', channelId), { isBanned: !currentBan });
+      await databaseService.updateChannel(channelId, { isBanned: !currentBan });
       setChannels(prev => prev.map(c => c.id === channelId ? { ...c, isBanned: !currentBan } : c));
       toast.success(currentBan ? "Канал разблокирован" : "Канал заблокирован!");
     } catch (err) {
@@ -251,14 +225,14 @@ function AdminModerators({ isMaster }: { isMaster: boolean }) {
   const [newMod, setNewMod] = useState('');
 
   useEffect(() => {
-    getDoc(doc(db, 'admin', 'settings')).then(snap => {
-      setMods(snap.data()?.moderators || []);
+    databaseService.getAdminSettings().then(settings => {
+      setMods(settings.moderators || []);
     });
   }, []);
 
   const handleUpdate = async (updatedMods: string[]) => {
     try {
-      await setDoc(doc(db, 'admin', 'settings'), { moderators: updatedMods }, { merge: true });
+      await databaseService.updateAdminSettings({ moderators: updatedMods });
       setMods(updatedMods);
       toast.success("Список модераторов обновлен");
     } catch(err) {

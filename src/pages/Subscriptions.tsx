@@ -4,8 +4,9 @@ import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType, UserType } from '../types';
 import { Loader2, Users, Bell, Video, Music, Smartphone, Camera } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc, limit } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
+// Supabase refactored
 import { Link } from 'react-router-dom';
 
 export default function Subscriptions() {
@@ -21,10 +22,14 @@ export default function Subscriptions() {
     const fetchSubscriptions = async () => {
       try {
         setLoading(true);
-        const q = query(collection(db, 'subscriptions'), where('subscriberId', '==', user.uid));
-        const snap = await getDocs(q);
+        const { data: subData, error: subError } = await supabase
+          .from('subscriptions')
+          .select('channel_id')
+          .eq('user_id', user.uid);
         
-        const channelIds = snap.docs.map(d => d.data().channelId);
+        if (subError) throw subError;
+        
+        const channelIds = (subData || []).map(d => d.channel_id);
         
         if (channelIds.length === 0) {
           setLoading(false);
@@ -32,35 +37,36 @@ export default function Subscriptions() {
         }
 
         // Fetch channel info
-        const channelPromises = channelIds.map(id => getDoc(doc(db, 'channels', id)));
-        const channelSnaps = await Promise.all(channelPromises);
-        setChannels(channelSnaps.filter(s => s.exists()).map(s => {
-          const data = s.data();
-          return {
-            uid: s.id,
-            email: '',
-            joinedAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-            displayName: data.displayName,
-            photoURL: data.photoURL,
-            pseudonym: data.pseudonym,
-            bio: data.bio,
-            subscribers: data.subscribers
-          } as UserType;
-        }));
+        const { data: channelData, error: channelError } = await supabase
+          .from('channels')
+          .select('*')
+          .in('id', channelIds);
+        
+        if (channelError) throw channelError;
+
+        setChannels((channelData || []).map(data => ({
+          uid: data.id,
+          email: '',
+          joinedAt: data.created_at,
+          displayName: data.display_name,
+          photoURL: data.photo_url,
+          pseudonym: data.pseudonym,
+          bio: data.bio,
+          subscribers: data.subscribers
+        } as UserType)));
 
         // Fetch videos from these channels
-        const videosQ = query(
-          collection(db, 'videos'), 
-          where('authorId', 'in', channelIds.slice(0, 10)), // Firestore limit for 'in'
-          where('type', '==', activeTab),
-          orderBy('createdAt', 'desc'),
-          limit(30)
-        );
-        const videosSnap = await getDocs(videosQ);
-        setVideos(videosSnap.docs.map(d => ({
-          ...d.data(),
-          createdAt: d.data().createdAt?.toDate?.()?.toISOString() || d.data().createdAt
-        })) as VideoType[]);
+        const { data: videosData, error: videosError } = await supabase
+          .from('videos')
+          .select('*')
+          .in('author_id', channelIds.slice(0, 10))
+          .eq('type', activeTab)
+          .order('created_at', { ascending: false })
+          .limit(30);
+        
+        if (videosError) throw videosError;
+
+        setVideos((videosData || []).map(d => databaseService.mapVideo(d)) as any);
 
       } catch (error) {
         console.error("Error fetching subscriptions:", error);

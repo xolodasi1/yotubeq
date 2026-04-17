@@ -3,10 +3,9 @@ import { useAuth } from '../App';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { auth, db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { MeltingAvatar } from './MeltingAvatar';
-import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 
 import { APP_LOGO_URL } from '../constants';
@@ -27,16 +26,26 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, 'notifications'),
-      where('userId', '==', user.uid),
-      where('read', '==', false),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
+    
+    // Initial fetch
+    databaseService.getNotifications(user.uid).then(setNotifications);
+
+    // Real-time listener
+    const channel = supabase
+      .channel('notifications_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'notifications', 
+        filter: `user_id=eq.${user.uid}` 
+      }, () => {
+        databaseService.getNotifications(user.uid).then(setNotifications);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -54,17 +63,17 @@ export default function Navbar() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      await updateDoc(doc(db, 'notifications', notificationId), { read: true });
+      await databaseService.markNotificationAsRead(notificationId);
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }
   };
 
   const markAllAsRead = async () => {
+    if (!user) return;
     try {
-      const unreadNotifications = notifications.filter(n => !n.read);
-      const promises = unreadNotifications.map(n => updateDoc(doc(db, 'notifications', n.id), { read: true }));
-      await Promise.all(promises);
+      await databaseService.markAllNotificationsAsRead(user.uid);
+      setNotifications([]);
       toast.success('Все уведомления прочитаны');
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
@@ -75,13 +84,16 @@ export default function Navbar() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleGoogleLogin = async () => {
-    console.log("Starting Google Login...");
+    console.log("Starting Supabase Google Login...");
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      console.log("Login successful, user:", result.user.uid);
-      setShowAuthModal(false);
-      toast.success(isStudio ? 'Добро пожаловать в Студию!' : 'Добро пожаловать!');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+      // The state change will be handled by App.tsx
     } catch (error: any) {
       console.error("Login error:", error);
       toast.error(error.message || 'Ошибка аутентификации');
@@ -90,7 +102,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
       toast.info(isStudio ? 'До скорой встречи в Студии!' : 'До скорой встречи!');
       navigate('/');
     } catch (error: any) {
@@ -348,7 +360,7 @@ export default function Navbar() {
                 </div>
               </div>
             </>
-          ) : auth.currentUser ? (
+          ) : loading ? (
             <div className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--text-secondary)] animate-pulse">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span className="hidden xs:inline">Синхронизация...</span>

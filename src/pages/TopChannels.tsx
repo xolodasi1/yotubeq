@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
-import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { Loader2, Trophy, Users, Music, Play, TrendingUp, Camera, Heart, Snowflake } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MeltingAvatar } from '../components/MeltingAvatar';
@@ -36,13 +36,13 @@ export default function TopChannels() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const videosQuery = query(collection(db, 'videos'));
-        const videosSnapshot = await getDocs(videosQuery);
-        const allVideos = videosSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt
-        })) as VideoType[];
+        const { data: videosData, error: videosError } = await supabase
+          .from('videos')
+          .select('*');
+        
+        if (videosError) throw videosError;
+        
+        const allVideos = (videosData || []).map(d => databaseService.mapVideo(d));
 
         // Set top tracks (music only)
         const musicTracks = allVideos
@@ -97,30 +97,28 @@ export default function TopChannels() {
           }
         });
 
-        // Fetch channels once instead of listening for real-time updates
-        const channelsQuery = query(collection(db, 'channels'));
-        const channelsSnapshot = await getDocs(channelsQuery);
+        // Fetch channels
+        const { data: channelsData, error: channelsError } = await supabase
+          .from('channels')
+          .select('*');
         
-        const channelsData = channelsSnapshot.docs.map(doc => ({
-          uid: doc.id,
-          ...doc.data()
-        })) as any[];
+        if (channelsError) throw channelsError;
 
-        const combinedData: TopChannel[] = channelsData.map(channel => ({
-          uid: channel.uid,
-          displayName: channel.displayName || 'User',
+        const combinedData: TopChannel[] = (channelsData || []).map(channel => ({
+          uid: channel.id,
+          displayName: channel.display_name || 'User',
           pseudonym: channel.pseudonym || '',
-          photoURL: channel.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.uid}`,
+          photoURL: channel.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.id}`,
           bio: channel.bio || '',
           subscribers: Number(channel.subscribers) || 0,
-          lastPostAt: channel.lastPostAt,
-          totalMusicViews: stats[channel.uid]?.musicViews || 0,
-          musicCount: stats[channel.uid]?.musicCount || 0,
-          totalViews: stats[channel.uid]?.totalViews || 0,
-          totalLikes: stats[channel.uid]?.likes || 0,
-          totalPhotoLikes: stats[channel.uid]?.photoLikes || 0,
-          photoCount: stats[channel.uid]?.photoCount || 0,
-          totalIces: stats[channel.uid]?.totalIces || 0
+          lastPostAt: channel.last_post_at,
+          totalMusicViews: stats[channel.id]?.musicViews || 0,
+          musicCount: stats[channel.id]?.musicCount || 0,
+          totalViews: stats[channel.id]?.totalViews || 0,
+          totalLikes: stats[channel.id]?.likes || 0,
+          totalPhotoLikes: stats[channel.id]?.photoLikes || 0,
+          photoCount: stats[channel.id]?.photoCount || 0,
+          totalIces: stats[channel.id]?.totalIces || 0
         }));
 
         setChannels(combinedData);
@@ -131,14 +129,7 @@ export default function TopChannels() {
       }
     };
 
-    let unsubscribe: any;
-    fetchVideos().then(unsub => {
-      unsubscribe = unsub;
-    });
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    fetchVideos();
   }, []);
 
   const sortedChannels = React.useMemo(() => {
