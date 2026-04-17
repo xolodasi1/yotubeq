@@ -49,13 +49,45 @@ export default function AdminDashboard() {
   if (!isMod) return null;
 
   return (
-    <Routes>
-      <Route path="/" element={<AdminAnalytics />} />
-      <Route path="/channels" element={<AdminChannels isMaster={isMaster} />} />
-      <Route path="/reports" element={<AdminReports />} />
-      <Route path="/moderators" element={<AdminModerators isMaster={isMaster} />} />
-      <Route path="/socials" element={<AdminSocials />} />
-    </Routes>
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar Navigation */}
+      <div className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col">
+        <h2 className="text-xl font-black text-red-600 mb-8">Admin Panel</h2>
+        <nav className="space-y-2 flex-1">
+          {[
+            { path: '/', label: 'Аналитика', icon: Activity },
+            { path: '/channels', label: 'Каналы', icon: Users },
+            { path: '/reports', label: 'Жалобы', icon: AlertTriangle },
+            { path: '/moderators', label: 'Модераторы', icon: UserCog },
+            { path: '/socials', label: 'Соцсети', icon: Share2 },
+          ].map(item => (
+            <Link 
+              key={item.path} 
+              to={`/admin${item.path === '/' ? '' : item.path}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-colors ${
+                (window.location.pathname === `/admin${item.path === '/' ? '' : item.path}`) 
+                  ? 'bg-red-50 text-red-600' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <Routes>
+          <Route path="/" element={<AdminAnalytics />} />
+          <Route path="/channels" element={<AdminChannels isMaster={isMaster} />} />
+          <Route path="/reports" element={<AdminReports />} />
+          <Route path="/moderators" element={<AdminModerators isMaster={isMaster} />} />
+          <Route path="/socials" element={<AdminSocials />} />
+        </Routes>
+      </div>
+    </div>
   );
 }
 
