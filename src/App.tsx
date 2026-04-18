@@ -196,6 +196,9 @@ export default function App() {
               email: supabaseUser.email || '',
               display_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
               photo_url: supabaseUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${supabaseUser.id}`,
+              bio: '',
+              social_links: {},
+              is_subscription_public: true,
               subscribers: 0,
               ices: 0,
               created_at: new Date().toISOString()
@@ -277,6 +280,28 @@ export default function App() {
         setChannels(userChannels);
         const primary = userChannels.find(c => c.isPrimary) || userChannels[0];
         setActiveChannel(primary);
+
+        if (primary) {
+          // Add Realtime subscription for the active channel's stats (e.g. sub count)
+          const sub = supabase
+            .channel(`auth_channel_${primary.id}`)
+            .on('postgres_changes', { 
+              event: 'UPDATE', 
+              schema: 'public', 
+              table: 'channels', 
+              filter: `id=eq.${primary.id}` 
+            }, (payload) => {
+              const updated = payload.new as any;
+              setActiveChannel(prev => prev ? { 
+                ...prev, 
+                subscribers: updated.subscribers || 0,
+                ices: updated.ices || 0,
+                displayName: updated.display_name || prev.displayName,
+                photoURL: updated.photo_url || prev.photoURL
+              } : null);
+            })
+            .subscribe();
+        }
 
       } catch (error: any) {
         console.error("Auth init error:", error);

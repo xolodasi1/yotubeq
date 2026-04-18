@@ -130,6 +130,50 @@ export default function TopChannels() {
     };
 
     fetchVideos();
+
+    // Add Realtime subscription for subscriber counts and other channel updates
+    const channelsSub = supabase
+      .channel('top_channels_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, (payload) => {
+        if (payload.event === 'UPDATE') {
+          const updatedChannel = payload.new as any;
+          setChannels(prev => prev.map(c => 
+            c.uid === updatedChannel.id 
+              ? { 
+                  ...c, 
+                  subscribers: Number(updatedChannel.subscribers) || 0,
+                  displayName: updatedChannel.display_name || c.displayName,
+                  photoURL: updatedChannel.photo_url || c.photoURL,
+                  ices: updatedChannel.ices || c.ices
+                } 
+              : c
+          ));
+        } else if (payload.event === 'INSERT' || payload.event === 'DELETE') {
+          fetchVideos(); // Refresh everything for new/deleted authors
+        }
+      })
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          setTimeout(() => channelsSub.subscribe(), 5000);
+        }
+      });
+
+    // Also listen for video updates (views, likes) to keep top tracks/videos fresh
+    const videosSub = supabase
+      .channel('top_videos_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'videos' }, () => {
+        fetchVideos(); // Refresh aggregated stats on video changes
+      })
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          setTimeout(() => videosSub.subscribe(), 6000);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channelsSub);
+      supabase.removeChannel(videosSub);
+    };
   }, []);
 
   const sortedChannels = React.useMemo(() => {

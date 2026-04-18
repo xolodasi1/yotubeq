@@ -120,6 +120,76 @@ export default function StudioDashboard() {
     };
 
     fetchStudioData();
+
+    // Add Realtime subscription for the active channel's own statistics
+    const statsSub = supabase
+      .channel('studio_stats_realtime')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'channels', 
+        filter: `id=eq.${activeChannel.id}` 
+      }, (payload) => {
+        const updated = payload.new as any;
+        setStats(prev => ({
+          ...prev,
+          subscribers: updated.subscribers || 0
+        }));
+      })
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          setTimeout(() => statsSub.subscribe(), 5000);
+        }
+      });
+
+    // Add Realtime subscription for competitors
+    let competitorsSub: any = null;
+    if (activeChannel.competitors && activeChannel.competitors.length > 0) {
+      competitorsSub = supabase
+        .channel('studio_competitors_realtime')
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'channels'
+        }, (payload) => {
+          const updated = payload.new as any;
+          if (activeChannel.competitors.includes(updated.id)) {
+            setCompetitorsData(prev => prev.map(c => 
+              c.id === updated.id 
+                ? { ...c, subscribers: updated.subscribers, ices: updated.ices } 
+                : c
+            ));
+          }
+        })
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR") {
+            setTimeout(() => competitorsSub?.subscribe(), 6000);
+          }
+        });
+    }
+
+    // Refresh everything on video changes (views, likes)
+    const videosSub = supabase
+      .channel('studio_videos_realtime')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'videos',
+        filter: `author_id=eq.${activeChannel.id}`
+      }, () => {
+        fetchStudioData(); 
+      })
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          setTimeout(() => videosSub.subscribe(), 7000);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(statsSub);
+      if (competitorsSub) supabase.removeChannel(competitorsSub);
+      supabase.removeChannel(videosSub);
+    };
   }, [user, activeChannel]);
 
   const handleSearchCompetitors = async () => {

@@ -60,24 +60,37 @@ export default function Settings() {
     fetchUser();
   }, [user]);
 
+  const handlePrivacyToggle = async () => {
+    if (!user) return;
+    const newVal = !isSubscriptionPublic;
+    setIsSubscriptionPublic(newVal);
+    
+    try {
+      await databaseService.updateUser(user.uid, {
+        isSubscriptionPublic: newVal
+      });
+      toast.success(newVal ? 'Ваши подписки теперь публичны' : 'Ваши подписки теперь скрыты');
+    } catch (error) {
+      setIsSubscriptionPublic(!newVal);
+      console.error("Privacy update error:", error);
+      toast.error('Не удалось обновить настройки');
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          display_name: displayName,
-          photo_url: photoURL,
-          bio,
-          social_links: socialLinks
-        })
-        .eq('id', user.uid);
-      
-      if (error) throw error;
+      await databaseService.updateUser(user.uid, {
+        displayName,
+        photoURL,
+        bio,
+        socialLinks
+      });
       toast.success('Настройки сохранены');
     } catch (error) {
+      console.error("Save error:", error);
       toast.error('Ошибка при сохранении');
     } finally {
       setSaving(false);
@@ -86,26 +99,25 @@ export default function Settings() {
 
   const handleDeleteChannel = async () => {
     if (!user) return;
+    if (!window.confirm('Вы уверены? Это действие удалит ваш аккаунт и ВЕСЬ контент без возможности восстановления.')) return;
     setDeleting(true);
     try {
-      // 1. Delete all user's videos/photos/music
+      // 1. Delete all user's content
       await supabase.from('videos').delete().eq('author_id', user.uid);
-
-      // 2. Delete all user's community posts
       await supabase.from('community_posts').delete().eq('author_id', user.uid);
 
-      // 3. Delete user document
+      // 2. Delete user document
       await supabase.from('users').delete().eq('id', user.uid);
 
-      // 4. Sign out
+      // 3. Sign out
       await supabase.auth.signOut();
 
-      toast.success('Канал полностью удален');
+      toast.success('Аккаунт удален');
       navigate('/');
       window.location.reload();
     } catch (error) {
       console.error("Delete error:", error);
-      toast.error('Ошибка при удалении канала');
+      toast.error('Ошибка при удалении');
     } finally {
       setDeleting(false);
       setShowDeleteModal(false);
@@ -135,58 +147,145 @@ export default function Settings() {
         <h1 className="text-2xl md:text-3xl font-bold text-[var(--studio-text)]">Настройки</h1>
       </div>
 
-      <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 shadow-sm">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--studio-muted)] mb-4">Внешний вид</h3>
-        <div className="flex items-center justify-between p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
-          <div className="flex items-center gap-3">
-            {theme === 'dark' ? <Moon className="w-5 h-5 text-blue-400" /> : <Sun className="w-5 h-5 text-yellow-500" />}
-            <div>
-              <p className="font-bold text-[var(--studio-text)] text-sm">Темная тема</p>
-              <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest">Переключить режим</p>
-            </div>
-          </div>
-          <button 
-            type="button"
-            onClick={toggleTheme}
-            className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300'}`}
-          >
-            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${theme === 'dark' ? 'translate-x-6' : ''}`} />
-          </button>
-        </div>
+      <div className="space-y-6">
+        {/* Profile Section */}
+        <form onSubmit={handleSave} className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 shadow-sm">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--studio-muted)] mb-6">Профиль</h3>
+          
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative group">
+                  <img 
+                    src={photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover border-4 border-[var(--studio-border)] group-hover:opacity-75 transition-opacity"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <p className="text-[10px] font-bold text-[var(--studio-muted)] uppercase tracking-widest text-center">Аватар</p>
+              </div>
 
-        <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--studio-muted)] mb-4 mt-8">Приватность</h3>
-        <div className="flex items-center justify-between p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
-          <div className="flex items-center gap-3">
-            <User className="w-5 h-5 text-purple-400" />
+              <div className="flex-1 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-1.5 ml-1">Имя пользователя</label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-2xl p-4 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
+                    placeholder="Ваше имя"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-1.5 ml-1">URL аватара</label>
+                  <input
+                    type="text"
+                    value={photoURL}
+                    onChange={(e) => setPhotoURL(e.target.value)}
+                    className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-2xl p-4 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </div>
+
             <div>
-              <p className="font-bold text-[var(--studio-text)] text-sm">Показывать информацию о подписках</p>
-              <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mt-1">Отображать вас в списке новых подписчиков</p>
+              <label className="block text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-1.5 ml-1">О себе</label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-2xl p-4 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium min-h-[100px]"
+                placeholder="Расскажите о себе..."
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-1.5 ml-1">Сайт</label>
+                <input
+                  type="text"
+                  value={socialLinks.website}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, website: e.target.value })}
+                  className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-2xl p-4 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
+                  placeholder="example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[var(--studio-muted)] uppercase tracking-widest mb-1.5 ml-1">Instagram</label>
+                <input
+                  type="text"
+                  value={socialLinks.instagram}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                  className="w-full bg-[var(--studio-hover)] border border-[var(--studio-border)] rounded-2xl p-4 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
+                  placeholder="@username"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+            >
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Сохранить профиль
+            </button>
+          </div>
+        </form>
+
+        {/* App Settings */}
+        <div className="bg-[var(--studio-sidebar)] rounded-3xl border border-[var(--studio-border)] p-6 md:p-8 shadow-sm">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--studio-muted)] mb-4">Настройки приложения</h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
+              <div className="flex items-center gap-3">
+                {theme === 'dark' ? <Moon className="w-5 h-5 text-blue-400" /> : <Sun className="w-5 h-5 text-yellow-500" />}
+                <div>
+                  <p className="font-bold text-[var(--studio-text)] text-sm">Темная тема</p>
+                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest">Переключить режим</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={toggleTheme}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300'}`}
+              >
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${theme === 'dark' ? 'translate-x-6' : ''}`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-[var(--studio-hover)] rounded-2xl border border-[var(--studio-border)]">
+              <div className="flex items-center gap-3">
+                <Globe className="w-5 h-5 text-purple-400" />
+                <div>
+                  <p className="font-bold text-[var(--studio-text)] text-sm">Публичные подписки</p>
+                  <p className="text-[10px] text-[var(--studio-muted)] font-bold uppercase tracking-widest mt-1">Отображать вас в списке новых подписчиков</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={handlePrivacyToggle}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isSubscriptionPublic ? 'bg-blue-600' : 'bg-gray-300'}`}
+              >
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${isSubscriptionPublic ? 'translate-x-6' : ''}`} />
+              </button>
             </div>
           </div>
-          <button 
-            type="button"
-            onClick={async () => {
-              try {
-                if (!user) return;
-                const newVal = !isSubscriptionPublic;
-                setIsSubscriptionPublic(newVal);
-                
-                const { error } = await supabase
-                  .from('users')
-                  .update({ is_subscription_public: newVal })
-                  .eq('id', user.uid);
-                
-                if (error) throw error;
-                toast.success('Настройки приватности обновлены');
-              } catch(e) {
-                setIsSubscriptionPublic(isSubscriptionPublic);
-                toast.error('Не удалось обновить настройки');
-              }
-            }}
-            className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isSubscriptionPublic ? 'bg-blue-600' : 'bg-gray-300'}`}
-          >
-            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${isSubscriptionPublic ? 'translate-x-6' : ''}`} />
-          </button>
+
+          <div className="mt-8 pt-8 border-t border-[var(--studio-border)]">
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-2 text-red-500 hover:text-red-600 transition-colors font-bold text-sm uppercase tracking-wider"
+            >
+              <Trash2 className="w-4 h-4" />
+              Удалить аккаунт
+            </button>
+          </div>
         </div>
       </div>
     </div>

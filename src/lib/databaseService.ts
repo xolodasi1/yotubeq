@@ -302,6 +302,9 @@ export const databaseService = {
     if (updates.displayName) supabaseUpdates.display_name = updates.displayName;
     if (updates.photoURL) supabaseUpdates.photo_url = updates.photoURL;
     if (updates.primaryChannelId) supabaseUpdates.primary_channel_id = updates.primaryChannelId;
+    if (updates.bio !== undefined) supabaseUpdates.bio = updates.bio;
+    if (updates.socialLinks) supabaseUpdates.social_links = updates.socialLinks;
+    if (updates.isSubscriptionPublic !== undefined) supabaseUpdates.is_subscription_public = updates.isSubscriptionPublic;
     
     const { data, error } = await supabase
       .from('users')
@@ -515,6 +518,9 @@ export const databaseService = {
       email: u.email,
       photoURL: u.photo_url,
       primaryChannelId: u.primary_channel_id,
+      bio: u.bio || '',
+      socialLinks: u.social_links || {},
+      isSubscriptionPublic: u.is_subscription_public !== false,
       subscribers: u.subscribers || 0,
       ices: u.ices || 0,
       createdAt: u.created_at
