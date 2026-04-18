@@ -144,16 +144,26 @@ export default function App() {
         return;
       }
 
+      // We only want to block the UI and reload user data on initial mount, sign in, or explicit reset.
+      // Re-running on TOKEN_REFRESHED when the tab wakes up might trigger a loading loop if the DB queries fail.
+      if (event === 'TOKEN_REFRESHED' && user?.uid === supabaseUser.id) {
+        console.log("Token refreshed, preserving existing user state");
+        return; // Don't wipe UI and re-fetch, just keep existing state as JWT handled it.
+      }
+
       setLoading(true);
+      
+      // We use a flag to track if the effect actually completed
+      let isCompleted = false;
       
       // Set a strict timeout to prevent infinite loading
       const loadingTimeout = setTimeout(() => {
-        if (loading) {
+        if (!isCompleted) {
           console.warn("Connection timeout during auth initialization");
           setLoading(false);
-          toast.error("Не удалось загрузить профиль. Проверьте подключение.");
+          toast.error("Слабое соединение. Приложение может работать нестабильно.");
         }
-      }, 10000); // 10 seconds timeout
+      }, 8000); // 8 seconds timeout
       
       try {
         // Fetch User from Supabase
@@ -273,8 +283,8 @@ export default function App() {
 
       } catch (error: any) {
         console.error("Error during Supabase auth initialization:", error);
-        toast.error(`Ошибка профиля: ${error.message || 'Не удалось загрузить данные из Supabase'}`);
       } finally {
+        isCompleted = true;
         clearTimeout(loadingTimeout);
         setLoading(false);
       }
