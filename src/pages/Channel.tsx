@@ -97,7 +97,13 @@ export default function Channel() {
         }));
         setSubCount(data.subscribers);
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Channel ${id} subscription status:`, status);
+        if (status === "CHANNEL_ERROR") {
+          console.warn(`Channel ${id} subscription error. Reconnecting...`);
+          setTimeout(() => channelSubscription.subscribe(), 2000);
+        }
+      });
 
     const fetchChannelVideos = async () => {
       try {
@@ -178,7 +184,11 @@ export default function Channel() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_posts', filter: `author_id=eq.${id}` }, () => {
         fetchPosts();
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          setTimeout(() => postsSubscription.subscribe(), 3000);
+        }
+      });
 
     return () => {
       supabase.removeChannel(postsSubscription);

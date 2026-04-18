@@ -115,7 +115,11 @@ export default function Photos() {
           } as Comment;
           setComments(prev => [newComment, ...prev]);
         })
-        .subscribe();
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR") {
+            setTimeout(() => channel.subscribe(), 5000);
+          }
+        });
 
       return () => {
         supabase.removeChannel(channel);

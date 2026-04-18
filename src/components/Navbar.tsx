@@ -41,7 +41,11 @@ export default function Navbar() {
       }, () => {
         databaseService.getNotifications(user.uid).then(setNotifications);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          setTimeout(() => channel.subscribe(), 4000);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
