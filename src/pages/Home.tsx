@@ -23,8 +23,19 @@ export default function Home() {
   const [dynamicCategories, setDynamicCategories] = useState<string[]>(BASE_CATEGORIES);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchData = async () => {
       setLoading(true);
+      
+      const loadingTimeout = setTimeout(() => {
+        if (isMounted) {
+          console.warn("Home page fetch timeout");
+          setLoading(false);
+          toast.error("Слабое соединение. Попробуйте обновить страницу.");
+        }
+      }, 15000); // 15 seconds max for home page
+      
       try {
         let hiddenChannelIds: string[] = [];
         if (user) {
@@ -108,14 +119,19 @@ export default function Home() {
         setVideos(mappedVideos as any);
         setUsers(usersData);
       } catch (error: any) {
-        console.error("Error fetching data from Supabase:", error);
-        // Supabase often fails if tables are not created. 
-        // We should warn the user to run the migration.
+        if (isMounted) console.error("Error fetching data from Supabase:", error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          clearTimeout(loadingTimeout);
+          setLoading(false);
+        }
       }
     };
     fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const filteredVideos = videos.filter(video => {

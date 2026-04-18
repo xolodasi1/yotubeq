@@ -145,6 +145,16 @@ export default function App() {
       }
 
       setLoading(true);
+      
+      // Set a strict timeout to prevent infinite loading
+      const loadingTimeout = setTimeout(() => {
+        if (loading) {
+          console.warn("Connection timeout during auth initialization");
+          setLoading(false);
+          toast.error("Не удалось загрузить профиль. Проверьте подключение.");
+        }
+      }, 10000); // 10 seconds timeout
+      
       try {
         // Fetch User from Supabase
         const { data: userData, error: userError } = await supabase
@@ -265,11 +275,14 @@ export default function App() {
         console.error("Error during Supabase auth initialization:", error);
         toast.error(`Ошибка профиля: ${error.message || 'Не удалось загрузить данные из Supabase'}`);
       } finally {
+        clearTimeout(loadingTimeout);
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
