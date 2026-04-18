@@ -44,5 +44,20 @@ const createMissingConfigProxy = (path: string): any => {
 };
 
 export const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: 'icetube_auth_session',
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10, // Slight throttle for stability
+        },
+      },
+      global: {
+        headers: { 'x-application-name': 'icetube-web' },
+      },
+    })
   : createMissingConfigProxy('');

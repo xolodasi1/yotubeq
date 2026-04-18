@@ -35,7 +35,7 @@ export default function Home() {
           setLoading(false);
           toast.error("Слабое соединение. Попробуйте обновить страницу.");
         }
-      }, 15000); // 15 seconds max for home page
+      }, 5000); // 5 seconds max for home page
       
       try {
         let hiddenChannelIds: string[] = [];

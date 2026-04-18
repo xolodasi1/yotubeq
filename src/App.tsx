@@ -137,6 +137,13 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Supabase Auth state changed:", event, session?.user?.id);
+
+      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESH_FAILED") {
+        console.log("Auth session invalidated - clearing and reloading");
+        localStorage.clear();
+        window.location.reload();
+        return;
+      }
       
       const supabaseUser = session?.user;
       
@@ -164,10 +171,10 @@ export default function App() {
         if (!isCompleted) {
           console.warn("Connection timeout during auth initialization");
           setLoading(false);
-          // Only show toast if we are actually stuck
+          // Force reset loading for safety
           toast.error("Слабое соединение. Приложение может работать нестабильно.");
         }
-      }, 7000); 
+      }, 5000); // 5 seconds as requested
       
       try {
         // Fetch User from Supabase
@@ -283,6 +290,22 @@ export default function App() {
     return () => {
       subscription.unsubscribe();
     };
+  }, []);
+
+  useEffect(() => {
+    const handleFocus = async () => {
+      console.log("Window focused - checking session integrity...");
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error || !data.session) {
+        console.log("Session broken or missing on focus - Force reloading...");
+        localStorage.clear();
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   return (
