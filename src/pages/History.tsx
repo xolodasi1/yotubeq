@@ -24,16 +24,16 @@ export default function History() {
         setLoading(true);
         const { data, error } = await supabase
           .from('history')
-          .select('*, videos(*)')
+          .select('*, videos!fk_history_video(*)')
           .eq('user_id', activeChannel.id)
           .order('watched_at', { ascending: false });
         
         if (error) throw error;
         
         const results = (data || []).map(item => {
-          if (!item.videos) return null;
+          if (!item['videos!fk_history_video']) return null;
           return {
-            ...databaseService.mapVideo(item.videos),
+            ...databaseService.mapVideo(item['videos!fk_history_video']),
             watchedAt: new Date(item.watched_at),
             historyId: item.id
           } as VideoType & { watchedAt: any, historyId: string };
