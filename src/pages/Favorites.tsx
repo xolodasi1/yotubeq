@@ -23,16 +23,16 @@ export default function Favorites() {
         setLoading(true);
         const { data, error } = await supabase
           .from('favorites')
-          .select('*, videos!fk_favorites_video(*)')
+          .select('*, videos!favorites_video_id_fkey(*)')
           .eq('user_id', user.uid)
           .order('added_at', { ascending: false });
         
         if (error) throw error;
         
         const results = (data || []).map(item => {
-          if (!item['videos!fk_favorites_video']) return null;
+          if (!item['videos!favorites_video_id_fkey']) return null;
           return {
-            ...databaseService.mapVideo(item['videos!fk_favorites_video']),
+            ...databaseService.mapVideo(item['videos!favorites_video_id_fkey']),
             addedAt: new Date(item.added_at),
             favoriteId: item.id
           } as VideoType & { addedAt: any, favoriteId: string };
