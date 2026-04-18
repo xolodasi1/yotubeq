@@ -21,16 +21,16 @@ export default function WatchLater() {
         setLoading(true);
         const { data, error } = await supabase
           .from('watch_later')
-          .select('*, videos!watch_later_video_id_fkey(*)')
+          .select('*, videos!fk_watchlater_video(*)')
           .eq('user_id', user.uid)
           .order('added_at', { ascending: false });
         
         if (error) throw error;
         
         const results = (data || []).map(item => {
-          if (!item['videos!watch_later_video_id_fkey']) return null;
+          if (!item['videos!fk_watchlater_video']) return null;
           return {
-            ...databaseService.mapVideo(item['videos!watch_later_video_id_fkey']),
+            ...databaseService.mapVideo(item['videos!fk_watchlater_video']),
             addedAt: new Date(item.added_at),
             watchLaterId: item.id
           } as VideoType & { addedAt: any, watchLaterId: string };
