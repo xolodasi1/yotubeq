@@ -649,7 +649,9 @@ export default function VideoPlayer() {
 
     try {
       if (isSubscribed) {
-        await supabase.from('subscriptions').delete().eq('user_id', user.uid).eq('channel_id', video.authorId);
+        const { error: delError } = await supabase.from('subscriptions').delete().eq('user_id', user.uid).eq('channel_id', video.authorId);
+        if (delError) throw delError;
+
         const newSubscribersCount = Math.max(0, (authorData.subscribers || 0) - 1);
         await supabase.from('channels').update({ subscribers: newSubscribersCount }).eq('id', video.authorId);
         
@@ -657,18 +659,22 @@ export default function VideoPlayer() {
         setIsSubscribed(false);
         toast.success('Вы отписались');
       } else {
-        await supabase.from('subscriptions').insert({ user_id: user.uid, channel_id: video.authorId });
+        const { error: insError } = await supabase.from('subscriptions').insert({ user_id: user.uid, channel_id: video.authorId });
+        if (insError) throw insError;
+
         const newSubscribersCount = (authorData.subscribers || 0) + 1;
         await supabase.from('channels').update({ subscribers: newSubscribersCount }).eq('id', video.authorId);
         
-        await supabase.from('notifications').insert({
-          user_id: video.authorId,
-          type: 'subscribe',
-          from_user_id: user.uid,
-          from_user_name: user.displayName,
-          from_user_avatar: user.photoURL,
-          read: false
-        });
+        try {
+          await supabase.from('notifications').insert({
+            user_id: video.authorId,
+            type: 'subscribe',
+            from_user_id: user.uid,
+            from_user_name: user.displayName,
+            from_user_avatar: user.photoURL,
+            read: false
+          });
+        } catch (e) { console.error(e); }
 
         setAuthorData({ ...authorData, subscribers: newSubscribersCount });
         setIsSubscribed(true);

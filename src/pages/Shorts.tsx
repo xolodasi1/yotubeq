@@ -185,38 +185,57 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
     try {
       if (isSubscribed) {
-        await supabase
+        const { error: delError } = await supabase
           .from('subscriptions')
           .delete()
           .eq('user_id', user.uid)
           .eq('channel_id', short.authorId);
           
-        await supabase.rpc('decrement_subscribers', { channel_id_input: short.authorId });
+        if (delError) throw delError;
+          
+        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', short.authorId).single();
+        if (channelData) {
+           const newCount = Math.max(0, channelData.subscribers - 1);
+           await supabase.from('channels').update({ subscribers: newCount }).eq('id', short.authorId);
+        }
+
         setIsSubscribed(false);
         toast.success('Вы отписались');
       } else {
-        await supabase.from('subscriptions').insert({ 
+        const { error: insError } = await supabase.from('subscriptions').insert({ 
           user_id: user.uid, 
           channel_id: short.authorId, 
           created_at: new Date().toISOString() 
         });
-        await supabase.rpc('increment_subscribers', { channel_id_input: short.authorId });
+        
+        if (insError) throw insError;
+
+        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', short.authorId).single();
+        if (channelData) {
+           const newCount = (channelData.subscribers || 0) + 1;
+           await supabase.from('channels').update({ subscribers: newCount }).eq('id', short.authorId);
+        }
+        
+        try {
+          await supabase.from('notifications').insert({
+            user_id: short.authorId,
+            type: 'subscribe',
+            from_user_id: user.uid,
+            from_user_name: user.displayName,
+            from_user_avatar: user.photoURL,
+            created_at: new Date().toISOString(),
+            read: false
+          });
+        } catch (e) {
+          console.error(e);
+        }
+
         setIsSubscribed(true);
         toast.success('Вы подписались!');
       }
     } catch (err) {
-      // Fallback if RPC is not set up
-      try {
-        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', short.authorId).single();
-        if (channelData) {
-          const newCount = isSubscribed ? Math.max(0, channelData.subscribers - 1) : channelData.subscribers + 1;
-          await supabase.from('channels').update({ subscribers: newCount }).eq('id', short.authorId);
-          setIsSubscribed(!isSubscribed);
-          toast.success(isSubscribed ? 'Вы отписались' : 'Вы подписались!');
-        }
-      } catch (e) {
-        toast.error('Не удалось обновить подписку');
-      }
+      console.error("Error toggling subscription:", err);
+      toast.error('Не удалось обновить подписку');
     }
   };
 

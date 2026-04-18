@@ -247,26 +247,40 @@ export default function Channel() {
 
     try {
       if (isSubscribed) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from('subscriptions')
           .delete()
           .eq('user_id', user.uid)
           .eq('channel_id', id);
           
-        await supabase.rpc('decrement_subscribers', { channel_id_input: id });
+        if (deleteError) throw deleteError;
+          
+        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', id).single();
+        if (channelData) {
+           const newCount = Math.max(0, channelData.subscribers - 1);
+           await supabase.from('channels').update({ subscribers: newCount }).eq('id', id);
+           setSubCount(newCount);
+        }
+
         setIsSubscribed(false);
         setNotificationsEnabled(false);
-        setSubCount(Math.max(0, subCount - 1));
         toast.success('Вы отписались');
       } else {
-        await supabase.from('subscriptions').insert({
+        const { error: insertError } = await supabase.from('subscriptions').insert({
           user_id: user.uid,
           channel_id: id,
           created_at: new Date().toISOString(),
           notifications_enabled: false
         });
         
-        await supabase.rpc('increment_subscribers', { channel_id_input: id });
+        if (insertError) throw insertError;
+        
+        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', id).single();
+        if (channelData) {
+           const newCount = (channelData.subscribers || 0) + 1;
+           await supabase.from('channels').update({ subscribers: newCount }).eq('id', id);
+           setSubCount(newCount);
+        }
         
         // Add notification
         try {
@@ -285,24 +299,11 @@ export default function Channel() {
 
         setIsSubscribed(true);
         setNotificationsEnabled(false);
-        setSubCount(subCount + 1);
         toast.success('Вы подписались!');
       }
     } catch (error) {
-      // Fallback update
-      try {
-        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', id).single();
-        if (channelData) {
-          const newCount = isSubscribed ? Math.max(0, channelData.subscribers - 1) : channelData.subscribers + 1;
-          await supabase.from('channels').update({ subscribers: newCount }).eq('id', id);
-          setIsSubscribed(!isSubscribed);
-          setSubCount(newCount);
-          toast.success(isSubscribed ? 'Вы отписались' : 'Вы подписались!');
-        }
-      } catch (e) {
-        console.error("Error toggling subscription Fallback:", e);
-        toast.error('Не удалось обновить подписку');
-      }
+      console.error("Subscribe transaction error:", error);
+      toast.error("Не удалось изменить подписку");
     }
   };
 

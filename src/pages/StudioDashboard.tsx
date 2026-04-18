@@ -92,19 +92,21 @@ export default function StudioDashboard() {
         // Fetch recent subscribers
         const { data: subsData, error: subsError } = await supabase
           .from('subscriptions')
-          .select('*, users(*)')
+          .select('*, users!fk_subscriptions_user(*)')
           .eq('channel_id', activeChannel.id)
           .order('created_at', { ascending: false })
           .limit(30);
         
+        if (subsError) console.error("Subs error:", subsError); // explicit log
+        
         if (!subsError && subsData) {
           const publicSubs = subsData
-            .filter(item => item.users?.is_subscription_public !== false)
+            .filter(item => item['users!fk_subscriptions_user']?.is_subscription_public !== false)
             .map(item => ({
-               id: item.users?.id,
-               displayName: item.users?.display_name,
-               photoURL: item.users?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.users?.id}`,
-               subscribers: item.users?.subscribers || 0
+               id: item['users!fk_subscriptions_user']?.id,
+               displayName: item['users!fk_subscriptions_user']?.display_name,
+               photoURL: item['users!fk_subscriptions_user']?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item['users!fk_subscriptions_user']?.id}`,
+               subscribers: item['users!fk_subscriptions_user']?.subscribers || 0
             }))
             .slice(0, 10);
           setRecentSubscribers(publicSubs);
