@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
+import { Toaster, toast } from 'sonner';
 import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users, Music as MusicIcon, Camera, Heart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { databaseService } from '../lib/databaseService';
