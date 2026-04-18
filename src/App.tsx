@@ -124,6 +124,11 @@ export default function App() {
     console.log("Current user state:", user?.uid);
   }, [user]);
 
+  const userRef = React.useRef<User | null>(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setLoading(false);
@@ -144,26 +149,25 @@ export default function App() {
         return;
       }
 
-      // We only want to block the UI and reload user data on initial mount, sign in, or explicit reset.
-      // Re-running on TOKEN_REFRESHED when the tab wakes up might trigger a loading loop if the DB queries fail.
-      if (event === 'TOKEN_REFRESHED' && user?.uid === supabaseUser.id) {
-        console.log("Token refreshed, preserving existing user state");
-        return; // Don't wipe UI and re-fetch, just keep existing state as JWT handled it.
+      // Optimization: if we already have a user and this is just a token refresh, do NOTHING.
+      // This prevents the "infinite loading" when switching tabs as TOKEN_REFRESHED fires on wake-up.
+      if (event === 'TOKEN_REFRESHED' && userRef.current?.uid === supabaseUser.id) {
+        console.log("Token refreshed on active session - silent update.");
+        return;
       }
 
+      // If it's a regular refresh or signd in, proceed with fetching data.
       setLoading(true);
       
-      // We use a flag to track if the effect actually completed
       let isCompleted = false;
-      
-      // Set a strict timeout to prevent infinite loading
       const loadingTimeout = setTimeout(() => {
         if (!isCompleted) {
           console.warn("Connection timeout during auth initialization");
           setLoading(false);
+          // Only show toast if we are actually stuck
           toast.error("Слабое соединение. Приложение может работать нестабильно.");
         }
-      }, 8000); // 8 seconds timeout
+      }, 7000); 
       
       try {
         // Fetch User from Supabase
@@ -176,8 +180,7 @@ export default function App() {
         let finalUserData: any = userData;
 
         if (userError || !userData) {
-          console.log("Supabase user document missing or error, creating init values...");
-          // New user logic
+          console.log("Supabase user document missing, initiating creation...");
           const { data: newUser, error: createError } = await supabase
             .from('users')
             .upsert({
@@ -197,7 +200,6 @@ export default function App() {
           finalUserData = newUser;
         }
 
-        // Map to internal User interface (camelCase)
         const mappedUser: User = {
           uid: supabaseUser.id,
           email: finalUserData.email,
@@ -211,7 +213,6 @@ export default function App() {
 
         setUser(mappedUser);
 
-        // Fetch Channels
         const { data: userChannelsData, error: channelsError } = await supabase
           .from('channels')
           .select('*')
@@ -233,9 +234,7 @@ export default function App() {
           isBanned: c.is_banned
         }));
 
-        // Ensure there is a primary channel
         if (userChannels.length === 0) {
-          console.log("Primary channel missing in Supabase, creating...");
           const { data: newChannel, error: channelCreateError } = await supabase
             .from('channels')
             .insert({
@@ -266,15 +265,6 @@ export default function App() {
             pinnedAchievements: []
           };
           userChannels.push(mappedChannel);
-          
-          if (!mappedUser.primaryChannelId) {
-            await supabase
-              .from('users')
-              .update({ primary_channel_id: newChannel.id })
-              .eq('id', supabaseUser.id);
-            mappedUser.primaryChannelId = newChannel.id;
-            setUser({ ...mappedUser });
-          }
         }
 
         setChannels(userChannels);
@@ -282,7 +272,7 @@ export default function App() {
         setActiveChannel(primary);
 
       } catch (error: any) {
-        console.error("Error during Supabase auth initialization:", error);
+        console.error("Auth init error:", error);
       } finally {
         isCompleted = true;
         clearTimeout(loadingTimeout);
