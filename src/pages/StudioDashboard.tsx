@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { supabase } from '../lib/supabase';
+import { appwriteClient, appwriteConfig } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { Eye, ThumbsUp, MessageSquare, Users, TrendingUp, Play, Plus, ChevronRight, Snowflake, Search, X, UserPlus, RefreshCw, ChevronDown, Trophy } from 'lucide-react';
@@ -41,23 +41,11 @@ export default function StudioDashboard() {
     const fetchStudioData = async () => {
       try {
         // Fetch last 5 videos
-        const { data: lastVideos, error: vError } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('author_id', activeChannel.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-        
-        if (vError) throw vError;
-        setVideos((lastVideos || []).map(d => databaseService.mapVideo(d)));
+        const lastVideos = await databaseService.getVideos({ authorId: activeChannel.id, orderBy: 'created_at', orderDirection: 'desc', limit: 5 });
+        setVideos(lastVideos as any);
 
         // Fetch all videos for stats
-        const { data: allVideos, error: allVError } = await supabase
-          .from('videos')
-          .select('views, likes, ices')
-          .eq('author_id', activeChannel.id);
-        
-        if (allVError) throw allVError;
+        const allVideos = await databaseService.getVideos({ authorId: activeChannel.id, limit: 10000 });
         
         let views = 0;
         let likes = 0;
@@ -77,40 +65,15 @@ export default function StudioDashboard() {
 
         // Fetch competitors data
         if (activeChannel.competitors && activeChannel.competitors.length > 0) {
-          const { data: compData, error: compError } = await supabase
-            .from('channels')
-            .select('*')
-            .in('id', activeChannel.competitors);
-          
-          if (!compError && compData) {
-            setCompetitorsData(compData.map(d => databaseService.mapChannel(d)));
-          }
+          const compData = await databaseService.getChannelsByIds(activeChannel.competitors);
+          setCompetitorsData(compData);
         } else {
           setCompetitorsData([]);
         }
 
         // Fetch recent subscribers
-        const { data: subsData, error: subsError } = await supabase
-          .from('subscriptions')
-          .select('*, users!fk_subscriptions_user(*)')
-          .eq('channel_id', activeChannel.id)
-          .order('created_at', { ascending: false })
-          .limit(30);
-        
-        if (subsError) console.error("Subs error:", subsError); // explicit log
-        
-        if (!subsError && subsData) {
-          const publicSubs = subsData
-            .filter(item => item['users!fk_subscriptions_user']?.is_subscription_public !== false)
-            .map(item => ({
-               id: item['users!fk_subscriptions_user']?.id,
-               displayName: item['users!fk_subscriptions_user']?.display_name,
-               photoURL: item['users!fk_subscriptions_user']?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item['users!fk_subscriptions_user']?.id}`,
-               subscribers: item['users!fk_subscriptions_user']?.subscribers || 0
-            }))
-            .slice(0, 10);
-          setRecentSubscribers(publicSubs);
-        }
+        const publicSubs = await databaseService.getSubscriptionsWithUsers(activeChannel.id);
+        setRecentSubscribers(publicSubs);
 
       } catch (error) {
         console.error("Error fetching studio data:", error);
@@ -122,73 +85,50 @@ export default function StudioDashboard() {
     fetchStudioData();
 
     // Add Realtime subscription for the active channel's own statistics
-    const statsSub = supabase
-      .channel('studio_stats_realtime')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'channels', 
-        filter: `id=eq.${activeChannel.id}` 
-      }, (payload) => {
-        const updated = payload.new as any;
+    const statsSub = appwriteClient.subscribe(
+      `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.channelsId}.documents.${activeChannel.id}`,
+      (payload) => {
+        const updated = payload.payload as any;
         setStats(prev => ({
           ...prev,
           subscribers: updated.subscribers || 0
         }));
-      })
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR") {
-          setTimeout(() => statsSub.subscribe(), 5000);
-        }
-      });
+      }
+    );
 
     // Add Realtime subscription for competitors
     let competitorsSub: any = null;
     if (activeChannel.competitors && activeChannel.competitors.length > 0) {
-      competitorsSub = supabase
-        .channel('studio_competitors_realtime')
-        .on('postgres_changes', { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'channels'
-        }, (payload) => {
-          const updated = payload.new as any;
-          if (activeChannel.competitors.includes(updated.id)) {
+      competitorsSub = appwriteClient.subscribe(
+        `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.channelsId}.documents`,
+        (payload) => {
+          const updated = payload.payload as any;
+          if (activeChannel.competitors.includes(updated.$id)) {
             setCompetitorsData(prev => prev.map(c => 
-              c.id === updated.id 
+              c.id === updated.$id 
                 ? { ...c, subscribers: updated.subscribers, ices: updated.ices } 
                 : c
             ));
           }
-        })
-        .subscribe((status) => {
-          if (status === "CHANNEL_ERROR") {
-            setTimeout(() => competitorsSub?.subscribe(), 6000);
-          }
-        });
+        }
+      );
     }
 
     // Refresh everything on video changes (views, likes)
-    const videosSub = supabase
-      .channel('studio_videos_realtime')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'videos',
-        filter: `author_id=eq.${activeChannel.id}`
-      }, () => {
-        fetchStudioData(); 
-      })
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR") {
-          setTimeout(() => videosSub.subscribe(), 7000);
+    const videosSub = appwriteClient.subscribe(
+      `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.videosId}.documents`,
+      (payload) => {
+        const updated = payload.payload as any;
+        if(updated.authorId === activeChannel.id) {
+          fetchStudioData(); 
         }
-      });
+      }
+    );
 
     return () => {
-      supabase.removeChannel(statsSub);
-      if (competitorsSub) supabase.removeChannel(competitorsSub);
-      supabase.removeChannel(videosSub);
+      statsSub();
+      if (competitorsSub) competitorsSub();
+      videosSub();
     };
   }, [user, activeChannel]);
 
@@ -201,19 +141,11 @@ export default function StudioDashboard() {
     
     setIsSearching(true);
     try {
-      const { data, error } = await supabase
-        .from('channels')
-        .select('*')
-        .ilike('display_name', `%${searchQuery}%`)
-        .limit(20);
+      const results = await databaseService.getChannels({ searchQuery: searchQuery, limit: 20 });
       
-      if (error) throw error;
-      
-      const results = (data || [])
-        .map(c => databaseService.mapChannel(c))
-        .filter(c => c.id !== activeChannel.id && !(activeChannel.competitors || []).includes(c.id));
+      const filteredResults = results.filter(c => c.id !== activeChannel.id && !(activeChannel.competitors || []).includes(c.id));
         
-      setSearchResults(results);
+      setSearchResults(filteredResults);
     } catch (error) {
       console.error('Search error:', error);
       toast.error('Ошибка при поиске');
@@ -226,12 +158,7 @@ export default function StudioDashboard() {
     if (!activeChannel) return;
     try {
       const updatedCompetitors = [...(activeChannel.competitors || []), channelId];
-      const { error } = await supabase
-        .from('channels')
-        .update({ competitors: updatedCompetitors })
-        .eq('id', activeChannel.id);
-      
-      if (error) throw error;
+      await databaseService.updateChannel(activeChannel.id, { competitors: updatedCompetitors });
 
       toast.success('Конкурент добавлен');
       setSearchQuery('');
@@ -246,12 +173,7 @@ export default function StudioDashboard() {
     if (!activeChannel) return;
     try {
       const updatedCompetitors = (activeChannel.competitors || []).filter(id => id !== channelId);
-      const { error } = await supabase
-        .from('channels')
-        .update({ competitors: updatedCompetitors })
-        .eq('id', activeChannel.id);
-      
-      if (error) throw error;
+      await databaseService.updateChannel(activeChannel.id, { competitors: updatedCompetitors });
 
       toast.success('Конкурент удален');
       setActiveChannel({ ...activeChannel, competitors: updatedCompetitors });

@@ -4,7 +4,6 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType, Playlist } from '../types';
 import { Loader2, PlaySquare, ChevronRight } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { databaseService } from '../lib/databaseService';
 // Supabase refactored
 
@@ -20,29 +19,14 @@ export default function PlaylistDetail() {
     const fetchPlaylist = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('playlists')
-          .select('*')
-          .eq('id', id)
-          .single();
+        const data = await databaseService.getPlaylistById(id);
         
         if (data) {
-          setPlaylist({
-            ...data,
-            authorId: data.author_id,
-            createdAt: data.created_at,
-            videoIds: data.video_ids
-          } as Playlist);
+          setPlaylist(data as Playlist);
 
-          if (data.video_ids && data.video_ids.length > 0) {
-            const { data: videosData, error: videosError } = await supabase
-              .from('videos')
-              .select('*')
-              .in('id', data.video_ids);
-            
-            if (videosError) throw videosError;
-            
-            setVideos((videosData || []).map(v => databaseService.mapVideo(v)) as any);
+          if (data.videoIds && data.videoIds.length > 0) {
+            const vids = await databaseService.getVideosByIds(data.videoIds);
+            setVideos(vids as any);
           } else {
             setVideos([]);
           }

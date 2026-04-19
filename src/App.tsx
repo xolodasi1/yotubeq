@@ -28,7 +28,8 @@ import PlaylistDetail from './pages/PlaylistDetail';
 import Settings from './pages/Settings';
 import Studio from './pages/Studio';
 import Photos from './pages/Photos';
-import { supabase, isSupabaseConfigured } from './lib/supabase';
+import { account, appwriteClient, databases, appwriteConfig } from './lib/appwrite';
+import { databaseService } from './lib/databaseService';
 
 import { APP_LOGO_URL } from './constants';
 
@@ -130,213 +131,126 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
+    let isCompleted = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Supabase Auth state changed:", event, session?.user?.id);
-
-      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESH_FAILED") {
-        console.log("Auth session invalidated - clearing and reloading");
-        localStorage.clear();
-        window.location.reload();
-        return;
-      }
-      
-      const supabaseUser = session?.user;
-      
-      if (!supabaseUser) {
-        console.log("No supabase user, clearing state");
-        setUser(null);
-        setChannels([]);
-        setActiveChannel(null);
-        setLoading(false);
-        return;
-      }
-
-      // Optimization: if we already have a user and this is just a token refresh, do NOTHING.
-      // This prevents the "infinite loading" when switching tabs as TOKEN_REFRESHED fires on wake-up.
-      if (event === 'TOKEN_REFRESHED' && userRef.current?.uid === supabaseUser.id) {
-        console.log("Token refreshed on active session - silent update.");
-        return;
-      }
-
-      // If it's a regular refresh or signd in, proceed with fetching data.
+    const initAuth = async () => {
       setLoading(true);
-      
-      let isCompleted = false;
       const loadingTimeout = setTimeout(() => {
-        if (!isCompleted) {
+        if (!isCompleted && isMounted) {
           console.warn("Connection timeout during auth initialization");
           setLoading(false);
-          // Force reset loading for safety
           toast.error("Слабое соединение. Приложение может работать нестабильно.");
         }
-      }, 5000); // 5 seconds as requested
-      
+      }, 5000);
+
       try {
-        // Fetch User from Supabase
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', supabaseUser.id)
-          .single();
+        const appwriteUser = await account.get();
+        if (!appwriteUser) throw new Error("Not authenticated");
 
-        let finalUserData: any = userData;
-
-        if (userError || !userData) {
-          console.log("Supabase user document missing, initiating creation...");
-          const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .upsert({
-              id: supabaseUser.id,
-              uid: supabaseUser.id,
-              email: supabaseUser.email || '',
-              display_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-              photo_url: supabaseUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${supabaseUser.id}`,
-              bio: '',
-              social_links: {},
-              is_subscription_public: true,
-              subscribers: 0,
-              ices: 0,
-              created_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          finalUserData = newUser;
-        }
-
-        const mappedUser: User = {
-          uid: supabaseUser.id,
-          email: finalUserData.email,
-          displayName: finalUserData.display_name,
-          photoURL: finalUserData.photo_url,
-          bannerUrl: finalUserData.banner_url,
-          subscribers: finalUserData.subscribers || 0,
-          ices: finalUserData.ices || 0,
-          primaryChannelId: finalUserData.primary_channel_id
-        };
-
-        setUser(mappedUser);
-
-        const { data: userChannelsData, error: channelsError } = await supabase
-          .from('channels')
-          .select('*')
-          .eq('owner_id', supabaseUser.id);
-
-        if (channelsError) throw channelsError;
-
-        let userChannels: ChannelType[] = (userChannelsData || []).map(c => ({
-          id: c.id,
-          ownerId: c.owner_id,
-          displayName: c.display_name,
-          photoURL: c.photo_url,
-          bannerUrl: c.banner_url,
-          isPrimary: c.is_primary,
-          subscribers: c.subscribers || 0,
-          ices: c.ices || 0,
-          competitors: c.competitors || [],
-          pinnedAchievements: c.pinned_achievements || [],
-          isBanned: c.is_banned
-        }));
-
-        if (userChannels.length === 0) {
-          const { data: newChannel, error: channelCreateError } = await supabase
-            .from('channels')
-            .insert({
-              id: supabaseUser.id,
-              owner_id: supabaseUser.id,
-              display_name: mappedUser.displayName,
-              photo_url: mappedUser.photoURL,
-              is_primary: true,
-              subscribers: 0,
-              ices: 0,
-              bio: '',
-              created_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-          if (channelCreateError) throw channelCreateError;
-          
-          const mappedChannel: ChannelType = {
-            id: newChannel.id,
-            ownerId: newChannel.owner_id,
-            displayName: newChannel.display_name,
-            photoURL: newChannel.photo_url,
-            isPrimary: newChannel.is_primary,
-            subscribers: newChannel.subscribers,
-            ices: newChannel.ices,
-            competitors: [],
-            pinnedAchievements: []
+        // Fetch user from DB
+        let mappedUser: User;
+        try {
+          const userDoc = await databaseService.getUserById(appwriteUser.$id);
+          mappedUser = {
+            uid: appwriteUser.$id,
+            email: appwriteUser.email,
+            displayName: userDoc.displayName,
+            photoURL: userDoc.photoURL,
+            primaryChannelId: userDoc.primaryChannelId,
+            subscribers: userDoc.subscribers,
+            ices: userDoc.ices
           };
-          userChannels.push(mappedChannel);
+        } catch {
+          console.log("Appwrite user document missing, initiating creation...");
+          const newDoc = await databases.createDocument(
+            appwriteConfig.databaseId,
+            appwriteConfig.usersId,
+            appwriteUser.$id,
+            {
+              uid: appwriteUser.$id,
+              displayName: appwriteUser.name || appwriteUser.email.split('@')[0] || 'User',
+              email: appwriteUser.email || '',
+              photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${appwriteUser.$id}`,
+              bio: '',
+              isSubscriptionPublic: true,
+              subscribers: 0,
+              ices: 0
+            }
+          );
+          mappedUser = {
+            uid: appwriteUser.$id,
+            email: appwriteUser.email,
+            displayName: newDoc.displayName,
+            photoURL: newDoc.photoURL,
+            subscribers: newDoc.subscribers,
+            ices: newDoc.ices
+          };
         }
 
-        setChannels(userChannels);
-        const primary = userChannels.find(c => c.isPrimary) || userChannels[0];
-        setActiveChannel(primary);
+        if (isMounted) setUser(mappedUser);
 
-        if (primary) {
-          // Add Realtime subscription for the active channel's stats (e.g. sub count)
-          const sub = supabase
-            .channel(`auth_channel_${primary.id}`)
-            .on('postgres_changes', { 
-              event: 'UPDATE', 
-              schema: 'public', 
-              table: 'channels', 
-              filter: `id=eq.${primary.id}` 
-            }, (payload) => {
-              const updated = payload.new as any;
-              setActiveChannel(prev => prev ? { 
-                ...prev, 
-                subscribers: updated.subscribers || 0,
-                ices: updated.ices || 0,
-                displayName: updated.display_name || prev.displayName,
-                photoURL: updated.photo_url || prev.photoURL
-              } : null);
-            })
-            .subscribe();
+        // Fetch channels
+        let userChannels = await databaseService.getChannelsByOwnerId(appwriteUser.$id);
+        if (userChannels.length === 0) {
+          const newChannel = await databaseService.createChannel({
+            ownerId: appwriteUser.$id,
+            displayName: mappedUser.displayName,
+            photoURL: mappedUser.photoURL,
+            isPrimary: true
+          });
+          userChannels = [newChannel];
         }
 
-      } catch (error: any) {
-        console.error("Auth init error:", error);
+        if (isMounted) {
+          setChannels(userChannels);
+          const primary = userChannels.find(c => c.isPrimary) || userChannels[0];
+          setActiveChannel(primary);
+
+          // Add Realtime subscription for the active channel's stats
+          if (primary) {
+            appwriteClient.subscribe(
+              `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.channelsId}.documents.${primary.id}`,
+              response => {
+                if (response.events.includes('databases.*.collections.*.documents.*.update')) {
+                  const updated = response.payload as any;
+                  setActiveChannel(prev => prev ? {
+                    ...prev,
+                    subscribers: updated.subscribers || 0,
+                    ices: updated.ices || 0,
+                    displayName: updated.displayName || prev.displayName,
+                    photoURL: updated.photoURL || prev.photoURL
+                  } : null);
+                }
+              }
+            );
+          }
+        }
+      } catch (error) {
+        console.log("No active Appwrite session.");
+        if (isMounted) {
+          setUser(null);
+          setChannels([]);
+          setActiveChannel(null);
+        }
       } finally {
         isCompleted = true;
         clearTimeout(loadingTimeout);
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
-    });
+    };
+
+    initAuth();
 
     return () => {
-      subscription.unsubscribe();
+      isMounted = false;
     };
-  }, []);
-
-  useEffect(() => {
-    const handleFocus = async () => {
-      console.log("Window focused - checking session integrity...");
-      const { data, error } = await supabase.auth.getSession();
-
-      if (error || !data.session) {
-        console.log("Session broken or missing on focus - Force reloading...");
-        localStorage.clear();
-        window.location.reload();
-      }
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   return (
     <AuthContext.Provider value={{ user, channels, activeChannel, setActiveChannel: handleSetActiveChannel, loading, theme, toggleTheme, isSidebarOpen, toggleSidebar }}>
       <Router>
-        {!isSupabaseConfigured ? (
+        {!appwriteConfig.databaseId ? (
           <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-[var(--card)] border border-blue-500/20 rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center gap-6">
               <div className="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center">

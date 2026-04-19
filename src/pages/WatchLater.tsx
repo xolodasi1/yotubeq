@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, Clock, Trash2, Search, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { databases, appwriteConfig } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
 // Supabase refactored
 import { toast } from 'sonner';
@@ -19,24 +19,8 @@ export default function WatchLater() {
     const fetchWatchLater = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('watch_later')
-          .select('*, videos!fk_watchlater_video(*)')
-          .eq('user_id', user.uid)
-          .order('added_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        const results = (data || []).map(item => {
-          if (!item['videos!fk_watchlater_video']) return null;
-          return {
-            ...databaseService.mapVideo(item['videos!fk_watchlater_video']),
-            addedAt: new Date(item.added_at),
-            watchLaterId: item.id
-          } as VideoType & { addedAt: any, watchLaterId: string };
-        }).filter(v => v !== null);
-
-        setVideos(results as (VideoType & { addedAt: any, watchLaterId: string })[]);
+        const results = await databaseService.getWatchLater(user.uid);
+        setVideos(results);
       } catch (error) {
         console.error("Error fetching watch later:", error);
       } finally {
@@ -49,7 +33,7 @@ export default function WatchLater() {
 
   const removeWatchLaterItem = async (watchLaterId: string) => {
     try {
-      await supabase.from('watch_later').delete().eq('id', watchLaterId);
+      await databases.deleteDocument(appwriteConfig.databaseId, 'watch_later', watchLaterId);
       setVideos(videos.filter(v => v.watchLaterId !== watchLaterId));
       toast.success('Удалено из "Смотреть позже"');
     } catch (error) {

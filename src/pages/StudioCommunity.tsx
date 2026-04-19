@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { supabase } from '../lib/supabase';
 import { databaseService } from '../lib/databaseService';
 import { CommunityPost } from '../types';
 import { MessageSquare, Send, Trash2, Heart, BarChart2, Loader2, AlertCircle, Lock } from 'lucide-react';
@@ -25,14 +24,8 @@ export default function StudioCommunity() {
 
     const fetchPosts = async () => {
       try {
-        const { data, error } = await supabase
-          .from('community_posts')
-          .select('*')
-          .eq('author_id', activeChannel.id)
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        setPosts((data || []).map(d => databaseService.mapCommunityPost(d)));
+        const data = await databaseService.getCommunityPostsByAuthorId(activeChannel.id);
+        setPosts(data);
       } catch (error) {
         console.error("Error fetching community posts:", error);
       } finally {
@@ -49,22 +42,15 @@ export default function StudioCommunity() {
 
     setSubmitting(true);
     try {
-      const { data, error } = await supabase
-        .from('community_posts')
-        .insert({
-          author_id: activeChannel?.id || user.uid,
-          author_name: activeChannel?.displayName || user.displayName,
-          author_photo_url: activeChannel?.photoURL || user.photoURL,
-          text: newPostText,
-          type: 'text',
-          likes: 0
-        })
-        .select()
-        .single();
+      const newPost = await databaseService.createCommunityPost({
+        authorId: activeChannel?.id || user.uid,
+        authorName: activeChannel?.displayName || user.displayName,
+        authorPhotoUrl: activeChannel?.photoURL || user.photoURL,
+        text: newPostText,
+        type: 'text',
+        likes: 0
+      });
 
-      if (error) throw error;
-      
-      const newPost = databaseService.mapCommunityPost(data);
       setPosts([newPost, ...posts]);
       setNewPostText('');
       toast.success('Запись опубликована!');
@@ -78,12 +64,7 @@ export default function StudioCommunity() {
   const handleDeletePost = async (postId: string) => {
     if (!window.confirm('Удалить эту запись?')) return;
     try {
-      const { error } = await supabase
-        .from('community_posts')
-        .delete()
-        .eq('id', postId);
-        
-      if (error) throw error;
+      await databaseService.deleteCommunityPost(postId);
       setPosts(posts.filter(p => p.id !== postId));
       toast.success('Запись удалена');
     } catch (error) {

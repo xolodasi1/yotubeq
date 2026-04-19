@@ -6,8 +6,9 @@ import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Loader2, Snowflake,
 import { MeltingAvatar } from '../components/MeltingAvatar';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
 import { ru } from 'date-fns/locale';
-import { supabase } from '../lib/supabase';
+import { appwriteClient, appwriteConfig } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
+import { Query, ID } from 'appwrite';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
 
@@ -225,69 +226,53 @@ export default function VideoPlayer() {
       try {
         setLoading(true);
         
-        // Fetch Video from Supabase
-        const { data: vData, error: vError } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('id', id)
-          .single();
+        // Fetch Video
+        const vData = await databaseService.getVideoById(id);
         
-        if (vError || !vData) {
+        if (!vData) {
           throw new Error('Video not found');
         }
         
-        const data = databaseService.mapVideo(vData);
-        setVideo(data as any);
+        setVideo(vData as any);
 
         // Fetch author data
-        const { data: authorDataRaw } = await supabase
-          .from('channels')
-          .select('*')
-          .eq('id', data.authorId)
-          .single();
-        
+        const authorDataRaw = await databaseService.getChannelById(vData.authorId);
         if (authorDataRaw) {
-          setAuthorData(databaseService.mapChannel(authorDataRaw));
+          setAuthorData(authorDataRaw);
         }
 
-        // Increment views in Supabase
+        // Increment views
         try {
-          await supabase.from('videos').update({ views: (Number(vData.views) || 0) + 1 }).eq('id', id);
+          await databaseService.incrementViews(id);
         } catch (err) {
           console.error("Failed to increment views:", err);
         }
 
         // Fetch related videos
-        let relatedQuery = supabase.from('videos').select('*');
-        if (data.isShort) {
-          relatedQuery = relatedQuery.eq('is_short', true);
-        } else if (data.isMusic) {
-          relatedQuery = relatedQuery.eq('is_music', true);
-        } else if (data.isPhoto || data.type === 'photo') {
-          relatedQuery = relatedQuery.eq('is_photo', true);
+        const limitLimit = 20;
+        let queries = [];
+        if (vData.isShort) {
+          queries.push(Query.equal('isShort', true));
+        } else if (vData.isMusic) {
+          queries.push(Query.equal('isMusic', true));
+        } else if (vData.isPhoto || vData.type === 'photo') {
+          queries.push(Query.equal('isPhoto', true));
         } else {
-          relatedQuery = relatedQuery
-            .eq('category', data.category)
-            .eq('is_short', false)
-            .eq('is_music', false);
+          if (vData.category) queries.push(Query.equal('category', vData.category));
+          queries.push(Query.equal('isShort', false));
+          queries.push(Query.equal('isMusic', false));
         }
+        queries.push(Query.limit(limitLimit));
         
-        const { data: relatedDataRaw } = await relatedQuery.limit(20);
-        let relatedData = (relatedDataRaw || [])
-          .map(d => databaseService.mapVideo(d))
-          .filter(v => v.id !== id);
+        let relatedDataRaw = await databaseService.getVideos({ queries });
+        let relatedData = relatedDataRaw.filter(v => v.id !== id);
           
-        if (relatedData.length < 5 && !data.isShort && !data.isMusic && !data.isPhoto && data.type !== 'photo') {
-          const { data: generalDataRaw } = await supabase
-            .from('videos')
-            .select('*')
-            .eq('is_short', false)
-            .eq('is_music', false)
-            .limit(20);
+        if (relatedData.length < 5 && !vData.isShort && !vData.isMusic && !vData.isPhoto && vData.type !== 'photo') {
+          const generalDataRaw = await databaseService.getVideos({ 
+            queries: [Query.equal('isShort', false), Query.equal('isMusic', false), Query.limit(20)]
+          });
             
-          const generalData = (generalDataRaw || [])
-            .map(d => databaseService.mapVideo(d))
-            .filter(v => v.id !== id && !relatedData.find(rv => rv.id === v.id));
+          const generalData = generalDataRaw.filter(v => v.id !== id && !relatedData.find(rv => rv.id === v.id));
           
           relatedData = [...relatedData, ...generalData].slice(0, 15);
         }
@@ -295,20 +280,9 @@ export default function VideoPlayer() {
         setRelatedVideos(relatedData as any);
 
         // Fetch comments
-        const { data: commentsDataRaw } = await supabase
-          .from('comments')
-          .select('*')
-          .eq('video_id', id)
-          .order('created_at', { ascending: false });
+        const commentsDataRaw = await databaseService.getComments(id);
           
-        setComments((commentsDataRaw || []).map(c => ({
-          ...c,
-          videoId: c.video_id,
-          authorId: c.author_id,
-          authorName: c.author_name,
-          authorPhotoUrl: c.author_photo_url,
-          createdAt: c.created_at
-        })) as any);
+        setComments(commentsDataRaw as any);
 
       } catch (error) {
         console.error("Error fetching video:", error);
@@ -334,22 +308,17 @@ export default function VideoPlayer() {
 
     const fetchInteractions = async () => {
       try {
-        // Add to History - Upsert in Supabase
-        const historyId = `${activeChannel?.id || user.uid}_${id}`;
-        await supabase.from('history').upsert({
-          id: historyId,
-          user_id: activeChannel?.id || user.uid,
-          video_id: id,
-          watched_at: new Date().toISOString()
-        });
+        const uId = activeChannel?.id || user.uid;
+        // Add to History - Upsert in Appwrite
+        const histData = await databaseService.checkUserActionState('history', [Query.equal('userId', uId), Query.equal('videoId', id)]);
+        if (histData) {
+          await databaseService.updateUserAction('history', histData.$id, { watchedAt: new Date().toISOString() });
+        } else {
+          await databaseService.createUserAction('history', { userId: uId, videoId: id, watchedAt: new Date().toISOString() });
+        }
 
         // Check like/dislike
-        const { data: likeData } = await supabase
-          .from('video_likes')
-          .select('type')
-          .eq('user_id', user.uid)
-          .eq('video_id', id)
-          .maybeSingle();
+        const likeData = await databaseService.checkUserActionState('video_likes', [Query.equal('userId', user.uid), Query.equal('videoId', id)]);
           
         if (likeData) {
           setIsLiked(likeData.type === 'like');
@@ -360,39 +329,19 @@ export default function VideoPlayer() {
         }
 
         // Check ice
-        const { data: iceData } = await supabase
-          .from('video_ices')
-          .select('*')
-          .eq('user_id', user.uid)
-          .eq('video_id', id)
-          .maybeSingle();
+        const iceData = await databaseService.checkUserActionState('video_ices', [Query.equal('userId', user.uid), Query.equal('videoId', id)]);
         setIsIced(!!iceData);
 
         // Check favorite
-        const { data: favData } = await supabase
-          .from('favorites')
-          .select('*')
-          .eq('user_id', user.uid)
-          .eq('video_id', id)
-          .maybeSingle();
+        const favData = await databaseService.checkUserActionState('favorites', [Query.equal('userId', user.uid), Query.equal('videoId', id)]);
         setIsFavorited(!!favData);
 
         // Check watch later
-        const { data: wlData } = await supabase
-          .from('watch_later')
-          .select('*')
-          .eq('user_id', user.uid)
-          .eq('video_id', id)
-          .maybeSingle();
+        const wlData = await databaseService.checkUserActionState('watch_later', [Query.equal('userId', user.uid), Query.equal('videoId', id)]);
         setIsWatchLater(!!wlData);
 
         // Check subscription
-        const { data: subData } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', user.uid)
-          .eq('channel_id', video.authorId)
-          .maybeSingle();
+        const subData = await databaseService.checkUserActionState('subscriptions', [Query.equal('userId', user.uid), Query.equal('channelId', video.authorId)]);
         setIsSubscribed(!!subData);
       } catch (error) {
         console.error("Error fetching interactions:", error);
@@ -407,23 +356,19 @@ export default function VideoPlayer() {
 
     const fetchMusicVideos = async () => {
       try {
-        let mq = supabase.from('videos').select('*').limit(10);
-        
+        let queries = [Query.limit(10)];
         if (video.soundName) {
-          mq = mq.eq('sound_name', video.soundName);
+           queries.push(Query.equal('soundName', video.soundName));
         } else if (video.musicMetadata?.author) {
-          mq = mq.eq('music_metadata->author', video.musicMetadata.author);
+           // We might not be able to query nested json easily in appwrite without index, falling back to a plain fetch for now or skipping.
+           // However Appwrite doesn't support JSON querying natively without index. We'll skip for now if author isn't a direct field.
+           return;
         } else {
-          return;
+           return;
         }
 
-        const { data, error } = await mq;
-        if (error) throw error;
-        
-        const musicData = (data || [])
-          .map(d => databaseService.mapVideo(d))
-          .filter(v => v.id !== video.id);
-        setMusicVideos(musicData as any);
+        const data = await databaseService.getVideos({ queries });
+        setMusicVideos(data.filter(v => v.id !== video.id) as any);
       } catch (err) {
         console.error("Error fetching music videos:", err);
       }
@@ -448,53 +393,47 @@ export default function VideoPlayer() {
 
       if (currentType === type) {
         // Remove interaction
-        await supabase
-          .from('video_likes')
-          .delete()
-          .eq('user_id', user.uid)
-          .eq('video_id', video.id);
+        const actionData = await databaseService.checkUserActionState('video_likes', [Query.equal('userId', user.uid), Query.equal('videoId', video.id)]);
+        if (actionData) await databaseService.deleteUserAction('video_likes', actionData.$id);
           
         const updateObj = { [type === 'like' ? 'likes' : 'dislikes']: Math.max(0, (video[type === 'like' ? 'likes' : 'dislikes'] || 0) - 1) };
-        await supabase.from('videos').update(updateObj).eq('id', video.id);
+        await databaseService.updateVideo(video.id, updateObj);
         
         setVideo({ ...video, ...updateObj });
         if (type === 'like') setIsLiked(false);
         else setIsDisliked(false);
       } else if (currentType) {
         // Switch interaction
-        await supabase
-          .from('video_likes')
-          .update({ type })
-          .eq('user_id', user.uid)
-          .eq('video_id', video.id);
+        const actionData = await databaseService.checkUserActionState('video_likes', [Query.equal('userId', user.uid), Query.equal('videoId', video.id)]);
+        if (actionData) {
+          await databaseService.updateUserAction('video_likes', actionData.$id, { type });
+        }
           
         const updateObj = { 
           [type === 'like' ? 'likes' : 'dislikes']: (video[type === 'like' ? 'likes' : 'dislikes'] || 0) + 1,
           [currentType === 'like' ? 'likes' : 'dislikes']: Math.max(0, (video[currentType === 'like' ? 'likes' : 'dislikes'] || 0) - 1)
         };
-        await supabase.from('videos').update(updateObj).eq('id', video.id);
+        await databaseService.updateVideo(video.id, updateObj);
         
         setVideo({ ...video, ...updateObj });
         setIsLiked(type === 'like');
         setIsDisliked(type === 'dislike');
       } else {
         // New interaction
-        await supabase
-          .from('video_likes')
-          .insert({ user_id: user.uid, video_id: video.id, type });
+        await databaseService.createUserAction('video_likes', { userId: user.uid, videoId: video.id, type });
           
         const updateObj = { [type === 'like' ? 'likes' : 'dislikes']: (video[type === 'like' ? 'likes' : 'dislikes'] || 0) + 1 };
-        await supabase.from('videos').update(updateObj).eq('id', video.id);
+        await databaseService.updateVideo(video.id, updateObj);
         
         if (type === 'like' && video.authorId !== user.uid) {
-          await supabase.from('notifications').insert({
-            user_id: video.authorId,
+          await databaseService.createNotification({
+            userId: video.authorId,
             type: 'like',
-            video_id: video.id,
-            video_title: video.title,
-            from_user_id: user.uid,
-            from_user_name: user.displayName,
-            from_user_avatar: user.photoURL,
+            videoId: video.id,
+            videoTitle: video.title,
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserAvatar: user.photoURL,
             read: false
           });
         }
@@ -522,16 +461,17 @@ export default function VideoPlayer() {
 
     try {
       if (isIced) {
-        await supabase.from('video_ices').delete().eq('user_id', user.uid).eq('video_id', video.id);
+        const iceData = await databaseService.checkUserActionState('video_ices', [Query.equal('userId', user.uid), Query.equal('videoId', video.id)]);
+        if (iceData) await databaseService.deleteUserAction('video_ices', iceData.$id);
         const newIces = Math.max(0, (video.ices || 0) - 1);
-        await supabase.from('videos').update({ ices: newIces }).eq('id', video.id);
+        await databaseService.updateVideo(video.id, { ices: newIces });
         
         setVideo({ ...video, ices: newIces });
         setIsIced(false);
       } else {
-        await supabase.from('video_ices').insert({ user_id: user.uid, video_id: video.id });
+        await databaseService.createUserAction('video_ices', { userId: user.uid, videoId: video.id });
         const newIces = (video.ices || 0) + 1;
-        await supabase.from('videos').update({ ices: newIces }).eq('id', video.id);
+        await databaseService.updateVideo(video.id, { ices: newIces });
         
         setVideo({ ...video, ices: newIces });
         setIsIced(true);
@@ -546,11 +486,12 @@ export default function VideoPlayer() {
     if (!user || !id) return toast.error('Войдите, чтобы добавить в избранное');
     try {
       if (isFavorited) {
-        await supabase.from('favorites').delete().eq('user_id', user.uid).eq('video_id', id);
+        const favData = await databaseService.checkUserActionState('favorites', [Query.equal('userId', user.uid), Query.equal('videoId', id)]);
+        if (favData) await databaseService.deleteUserAction('favorites', favData.$id);
         setIsFavorited(false);
         toast.success('Удалено из избранного');
       } else {
-        await supabase.from('favorites').insert({ user_id: user.uid, video_id: id });
+        await databaseService.createUserAction('favorites', { userId: user.uid, videoId: id });
         setIsFavorited(true);
         toast.success('Добавлено в избранное');
       }
@@ -561,11 +502,12 @@ export default function VideoPlayer() {
     if (!user || !id) return toast.error('Войдите, чтобы посмотреть позже');
     try {
       if (isWatchLater) {
-        await supabase.from('watch_later').delete().eq('user_id', user.uid).eq('video_id', id);
+        const wlData = await databaseService.checkUserActionState('watch_later', [Query.equal('userId', user.uid), Query.equal('videoId', id)]);
+        if (wlData) await databaseService.deleteUserAction('watch_later', wlData.$id);
         setIsWatchLater(false);
         toast.success('Удалено из "Смотреть позже"');
       } else {
-        await supabase.from('watch_later').insert({ user_id: user.uid, video_id: id });
+        await databaseService.createUserAction('watch_later', { userId: user.uid, videoId: id });
         setIsWatchLater(true);
         toast.success('Добавлено в "Смотреть позже"');
       }
@@ -575,21 +517,16 @@ export default function VideoPlayer() {
   const handleAddToPlaylist = async (playlistId: string) => {
     if (!id) return;
     try {
-      const { data, error } = await supabase
-        .from('playlists')
-        .select('video_ids')
-        .eq('id', playlistId)
-        .single();
+      const playlist = await databaseService.getPlaylistById(playlistId);
+      if (!playlist) throw new Error('Playlist not found');
       
-      if (error) throw error;
-      
-      const videoIds = data.video_ids || [];
+      const videoIds = playlist.videoIds || [];
       if (videoIds.includes(id)) {
         toast.info('Уже в плейлисте');
         return;
       }
       
-      await supabase.from('playlists').update({ video_ids: [...videoIds, id] }).eq('id', playlistId);
+      await databaseService.updatePlaylist(playlistId, { videoIds: [...videoIds, id] });
       toast.success('Добавлено в плейлист');
       setShowPlaylistModal(false);
     } catch (error) { toast.error('Ошибка'); }
@@ -598,10 +535,10 @@ export default function VideoPlayer() {
   const createPlaylist = async () => {
     if (!user || !activeChannel || !newPlaylistTitle.trim() || !id || !video) return;
     try {
-      await supabase.from('playlists').insert({
+      await databaseService.createPlaylist({
         title: newPlaylistTitle,
-        author_id: activeChannel.id,
-        video_ids: [id],
+        authorId: activeChannel.id,
+        videoIds: [id],
         visibility: playlistVisibility,
         type: video.type || 'video'
       });
@@ -613,21 +550,8 @@ export default function VideoPlayer() {
 
   const fetchUserPlaylists = async () => {
     if (!user || !activeChannel) return;
-    const { data, error } = await supabase
-      .from('playlists')
-      .select('*')
-      .eq('author_id', activeChannel.id);
-    
-    if (!error && data) {
-      setUserPlaylists(data.map(d => ({
-        id: d.id,
-        title: d.title,
-        authorId: d.author_id,
-        videoIds: d.video_ids || [],
-        visibility: d.visibility,
-        createdAt: d.created_at
-      } as Playlist)));
-    }
+    const data = await databaseService.getPlaylistsByAuthorId(activeChannel.id);
+    setUserPlaylists(data as any[]);
     setShowPlaylistModal(true);
   };
 
@@ -649,29 +573,28 @@ export default function VideoPlayer() {
 
     try {
       if (isSubscribed) {
-        const { error: delError } = await supabase.from('subscriptions').delete().eq('user_id', user.uid).eq('channel_id', video.authorId);
-        if (delError) throw delError;
+        const subData = await databaseService.checkUserActionState('subscriptions', [Query.equal('userId', user.uid), Query.equal('channelId', video.authorId)]);
+        if (subData) await databaseService.deleteUserAction('subscriptions', subData.$id);
 
         const newSubscribersCount = Math.max(0, (authorData.subscribers || 0) - 1);
-        await supabase.from('channels').update({ subscribers: newSubscribersCount }).eq('id', video.authorId);
+        await databaseService.updateChannel(video.authorId, { subscribers: newSubscribersCount });
         
         setAuthorData({ ...authorData, subscribers: newSubscribersCount });
         setIsSubscribed(false);
         toast.success('Вы отписались');
       } else {
-        const { error: insError } = await supabase.from('subscriptions').insert({ user_id: user.uid, channel_id: video.authorId });
-        if (insError) throw insError;
+        await databaseService.createUserAction('subscriptions', { userId: user.uid, channelId: video.authorId });
 
         const newSubscribersCount = (authorData.subscribers || 0) + 1;
-        await supabase.from('channels').update({ subscribers: newSubscribersCount }).eq('id', video.authorId);
+        await databaseService.updateChannel(video.authorId, { subscribers: newSubscribersCount });
         
         try {
-          await supabase.from('notifications').insert({
-            user_id: video.authorId,
+          await databaseService.createNotification({
+            userId: video.authorId,
             type: 'subscribe',
-            from_user_id: user.uid,
-            from_user_name: user.displayName,
-            from_user_avatar: user.photoURL,
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserAvatar: user.photoURL,
             read: false
           });
         } catch (e) { console.error(e); }
@@ -702,53 +625,38 @@ export default function VideoPlayer() {
       let authorId = 'anonymous';
 
       if (user) {
-        const { data: userData } = await supabase.from('users').select('display_name, photo_url').eq('id', user.uid).single();
-        authorName = userData?.display_name || user.displayName || 'User';
-        authorPhotoUrl = userData?.photo_url || user.photoURL || '';
+        const userData = await databaseService.getUserById(user.uid);
+        authorName = userData?.displayName || user.displayName || 'User';
+        authorPhotoUrl = userData?.photoURL || user.photoURL || '';
         authorId = user.uid;
       }
 
-      const { data: commentData, error: commentError } = await supabase
-        .from('comments')
-        .insert({
-          video_id: video.id,
-          video_author_id: video.authorId,
-          author_id: authorId,
-          author_name: authorName,
-          author_photo_url: authorPhotoUrl,
+      const mappedComment = await databaseService.createComment({
+          videoId: video.id,
+          videoAuthorId: video.authorId,
+          authorId: authorId,
+          authorName: authorName,
+          authorPhotoUrl: authorPhotoUrl,
           text: newComment.trim(),
           likes: 0,
           dislikes: 0
-        })
-        .select()
-        .single();
-      
-      if (commentError) throw commentError;
+      });
       
       if (user && video.authorId !== user.uid) {
-        await supabase.from('notifications').insert({
-          user_id: video.authorId,
+        await databaseService.createNotification({
+          userId: video.authorId,
           type: 'comment',
-          video_id: video.id,
-          video_title: video.title,
-          from_user_id: user.uid,
-          from_user_name: authorName,
-          from_user_avatar: authorPhotoUrl,
-          comment_text: newComment.trim(),
+          videoId: video.id,
+          videoTitle: video.title,
+          fromUserId: user.uid,
+          fromUserName: authorName,
+          fromUserAvatar: authorPhotoUrl,
+          commentText: newComment.trim(),
           read: false
         });
       }
-
-      const mappedComment = {
-        ...commentData,
-        videoId: commentData.video_id,
-        authorId: commentData.author_id,
-        authorName: commentData.author_name,
-        authorPhotoUrl: commentData.author_photo_url,
-        createdAt: commentData.created_at
-      } as Comment;
       
-      setComments([mappedComment, ...comments]);
+      setComments([mappedComment as any, ...comments]);
       setNewComment('');
       toast.success('Комментарий опубликован');
     } catch (error) {
@@ -762,15 +670,10 @@ export default function VideoPlayer() {
   const handleEditComment = async (commentId: string) => {
     if (!editCommentText.trim()) return;
     try {
-      const { error } = await supabase
-        .from('comments')
-        .update({
-          text: editCommentText.trim(),
-          is_edited: true
-        })
-        .eq('id', commentId);
-      
-      if (error) throw error;
+      await databaseService.updateComment(commentId, {
+        text: editCommentText.trim(),
+        isEdited: true
+      });
       
       setComments(comments.map(c => c.id === commentId ? { ...c, text: editCommentText.trim(), isEdited: true } : c));
       setEditingCommentId(null);
@@ -785,12 +688,7 @@ export default function VideoPlayer() {
   const handleDeleteComment = async (commentId: string) => {
     if (!window.confirm('Вы уверены, что хотите удалить этот комментарий?')) return;
     try {
-      const { error } = await supabase
-        .from('comments')
-        .delete()
-        .eq('id', commentId);
-      
-      if (error) throw error;
+      await databaseService.deleteComment(commentId);
       
       setComments(comments.filter(c => c.id !== commentId && c.parentId !== commentId));
       toast.success('Комментарий удален');
@@ -808,41 +706,25 @@ export default function VideoPlayer() {
       let authorId = 'anonymous';
 
       if (user) {
-        const { data: userData } = await supabase.from('users').select('display_name, photo_url').eq('id', user.uid).single();
-        authorName = userData?.display_name || user.displayName || 'User';
-        authorPhotoUrl = userData?.photo_url || user.photoURL || '';
+        const userData = await databaseService.getUserById(user.uid);
+        authorName = userData?.displayName || user.displayName || 'User';
+        authorPhotoUrl = userData?.photoURL || user.photoURL || '';
         authorId = user.uid;
       }
 
-      const { data: commentData, error: commentError } = await supabase
-        .from('comments')
-        .insert({
-          video_id: video.id,
-          video_author_id: video.authorId,
-          author_id: authorId,
-          author_name: authorName,
-          author_photo_url: authorPhotoUrl,
+      const mappedComment = await databaseService.createComment({
+          videoId: video.id,
+          videoAuthorId: video.authorId,
+          authorId: authorId,
+          authorName: authorName,
+          authorPhotoUrl: authorPhotoUrl,
           text: replyCommentText.trim(),
-          parent_id: parentId,
+          parentId: parentId,
           likes: 0,
           dislikes: 0
-        })
-        .select()
-        .single();
-      
-      if (commentError) throw commentError;
+      });
 
-      const mappedComment = {
-        ...commentData,
-        videoId: commentData.video_id,
-        authorId: commentData.author_id,
-        authorName: commentData.author_name,
-        authorPhotoUrl: commentData.author_photo_url,
-        createdAt: commentData.created_at,
-        parentId: commentData.parent_id
-      } as Comment;
-      
-      setComments([mappedComment, ...comments]);
+      setComments([...comments, mappedComment as any]);
       setReplyingCommentId(null);
       setReplyCommentText('');
       toast.success('Ответ опубликован');
@@ -865,66 +747,46 @@ export default function VideoPlayer() {
         if (user?.uid !== video?.authorId) return;
         const newHearted = !comment.authorHearted;
         
-        const { error } = await supabase
-          .from('comments')
-          .update({ author_hearted: newHearted })
-          .eq('id', commentId);
-          
-        if (error) throw error;
+        await databaseService.updateComment(commentId, { authorHearted: newHearted });
         
         setComments(comments.map(c => c.id === commentId ? { ...c, authorHearted: newHearted } : c));
         return;
       }
 
       // Handle Like/Dislike with persistence
-      const { data: actionData } = await supabase
-        .from('comment_actions')
-        .select('type')
-        .eq('user_id', user.uid)
-        .eq('comment_id', commentId)
-        .maybeSingle();
+      const actionData = await databaseService.checkUserActionState('comment_actions', [Query.equal('userId', user.uid), Query.equal('commentId', commentId)]);
         
       const currentAction = actionData?.type;
 
       if (currentAction === action) {
         // Remove action
-        await supabase
-          .from('comment_actions')
-          .delete()
-          .eq('user_id', user.uid)
-          .eq('comment_id', commentId);
+        await databaseService.deleteUserAction('comment_actions', actionData.$id);
           
         const updateObj = { [action === 'like' ? 'likes' : 'dislikes']: Math.max(0, (comment[action === 'like' ? 'likes' : 'dislikes'] || 0) - 1) };
-        await supabase.from('comments').update(updateObj).eq('id', commentId);
+        await databaseService.updateComment(commentId, updateObj);
         
         setComments(comments.map(c => c.id === commentId ? { ...c, ...updateObj } : c));
       } else if (currentAction) {
         // Switch action
-        await supabase
-          .from('comment_actions')
-          .update({ type: action })
-          .eq('user_id', user.uid)
-          .eq('comment_id', commentId);
+        await databaseService.updateUserAction('comment_actions', actionData.$id, { type: action });
           
         const updateObj = {
           [action === 'like' ? 'likes' : 'dislikes']: (comment[action === 'like' ? 'likes' : 'dislikes'] || 0) + 1,
           [action === 'like' ? 'dislikes' : 'likes']: Math.max(0, (comment[action === 'like' ? 'dislikes' : 'likes'] || 0) - 1)
         };
-        await supabase.from('comments').update(updateObj).eq('id', commentId);
+        await databaseService.updateComment(commentId, updateObj);
         
         setComments(comments.map(c => c.id === commentId ? { ...c, ...updateObj } : c));
       } else {
         // New action
-        await supabase
-          .from('comment_actions')
-          .insert({
-            user_id: user.uid,
-            comment_id: commentId,
+        await databaseService.createUserAction('comment_actions', {
+            userId: user.uid,
+            commentId: commentId,
             type: action
           });
           
         const updateObj = { [action === 'like' ? 'likes' : 'dislikes']: (comment[action === 'like' ? 'likes' : 'dislikes'] || 0) + 1 };
-        await supabase.from('comments').update(updateObj).eq('id', commentId);
+        await databaseService.updateComment(commentId, updateObj);
         
         setComments(comments.map(c => c.id === commentId ? { ...c, ...updateObj } : c));
       }

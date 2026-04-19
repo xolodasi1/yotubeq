@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, Heart, Play, Shuffle, ListFilter, Search, Clock, Trash2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { databases, appwriteConfig } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
 // Supabase refactored
 import { toast } from 'sonner';
@@ -21,24 +21,8 @@ export default function Favorites() {
     const fetchFavorites = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('favorites')
-          .select('*, videos!fk_favorites_video(*)')
-          .eq('user_id', user.uid)
-          .order('added_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        const results = (data || []).map(item => {
-          if (!item['videos!fk_favorites_video']) return null;
-          return {
-            ...databaseService.mapVideo(item['videos!fk_favorites_video']),
-            addedAt: new Date(item.added_at),
-            favoriteId: item.id
-          } as VideoType & { addedAt: any, favoriteId: string };
-        }).filter(v => v !== null);
-
-        setVideos(results as (VideoType & { addedAt: any, favoriteId: string })[]);
+        const results = await databaseService.getFavorites(user.uid);
+        setVideos(results);
       } catch (error) {
         console.error("Error fetching favorites:", error);
       } finally {
@@ -51,7 +35,7 @@ export default function Favorites() {
 
   const removeFavorite = async (favoriteId: string) => {
     try {
-      await supabase.from('favorites').delete().eq('id', favoriteId);
+      await databases.deleteDocument(appwriteConfig.databaseId, 'favorites', favoriteId);
       setVideos(videos.filter(v => v.favoriteId !== favoriteId));
       toast.success('Удалено из понравившихся');
     } catch (error) {

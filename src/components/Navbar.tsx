@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabase';
+import { account, appwriteClient, appwriteConfig } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
 import { MeltingAvatar } from './MeltingAvatar';
 import { safeFormatDistanceToNow } from '../lib/dateUtils';
@@ -31,24 +31,16 @@ export default function Navbar() {
     databaseService.getNotifications(user.uid).then(setNotifications);
 
     // Real-time listener
-    const channel = supabase
-      .channel('notifications_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'notifications', 
-        filter: `user_id=eq.${user.uid}` 
-      }, () => {
+    const unsubscribe = appwriteClient.subscribe(
+      `databases.${appwriteConfig.databaseId}.collections.notifications.documents`,
+      (response) => {
+        // Appwrite real-time updates
         databaseService.getNotifications(user.uid).then(setNotifications);
-      })
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR") {
-          setTimeout(() => channel.subscribe(), 4000);
-        }
-      });
+      }
+    );
 
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [user]);
 
@@ -88,16 +80,13 @@ export default function Navbar() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleGoogleLogin = async () => {
-    console.log("Starting Supabase Google Login...");
+    console.log("Starting Appwrite Google Login...");
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
-      // The state change will be handled by App.tsx
+      account.createOAuth2Session(
+        'google', // provider
+        window.location.origin, // success
+        window.location.origin  // fail
+      );
     } catch (error: any) {
       console.error("Login error:", error);
       toast.error(error.message || 'Ошибка аутентификации');
@@ -106,9 +95,10 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await account.deleteSession('current');
       toast.info(isStudio ? 'До скорой встречи в Студии!' : 'До скорой встречи!');
       navigate('/');
+      window.location.reload();
     } catch (error: any) {
       toast.error('Не удалось выйти из системы');
     }

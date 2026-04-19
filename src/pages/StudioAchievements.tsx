@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Users, ArrowRight, Play, Smartphone, Pin, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../App';
-import { supabase } from '../lib/supabase';
 import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { toast } from 'sonner';
@@ -13,13 +12,11 @@ export default function StudioAchievements() {
   useEffect(() => {
     if (!activeChannel) return;
     const fetchVideos = async () => {
-      const { data, error } = await supabase
-        .from('videos')
-        .select('*')
-        .eq('author_id', activeChannel.id);
-      
-      if (!error && data) {
-        setVideos(data.map(d => databaseService.mapVideo(d)));
+      try {
+        const data = await databaseService.getVideos({ authorId: activeChannel.id });
+        setVideos(data as any[]);
+      } catch (e) {
+        console.error(e);
       }
     };
     fetchVideos();
@@ -46,12 +43,9 @@ export default function StudioAchievements() {
         updatedPinned = [...currentPinned, achievementId];
       }
 
-      const { error } = await supabase
-        .from('channels')
-        .update({ pinned_achievements: updatedPinned })
-        .eq('id', activeChannel.id);
-      
-      if (error) throw error;
+      await databaseService.updateChannel(activeChannel.id, {
+        pinnedAchievements: updatedPinned
+      });
 
       setActiveChannel({
         ...activeChannel,

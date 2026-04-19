@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
 import { Playlist, VideoType } from '../types';
 import { Loader2, PlaySquare, Trash2, ExternalLink, Music, Smartphone, Camera, Video } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { databases, appwriteConfig } from '../lib/appwrite';
 // Supabase refactored
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -19,20 +19,8 @@ export default function Playlists() {
     const fetchPlaylists = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('playlists')
-          .select('*')
-          .eq('author_id', activeChannel.id)
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        setPlaylists((data || []).map(d => ({
-          ...d,
-          authorId: d.author_id,
-          createdAt: d.created_at,
-          videoIds: d.video_ids
-        }) as Playlist));
+        const results = await databaseService.getPlaylistsByAuthorId(activeChannel.id);
+        setPlaylists(results);
       } catch (error) {
         console.error("Error fetching playlists:", error);
       } finally {
@@ -46,7 +34,7 @@ export default function Playlists() {
   const handleDelete = async (id: string) => {
     if (!confirm('Вы уверены, что хотите удалить этот плейлист?')) return;
     try {
-      await supabase.from('playlists').delete().eq('id', id);
+      await databaseService.deletePlaylist(id);
       setPlaylists(playlists.filter(p => p.id !== id));
       toast.success('Плейлист удален');
     } catch (error) {

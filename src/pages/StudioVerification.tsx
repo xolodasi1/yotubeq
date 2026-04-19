@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Snowflake, Users, Play, Heart, CheckCircle2, ShieldCheck, Info } from 'lucide-react';
 import { useAuth } from '../App';
-import { supabase } from '../lib/supabase';
 import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { toast } from 'sonner';
@@ -15,13 +14,8 @@ export default function StudioVerification() {
     if (!activeChannel) return;
     const fetchVideos = async () => {
       try {
-        const { data, error } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('author_id', activeChannel.id);
-        
-        if (error) throw error;
-        setVideos((data || []).map(d => databaseService.mapVideo(d)));
+        const data = await databaseService.getVideos({ authorId: activeChannel.id });
+        setVideos(data as any);
       } catch (error) {
         console.error("Error fetching videos for verification:", error);
       } finally {
@@ -49,12 +43,7 @@ export default function StudioVerification() {
     if (!isEligible || !activeChannel) return;
     
     try {
-      const { error } = await supabase
-        .from('channels')
-        .update({ is_verified: true })
-        .eq('id', activeChannel.id);
-      
-      if (error) throw error;
+      await databaseService.updateChannel(activeChannel.id, { isVerified: true });
       
       toast.success('Поздравляем! Ваш канал верифицирован. Статус «Ледяной куб» получен!');
       window.location.reload();

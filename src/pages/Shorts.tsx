@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
-import { supabase } from '../lib/supabase';
+import { appwriteClient, appwriteConfig } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
+import { Query } from 'appwrite';
 import { VideoType, Comment } from '../types';
 import { Loader2, Smartphone, Heart, MessageSquare, Share2, Music as MusicIcon, X, Send, Snowflake, Ban, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,15 +35,11 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   useEffect(() => {
     const fetchAuthor = async () => {
       try {
-        const { data } = await supabase
-          .from('channels')
-          .select('display_name, photo_url')
-          .eq('id', short.authorId)
-          .single();
+        const data = await databaseService.getChannelById(short.authorId);
         if (data) {
           setAuthorData({
-            displayName: data.display_name,
-            photoURL: data.photo_url
+            displayName: data.displayName || data.title,
+            photoURL: data.photoUrl || data.logoUrl
           } as any);
         }
       } catch (e) {
@@ -65,26 +62,14 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
     if (!user) return;
     const fetchInteractions = async () => {
       try {
-        const { data: likeData } = await supabase
-          .from('video_likes')
-          .select('type')
-          .eq('user_id', user.uid)
-          .eq('video_id', short.id);
-        setIsLiked((likeData || []).some(d => d.type === 'like'));
+        const likeData = await databaseService.checkUserActionState('video_likes', [Query.equal('userId', user.uid), Query.equal('videoId', short.id)]);
+        setIsLiked(likeData?.type === 'like');
 
-        const { data: iceData } = await supabase
-          .from('video_ices')
-          .select('*')
-          .eq('user_id', user.uid)
-          .eq('video_id', short.id);
-        setIsIced((iceData || []).length > 0);
+        const iceData = await databaseService.checkUserActionState('video_ices', [Query.equal('userId', user.uid), Query.equal('videoId', short.id)]);
+        setIsIced(!!iceData);
 
-        const { data: subData } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', user.uid)
-          .eq('channel_id', short.authorId);
-        setIsSubscribed((subData || []).length > 0);
+        const subData = await databaseService.checkUserActionState('subscriptions', [Query.equal('userId', user.uid), Query.equal('channelId', short.authorId)]);
+        setIsSubscribed(!!subData);
       } catch (err) {
         console.error("Error fetching interactions:", err);
       }
@@ -94,21 +79,9 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
   const fetchComments = async () => {
     try {
-      const { data, error } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('video_id', short.id)
-        .order('created_at', { ascending: false });
+      const data = await databaseService.getComments(short.id);
       
-      if (error) throw error;
-      setComments((data || []).map(c => ({
-        ...c,
-        videoId: c.video_id,
-        authorId: c.author_id,
-        authorName: c.author_name,
-        authorPhotoUrl: c.author_photo_url,
-        createdAt: c.created_at
-      })) as any);
+      setComments(data as any);
     } catch (err) {
       console.error("Error fetching comments:", err);
     }
@@ -125,22 +98,19 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
     
     try {
       if (isLiked) {
-        await supabase
-          .from('video_likes')
-          .delete()
-          .eq('user_id', user.uid)
-          .eq('video_id', short.id);
+        const actionData = await databaseService.checkUserActionState('video_likes', [Query.equal('userId', user.uid), Query.equal('videoId', short.id)]);
+        if (actionData) await databaseService.deleteUserAction('video_likes', actionData.$id);
           
-        await supabase.from('videos').update({ likes: Math.max(0, likesCount - 1) }).eq('id', short.id);
+        await databaseService.updateVideo(short.id, { likes: Math.max(0, likesCount - 1) });
         setLikesCount(Math.max(0, likesCount - 1));
         setIsLiked(false);
       } else {
-        await supabase.from('video_likes').insert({ 
-          user_id: user.uid, 
-          video_id: short.id, 
+        await databaseService.createUserAction('video_likes', { 
+          userId: user.uid, 
+          videoId: short.id, 
           type: 'like' 
         });
-        await supabase.from('videos').update({ likes: likesCount + 1 }).eq('id', short.id);
+        await databaseService.updateVideo(short.id, { likes: likesCount + 1 });
         setLikesCount(likesCount + 1);
         setIsLiked(true);
       }
@@ -155,22 +125,18 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
     try {
       if (isIced) {
-        await supabase
-          .from('video_ices')
-          .delete()
-          .eq('user_id', user.uid)
-          .eq('video_id', short.id);
+        const iceData = await databaseService.checkUserActionState('video_ices', [Query.equal('userId', user.uid), Query.equal('videoId', short.id)]);
+        if (iceData) await databaseService.deleteUserAction('video_ices', iceData.$id);
           
-        await supabase.from('videos').update({ ices: Math.max(0, icesCount - 1) }).eq('id', short.id);
+        await databaseService.updateVideo(short.id, { ices: Math.max(0, icesCount - 1) });
         setIcesCount(Math.max(0, icesCount - 1));
         setIsIced(false);
       } else {
-        await supabase.from('video_ices').insert({ 
-          user_id: user.uid, 
-          video_id: short.id, 
-          created_at: new Date().toISOString() 
+        await databaseService.createUserAction('video_ices', { 
+          userId: user.uid, 
+          videoId: short.id
         });
-        await supabase.from('videos').update({ ices: icesCount + 1 }).eq('id', short.id);
+        await databaseService.updateVideo(short.id, { ices: icesCount + 1 });
         setIcesCount(icesCount + 1);
         setIsIced(true);
       }
@@ -185,45 +151,36 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
 
     try {
       if (isSubscribed) {
-        const { error: delError } = await supabase
-          .from('subscriptions')
-          .delete()
-          .eq('user_id', user.uid)
-          .eq('channel_id', short.authorId);
+        const subData = await databaseService.checkUserActionState('subscriptions', [Query.equal('userId', user.uid), Query.equal('channelId', short.authorId)]);
+        if (subData) await databaseService.deleteUserAction('subscriptions', subData.$id);
           
-        if (delError) throw delError;
-          
-        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', short.authorId).single();
+        const channelData = await databaseService.getChannelById(short.authorId);
         if (channelData) {
-           const newCount = Math.max(0, channelData.subscribers - 1);
-           await supabase.from('channels').update({ subscribers: newCount }).eq('id', short.authorId);
+           const newCount = Math.max(0, (channelData.subscribers || 0) - 1);
+           await databaseService.updateChannel(short.authorId, { subscribers: newCount });
         }
 
         setIsSubscribed(false);
         toast.success('Вы отписались');
       } else {
-        const { error: insError } = await supabase.from('subscriptions').insert({ 
-          user_id: user.uid, 
-          channel_id: short.authorId, 
-          created_at: new Date().toISOString() 
+        await databaseService.createUserAction('subscriptions', { 
+          userId: user.uid, 
+          channelId: short.authorId
         });
         
-        if (insError) throw insError;
-
-        const { data: channelData } = await supabase.from('channels').select('subscribers').eq('id', short.authorId).single();
+        const channelData = await databaseService.getChannelById(short.authorId);
         if (channelData) {
            const newCount = (channelData.subscribers || 0) + 1;
-           await supabase.from('channels').update({ subscribers: newCount }).eq('id', short.authorId);
+           await databaseService.updateChannel(short.authorId, { subscribers: newCount });
         }
         
         try {
-          await supabase.from('notifications').insert({
-            user_id: short.authorId,
+          await databaseService.createNotification({
+            userId: short.authorId,
             type: 'subscribe',
-            from_user_id: user.uid,
-            from_user_name: user.displayName,
-            from_user_avatar: user.photoURL,
-            created_at: new Date().toISOString(),
+            fromUserId: user.uid,
+            fromUserName: user.displayName,
+            fromUserAvatar: user.photoURL,
             read: false
           });
         } catch (e) {
@@ -247,13 +204,10 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
   const handleHideChannel = async () => {
     if (!user) return toast.error('Войдите, чтобы скрыть канал');
     try {
-      const hiddenId = `${user.uid}_${short.authorId}`;
-      await supabase.from('hidden_channels').upsert({
-        id: hiddenId,
-        user_id: user.uid,
-        channel_id: short.authorId,
-        added_at: new Date().toISOString()
-      });
+      const hiddenObj = await databaseService.checkUserActionState('hidden_channels', [Query.equal('userId', user.uid), Query.equal('channelId', short.authorId)]);
+      if (!hiddenObj) {
+         await databaseService.createUserAction('hidden_channels', { userId: user.uid, channelId: short.authorId });
+      }
       toast.success('Канал больше не будет рекомендоваться');
       window.location.reload();
     } catch (err) {
@@ -268,31 +222,17 @@ const ShortPlayer: React.FC<{ short: VideoType, isActive: boolean, user: any }> 
     
     setSubmittingComment(true);
     try {
-      const commentId = crypto.randomUUID();
-      const commentData = {
-        id: commentId,
-        video_id: short.id,
-        author_id: user.uid,
-        author_name: user.displayName || 'User',
-        author_photo_url: user.photoURL || '',
-        text: newComment.trim(),
-        created_at: new Date().toISOString(),
-        likes: 0,
-        dislikes: 0
-      };
-      await supabase.from('comments').insert(commentData);
-      
-      setComments([{
-        id: commentId,
+      const cmt = await databaseService.createComment({
         videoId: short.id,
         authorId: user.uid,
         authorName: user.displayName || 'User',
         authorPhotoUrl: user.photoURL || '',
         text: newComment.trim(),
-        createdAt: commentData.created_at,
         likes: 0,
         dislikes: 0
-      } as any, ...comments]);
+      });
+      
+      setComments([cmt as any, ...comments]);
       
       setNewComment('');
       toast.success('Комментарий добавлен');
@@ -500,22 +440,11 @@ export default function Shorts() {
       try {
         let hiddenChannelIds: string[] = [];
         if (user) {
-          const { data: hiddenData } = await supabase
-            .from('hidden_channels')
-            .select('channel_id')
-            .eq('user_id', user.uid);
-          hiddenChannelIds = (hiddenData || []).map(d => d.channel_id);
+          const hiddenData = await databaseService.getDocumentsByQuery('hidden_channels', [Query.equal('userId', user.uid)]);
+          hiddenChannelIds = (hiddenData || []).map(d => d.channelId);
         }
 
-        const { data: shortsDataRaw, error: shortsError } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('is_short', true)
-          .order('created_at', { ascending: false });
-
-        if (shortsError) throw shortsError;
-
-        let mappedShorts = (shortsDataRaw || []).map(v => databaseService.mapVideo(v));
+        let mappedShorts = await databaseService.getVideos({ queries: [Query.equal('isShort', true)] });
         
         if (hiddenChannelIds.length > 0) {
           mappedShorts = mappedShorts.filter(video => !hiddenChannelIds.includes(video.authorId));
@@ -523,7 +452,7 @@ export default function Shorts() {
         
         setShorts(mappedShorts as any);
       } catch (error) {
-        console.error("Error fetching shorts from Supabase:", error);
+        console.error("Error fetching shorts from Appwrite:", error);
       } finally {
         setLoading(false);
       }
@@ -558,21 +487,17 @@ export default function Shorts() {
 
     const addToHistory = async () => {
       try {
-        const historyId = `${user.uid}_${currentShort.id}`;
-        await supabase.from('history').upsert({
-          id: historyId,
-          user_id: user.uid,
-          video_id: currentShort.id,
-          watched_at: new Date().toISOString()
-        });
+        const histData = await databaseService.checkUserActionState('history', [Query.equal('userId', user.uid), Query.equal('videoId', currentShort.id)]);
+        if (histData) {
+          await databaseService.updateUserAction('history', histData.$id, { watchedAt: new Date().toISOString() });
+        } else {
+          await databaseService.createUserAction('history', { userId: user.uid, videoId: currentShort.id, watchedAt: new Date().toISOString() });
+        }
         
         // Increment views
-        const { data: currentViews } = await supabase.from('videos').select('views').eq('id', currentShort.id).single();
-        if (currentViews) {
-          await supabase.from('videos').update({ views: (Number(currentViews.views) || 0) + 1 }).eq('id', currentShort.id);
-        }
+        await databaseService.incrementViews(currentShort.id);
       } catch (err) {
-        console.error("Failed to add short to history or increment views in Supabase:", err);
+        console.error("Failed to add short to history or increment views in Appwrite:", err);
       }
     };
     addToHistory();

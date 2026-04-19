@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { databaseService } from '../lib/databaseService';
 import { Loader2, Trophy, Users, Music, Play, TrendingUp, Camera, Heart, Snowflake } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -36,14 +35,8 @@ export default function TopChannels() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const { data: videosData, error: videosError } = await supabase
-          .from('videos')
-          .select('*');
+        const allVideos = await databaseService.getVideos({ limit: 500 });
         
-        if (videosError) throw videosError;
-        
-        const allVideos = (videosData || []).map(d => databaseService.mapVideo(d));
-
         // Set top tracks (music only)
         const musicTracks = allVideos
           .filter(v => v.isMusic)

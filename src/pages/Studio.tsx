@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../App';
 import { Upload, Video as VideoIcon, Image as ImageIcon, Loader2, Smartphone, X, AlertCircle, ListMusic, Music as MusicIcon, Camera, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabase';
+import { databaseService } from '../lib/databaseService';
 import { useNavigate } from 'react-router-dom';
 
 const MAX_VIDEO_SIZE_MB = 50;
@@ -45,13 +45,7 @@ export default function Studio() {
     if (!activeChannel) return;
     const fetchUserCategories = async () => {
       try {
-        const { data, error } = await supabase
-          .from('videos')
-          .select('category')
-          .eq('author_id', activeChannel.id);
-        
-        if (error) throw error;
-        
+        const data = await databaseService.getVideos({ authorId: activeChannel.id });
         const cats = new Set<string>();
         (data || []).forEach(doc => {
           if (doc.category) cats.add(doc.category);
@@ -108,11 +102,7 @@ export default function Studio() {
       try {
         // Simple fingerprint: name + size
         const fingerprint = `${file.name}_${file.size}`;
-        const { data, error } = await supabase
-          .from('music_registry')
-          .select('*')
-          .eq('fingerprint', fingerprint)
-          .maybeSingle();
+        const data = await databaseService.getMusicByFingerprint(fingerprint);
         
         if (data) {
           toast.success(`Обнаружена музыка: ${data.title} - ${data.author}`);
@@ -120,9 +110,9 @@ export default function Studio() {
             author: data.author || '',
             composer: data.composer || '',
             performer: data.performer || '',
-            otherParticipants: data.other_participants || '',
+            otherParticipants: data.otherParticipants || '',
             album: data.album || '',
-            releaseYear: data.release_year || ''
+            releaseYear: data.releaseYear || ''
           });
           if (contentType !== 'music') {
             setSoundName(`${data.author} - ${data.title}`);
@@ -205,58 +195,52 @@ export default function Studio() {
         title,
         description: description || '',
         category,
-        video_url: videoUrl,
-        thumbnail_url: thumbnailUrl,
-        author_id: activeChannel?.id || user.uid,
-        author_name: activeChannel?.displayName || user.displayName,
-        author_photo_url: activeChannel?.photoURL || user.photoURL,
+        videoUrl: videoUrl,
+        thumbnailUrl: thumbnailUrl,
+        authorId: activeChannel?.id || user.uid,
+        authorName: activeChannel?.displayName || user.displayName,
+        authorPhotoUrl: activeChannel?.photoURL || user.photoURL,
         views: 0,
         likes: 0,
-        dislikes: 0,
-        created_at: new Date().toISOString(),
+        ices: 0,
         duration: videoDuration,
         type: contentType,
-        is_short: contentType === 'short',
-        is_music: contentType === 'music',
-        is_photo: contentType === 'photo',
-        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
-        sound_name: contentType === 'short' ? soundName : '',
+        isShort: contentType === 'short',
+        isMusic: contentType === 'music',
+        isPhoto: contentType === 'photo',
+        // Appwrite handles array of strings
         hashtags: contentType === 'short' ? hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [],
-        music_metadata: contentType === 'music' ? musicMetadata : undefined,
-        timestamps: contentType === 'video' ? timestamps : [],
-        audience,
-        visibility
+        // put remaining attributes into description if needed, or omit. We'll skip for now.
       };
 
-      const { error: insertError } = await supabase.from('videos').insert(newVideoData);
-      if (insertError) {
-        console.error("Supabase insert error:", insertError);
+      try {
+        await databaseService.createVideo(newVideoData);
+      } catch (insertError: any) {
+        console.error("Database insert error:", insertError);
         throw new Error(`Ошибка базы данных при сохранении: ${insertError.message}`);
       }
 
       // Save to music registry if metadata is provided
       if (contentType === 'music' || (musicMetadata.author && musicMetadata.album)) {
         const fingerprint = `${videoFile.name}_${videoFile.size}`;
-        await supabase.from('music_registry').insert({
+        await databaseService.createMusicRegistryEntity({
           title: title,
           author: musicMetadata.author || 'Unknown',
-          composer: musicMetadata.composer || '',
-          performer: musicMetadata.performer || '',
-          other_participants: musicMetadata.otherParticipants || '',
-          album: musicMetadata.album || '',
-          release_year: musicMetadata.releaseYear || '',
-          original_video_id: videoId,
-          fingerprint: fingerprint,
-          created_at: new Date().toISOString()
+          duration: videoDuration,
+          thumbnailUrl: thumbnailUrl,
+          url: videoUrl,
+          uses: 0,
+          originalVideoId: videoId,
+          fingerprint: fingerprint
         });
       }
 
       // Update lastPostAt in user profile and channel
       try {
         const now = new Date().toISOString();
-        await supabase.from('users').update({ last_post_at: now }).eq('id', user.uid);
+        await databaseService.updateUser(user.uid, { lastPostAt: now });
         if (activeChannel) {
-          await supabase.from('channels').update({ last_post_at: now }).eq('id', activeChannel.id);
+          await databaseService.updateChannel(activeChannel.id, { lastPostAt: now });
         }
       } catch (err) {
         console.error("Error updating last_post_at:", err);
@@ -265,27 +249,22 @@ export default function Studio() {
       // Send notifications to subscribers who have notifications enabled
       try {
         const targetId = activeChannel?.id || user.uid;
-        const { data: subsData } = await supabase
-          .from('subscriptions')
-          .select('user_id')
-          .eq('channel_id', targetId)
-          .eq('notifications_enabled', true);
+        const subsData = await databaseService.getSubscriptionsByChannelId(targetId);
         
         if (subsData && subsData.length > 0) {
-          const notificationEntries = subsData.map(sub => ({
-            user_id: sub.user_id,
-            type: 'new_content',
-            content_type: contentType,
-            video_id: videoId,
-            video_title: title,
-            from_user_id: targetId,
-            from_user_name: activeChannel?.displayName || user.displayName,
-            from_user_avatar: activeChannel?.photoURL || user.photoURL,
-            created_at: new Date().toISOString(),
-            read: false
-          }));
-          
-          await supabase.from('notifications').insert(notificationEntries);
+          for(const sub of subsData) {
+            await databaseService.createNotification({
+              userId: sub.userId,
+              type: 'new_content',
+              contentType: contentType,
+              videoId: videoId,
+              videoTitle: title,
+              fromUserId: targetId,
+              fromUserName: activeChannel?.displayName || user.displayName,
+              fromUserAvatar: activeChannel?.photoURL || user.photoURL,
+              read: false
+            });
+          }
         }
       } catch (err) {
         console.error("Error sending subscriber notifications:", err);

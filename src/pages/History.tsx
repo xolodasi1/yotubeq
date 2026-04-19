@@ -3,7 +3,7 @@ import { useAuth } from '../App';
 import VideoCard from '../components/VideoCard';
 import { VideoType } from '../types';
 import { Loader2, History as HistoryIcon, Trash2, Search, Calendar, Clock, X, Settings } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { databases, appwriteConfig, Query } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
 // Supabase refactored
 import { toast } from 'sonner';
@@ -22,24 +22,8 @@ export default function History() {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('history')
-          .select('*, videos!fk_history_video(*)')
-          .eq('user_id', activeChannel.id)
-          .order('watched_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        const results = (data || []).map(item => {
-          if (!item['videos!fk_history_video']) return null;
-          return {
-            ...databaseService.mapVideo(item['videos!fk_history_video']),
-            watchedAt: new Date(item.watched_at),
-            historyId: item.id
-          } as VideoType & { watchedAt: any, historyId: string };
-        }).filter(v => v !== null);
-
-        setVideos(results as (VideoType & { watchedAt: any, historyId: string })[]);
+        const results = await databaseService.getHistory(activeChannel.id);
+        setVideos(results);
       } catch (error) {
         console.error("Error fetching history:", error);
       } finally {
@@ -52,7 +36,7 @@ export default function History() {
 
   const removeHistoryItem = async (historyId: string) => {
     try {
-      await supabase.from('history').delete().eq('id', historyId);
+      await databases.deleteDocument(appwriteConfig.databaseId, 'history', historyId);
       setVideos(videos.filter(v => v.historyId !== historyId));
       toast.success('Удалено из истории');
     } catch (error) {
@@ -64,7 +48,11 @@ export default function History() {
     if (!user || !activeChannel) return;
     if (!window.confirm('Очистить всю историю просмотров?')) return;
     try {
-      await supabase.from('history').delete().eq('user_id', activeChannel.id);
+      // Deleting all docs for a user query - Appwrite doesn't have delete many by query. We must fetch and delete individually.
+      const docs = await databases.listDocuments(appwriteConfig.databaseId, 'history', [Query.equal('userId', activeChannel.id)]);
+      for(let doc of docs.documents) {
+        await databases.deleteDocument(appwriteConfig.databaseId, 'history', doc.$id);
+      }
       setVideos([]);
       toast.success('История очищена');
     } catch (error) {

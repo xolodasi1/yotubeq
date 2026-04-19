@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { supabase } from '../lib/supabase';
+import { appwriteClient, appwriteConfig } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { Eye, ThumbsUp, TrendingUp, BarChart2, PieChart, Calendar, ChevronRight, Clock, Users, Globe, UserCheck, UserMinus, MapPin, Search, Snowflake } from 'lucide-react';

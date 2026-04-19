@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { supabase } from '../lib/supabase';
+import { appwriteClient, appwriteConfig } from '../lib/appwrite';
 import { databaseService } from '../lib/databaseService';
+import { account } from '../lib/appwrite';
 import { toast } from 'sonner';
 import { Loader2, User, Camera, MessageSquare, Globe, Smartphone, Instagram, Save, Plus, CheckCircle2, Trash2, Layout, ArrowUp, ArrowDown, Search, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -213,7 +214,7 @@ export default function StudioProfile() {
       await databaseService.deleteUser(user.uid);
 
       toast.success('Аккаунт успешно удален');
-      await supabase.auth.signOut();
+      await account.deleteSession('current');
       navigate('/');
     } catch (error) {
       console.error("Error deleting account:", error);

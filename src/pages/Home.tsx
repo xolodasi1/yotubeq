@@ -5,7 +5,6 @@ import ShortCard from '../components/ShortCard';
 import { VideoType } from '../types';
 import { Toaster, toast } from 'sonner';
 import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users, Music as MusicIcon, Camera, Heart } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { databaseService } from '../lib/databaseService';
 import { useAuth } from '../App';
 
@@ -40,22 +39,11 @@ export default function Home() {
       try {
         let hiddenChannelIds: string[] = [];
         if (user) {
-          const { data: hiddenData } = await supabase
-            .from('hidden_channels')
-            .select('channel_id')
-            .eq('user_id', user.uid);
-          hiddenChannelIds = (hiddenData || []).map(d => d.channel_id);
+          const hiddenData = await databaseService.getHiddenChannels(user.uid);
+          hiddenChannelIds = hiddenData.map(d => d.channelId);
         }
 
-        // Fetch Videos from Supabase
-        let { data: videosData, error: videosError } = await supabase
-          .from('videos')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (videosError) throw videosError;
-
-        let mappedVideos = (videosData || []).map(v => databaseService.mapVideo(v));
+        let mappedVideos = await databaseService.getVideos({ orderBy: 'created_at', orderDirection: 'desc' });
         
         if (hiddenChannelIds.length > 0) {
           mappedVideos = mappedVideos.filter(video => !hiddenChannelIds.includes(video.authorId));
@@ -76,29 +64,14 @@ export default function Home() {
         setDynamicCategories([...BASE_CATEGORIES, ...Array.from(uniqueCategories)]);
 
         // Fetch Users (Channels) for recommendations/metadata
-        const { data: channelsDataRaw, error: channelsError } = await supabase
-          .from('channels')
-          .select('*');
-
-        if (channelsError) throw channelsError;
+        const channelsDataRaw = await databaseService.getChannels();
 
         const channelsMap = (channelsDataRaw || []).reduce((acc: any, c) => {
           acc[c.id] = c;
           return acc;
         }, {});
 
-        const { data: usersDataRaw, error: usersError } = await supabase
-          .from('users')
-          .select('*');
-
-        if (usersError) throw usersError;
-
-        let usersData = (usersDataRaw || []).map(u => ({
-          ...u,
-          uid: u.id,
-          displayName: u.display_name,
-          photoURL: u.photo_url
-        }));
+        let usersData = await databaseService.getUsers();
         
         if (hiddenChannelIds.length > 0) {
           usersData = usersData.filter(u => !hiddenChannelIds.includes(u.uid));
@@ -120,7 +93,7 @@ export default function Home() {
         setVideos(mappedVideos as any);
         setUsers(usersData);
       } catch (error: any) {
-        if (isMounted) console.error("Error fetching data from Supabase:", error);
+        if (isMounted) console.error("Error fetching data:", error);
       } finally {
         if (isMounted) {
           clearTimeout(loadingTimeout);

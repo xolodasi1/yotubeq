@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { databaseService } from '../lib/databaseService';
 import { VideoType } from '../types';
 import { Loader2, PlaySquare } from 'lucide-react';
@@ -14,14 +13,7 @@ export default function Videos() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const { data, error } = await supabase
-          .from('videos')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        const mappedData = (data || []).map(d => databaseService.mapVideo(d));
+        const mappedData = await databaseService.getVideos({ orderBy: 'created_at', orderDirection: 'desc' });
         
         // Filter only regular videos
         const regularVideos = mappedData.filter(v => 
