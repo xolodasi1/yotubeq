@@ -1,7 +1,10 @@
 import { Client, Account, Databases, Storage, ID, Query } from 'appwrite';
 
 // Конфигурация Appwrite с фолбэками на ваши значения
-const APPWRITE_ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
+let APPWRITE_ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
+if (APPWRITE_ENDPOINT.startsWith('=')) {
+  APPWRITE_ENDPOINT = APPWRITE_ENDPOINT.substring(1);
+}
 const APPWRITE_PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || '69e4f8980019f8196e7b';
 
 // Инициализация клиента Appwrite
