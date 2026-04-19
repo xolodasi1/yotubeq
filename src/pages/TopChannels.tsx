@@ -3,7 +3,8 @@ import { databaseService } from '../lib/databaseService';
 import { Loader2, Trophy, Users, Music, Play, TrendingUp, Camera, Heart, Snowflake } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MeltingAvatar } from '../components/MeltingAvatar';
-import { VideoType } from '../types';
+import { appwriteClient, appwriteConfig } from '../lib/appwrite';
+import { VideoType, Video, Channel } from '../types';
 
 interface TopChannel {
   uid: string;
@@ -35,7 +36,7 @@ export default function TopChannels() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const allVideos = await databaseService.getVideos({ limit: 500 });
+        const allVideos = await databaseService.getVideos({ limit: 400 });
         
         // Set top tracks (music only)
         const musicTracks = allVideos
@@ -91,20 +92,17 @@ export default function TopChannels() {
         });
 
         // Fetch channels
-        const { data: channelsData, error: channelsError } = await supabase
-          .from('channels')
-          .select('*');
-        
-        if (channelsError) throw channelsError;
+        const channelsData = await databaseService.getChannels() as Channel[];
 
         const combinedData: TopChannel[] = (channelsData || []).map(channel => ({
           uid: channel.id,
-          displayName: channel.display_name || 'User',
+          displayName: channel.displayName || 'User',
           pseudonym: channel.pseudonym || '',
-          photoURL: channel.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.id}`,
+          photoURL: channel.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.id}`,
           bio: channel.bio || '',
           subscribers: Number(channel.subscribers) || 0,
-          lastPostAt: channel.last_post_at,
+          ices: Number(channel.ices) || 0,
+          lastPostAt: channel.createdAt,
           totalMusicViews: stats[channel.id]?.musicViews || 0,
           musicCount: stats[channel.id]?.musicCount || 0,
           totalViews: stats[channel.id]?.totalViews || 0,
@@ -124,48 +122,16 @@ export default function TopChannels() {
 
     fetchVideos();
 
-    // Add Realtime subscription for subscriber counts and other channel updates
-    const channelsSub = supabase
-      .channel('top_channels_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, (payload) => {
-        if (payload.event === 'UPDATE') {
-          const updatedChannel = payload.new as any;
-          setChannels(prev => prev.map(c => 
-            c.uid === updatedChannel.id 
-              ? { 
-                  ...c, 
-                  subscribers: Number(updatedChannel.subscribers) || 0,
-                  displayName: updatedChannel.display_name || c.displayName,
-                  photoURL: updatedChannel.photo_url || c.photoURL,
-                  ices: updatedChannel.ices || c.ices
-                } 
-              : c
-          ));
-        } else if (payload.event === 'INSERT' || payload.event === 'DELETE') {
-          fetchVideos(); // Refresh everything for new/deleted authors
-        }
-      })
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR") {
-          setTimeout(() => channelsSub.subscribe(), 5000);
-        }
-      });
-
-    // Also listen for video updates (views, likes) to keep top tracks/videos fresh
-    const videosSub = supabase
-      .channel('top_videos_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'videos' }, () => {
-        fetchVideos(); // Refresh aggregated stats on video changes
-      })
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR") {
-          setTimeout(() => videosSub.subscribe(), 6000);
-        }
-      });
+    // Add Realtime subscription
+    const unsubscribe = appwriteClient.subscribe([
+      `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.channelsId}.documents`,
+      `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.videosId}.documents`
+    ], response => {
+      fetchVideos();
+    });
 
     return () => {
-      supabase.removeChannel(channelsSub);
-      supabase.removeChannel(videosSub);
+      unsubscribe();
     };
   }, []);
 

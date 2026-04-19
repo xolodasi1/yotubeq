@@ -191,7 +191,7 @@ export default function App() {
         if (isMounted) setUser(mappedUser);
 
         // Fetch channels
-        let userChannels = await databaseService.getChannelsByOwnerId(appwriteUser.$id);
+        let userChannels: ChannelType[] = await databaseService.getChannelsByOwnerId(appwriteUser.$id) as any[];
         if (userChannels.length === 0) {
           const newChannel = await databaseService.createChannel({
             ownerId: appwriteUser.$id,
@@ -199,7 +199,7 @@ export default function App() {
             photoURL: mappedUser.photoURL,
             isPrimary: true
           });
-          userChannels = [newChannel];
+          userChannels = [newChannel as any];
         }
 
         if (isMounted) {
@@ -210,7 +210,7 @@ export default function App() {
           // Add Realtime subscription for the active channel's stats
           if (primary) {
             appwriteClient.subscribe(
-              `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.channelsId}.documents.${primary.id}`,
+              `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.channelsId}.documents.${(primary as any).id || (primary as any).$id}`,
               response => {
                 if (response.events.includes('databases.*.collections.*.documents.*.update')) {
                   const updated = response.payload as any;
@@ -322,7 +322,7 @@ export default function App() {
                 Доступ к вашему аккаунту ограничен администрацией за нарушение правил платформы IceTube.
                 Пожалуйста, свяжитесь с поддержкой, если считаете это ошибкой.
               </p>
-              <button onClick={() => supabase.auth.signOut()} className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-2xl w-full transition-colors opacity-90">
+              <button onClick={() => account.deleteSession('current').then(() => window.location.reload())} className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-2xl w-full transition-colors opacity-90">
                 Выйти из аккаунта
               </button>
             </div>

@@ -3,6 +3,7 @@ import { useAuth } from '../App';
 import { Playlist, VideoType } from '../types';
 import { Loader2, PlaySquare, Trash2, ExternalLink, Music, Smartphone, Camera, Video } from 'lucide-react';
 import { databases, appwriteConfig } from '../lib/appwrite';
+import { databaseService } from '../lib/databaseService';
 // Supabase refactored
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';

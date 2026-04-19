@@ -79,10 +79,12 @@ export default function Navbar() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+
+
   const handleGoogleLogin = async () => {
     console.log("Starting Appwrite Google Login...");
     try {
-      account.createOAuth2Session(
+      (account as any).createOAuth2Session(
         'google', // provider
         window.location.origin, // success
         window.location.origin  // fail

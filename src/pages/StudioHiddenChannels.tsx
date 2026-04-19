@@ -37,7 +37,7 @@ export default function StudioHiddenChannels() {
 
   const handleRestore = async (id: string, displayName: string) => {
     try {
-      await databaseService.unhideChannel(id);
+      await databaseService.unhideChannel(user.uid, id);
       setHiddenChannels(hiddenChannels.filter(c => c.id !== id));
       toast.success(`Канал "${displayName}" снова будет рекомендоваться`);
     } catch (error) {

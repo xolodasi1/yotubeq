@@ -1,29 +1,7 @@
 import { ID, Query, databases, appwriteConfig } from './appwrite';
+import type { Video, Channel, UserProfile as User, Comment } from '../types';
 
-export interface Video {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  videoUrl: string;
-  thumbnailUrl: string;
-  authorId: string;
-  authorName: string;
-  authorPhotoUrl: string;
-  views: number;
-  likes: number;
-  ices: number;
-  duration: string;
-  soundName?: string;
-  hashtags?: string[];
-  isShort?: boolean;
-  isMusic?: boolean;
-  isPhoto?: boolean;
-  type?: string;
-  musicMetadata?: any;
-  recommendationScore?: number;
-  createdAt: string;
-}
+export type { Video };
 
 export const databaseService = {
   // VIDEOS
@@ -36,11 +14,12 @@ export const databaseService = {
     searchQuery?: string,
     authorId?: string,
     orderBy?: 'created_at' | 'views' | 'likes',
-    orderDirection?: 'asc' | 'desc'
-  } = {}) {
-    const queries: any[] = [];
+    orderDirection?: 'asc' | 'desc',
+    queries?: any[]
+  } = {}): Promise<Video[]> {
+    const queries: any[] = options.queries ? [...options.queries] : [];
     
-    if (options.authorId) {
+    if (options.authorId && !options.queries?.some(q => q.toString().includes('authorId'))) {
       queries.push(Query.equal('authorId', options.authorId));
     }
     
@@ -52,19 +31,21 @@ export const databaseService = {
     if (options.isMusic !== undefined) queries.push(Query.equal('isMusic', options.isMusic));
     if (options.isPhoto !== undefined) queries.push(Query.equal('isPhoto', options.isPhoto));
     
-    // NOTE: Appwrite's 'search' requires fulltext index on the attributes. 
-    // For prototyping we will fetch and filter if there's no index, but let's use equal/startsWith or fetch all for now:
-    
-    if (options.orderBy === 'views') {
-      queries.push(options.orderDirection === 'asc' ? Query.orderAsc('views') : Query.orderDesc('views'));
-    } else if (options.orderBy === 'likes') {
-      queries.push(options.orderDirection === 'asc' ? Query.orderAsc('likes') : Query.orderDesc('likes'));
-    } else {
-      queries.push(options.orderDirection === 'asc' ? Query.orderAsc('$createdAt') : Query.orderDesc('$createdAt'));
+    if (options.limit) {
+      queries.push(Query.limit(options.limit));
+    } else if (!queries.some(q => q.toString().includes('limit'))) {
+      queries.push(Query.limit(100));
     }
 
-    if (options.limit) queries.push(Query.limit(options.limit));
-    else queries.push(Query.limit(100)); // Appwrite default is 25
+    if (!queries.some(q => q.toString().includes('order'))) {
+      if (options.orderBy === 'views') {
+        queries.push(options.orderDirection === 'asc' ? Query.orderAsc('views') : Query.orderDesc('views'));
+      } else if (options.orderBy === 'likes') {
+        queries.push(options.orderDirection === 'asc' ? Query.orderAsc('likes') : Query.orderDesc('likes'));
+      } else {
+        queries.push(options.orderDirection === 'asc' ? Query.orderAsc('$createdAt') : Query.orderDesc('$createdAt'));
+      }
+    }
 
     try {
       const response = await databases.listDocuments(
@@ -73,17 +54,31 @@ export const databaseService = {
         queries
       );
       
-      let results = response.documents.map(this.mapVideo);
+      let results = response.documents.map(v => this.mapVideo(v));
       
       // Client-side search for simplicity if Appwrite indexes aren't fully configured
       if (options.searchQuery && options.searchQuery.trim() !== '') {
         const qs = options.searchQuery.toLowerCase();
-        results = results.filter(v => v.title.toLowerCase().includes(qs) || (v.description && v.description.toLowerCase().includes(qs)));
+        results = results.filter(v => (v.title || '').toLowerCase().includes(qs) || (v.description && v.description.toLowerCase().includes(qs)));
       }
       
       return results;
     } catch (error) {
       console.error("Error fetching videos:", error);
+      return [];
+    }
+  },
+
+  async getDocumentsByQuery(collectionId: string, queries: any[]) {
+    try {
+      const response = await databases.listDocuments(
+        appwriteConfig.databaseId, 
+        collectionId,
+        queries
+      );
+      return response.documents;
+    } catch (error) {
+      console.error(`Error fetching documents from ${collectionId}:`, error);
       return [];
     }
   },
@@ -223,7 +218,7 @@ export const databaseService = {
   },
 
   // CHANNELS
-  async getChannels(options: { searchQuery?: string, limit?: number } = {}) {
+  async getChannels(options: { searchQuery?: string, limit?: number } = {}): Promise<Channel[]> {
     try {
       const response = await databases.listDocuments(
         appwriteConfig.databaseId,
@@ -275,16 +270,6 @@ export const databaseService = {
     } catch(e) { return []; }
   },
 
-  async createCommunityPost(post: any) {
-    try {
-      const doc = await databases.createDocument(appwriteConfig.databaseId, 'community_posts', ID.unique(), post);
-      return this.mapCommunityPost(doc);
-    } catch (e) {
-      console.error(e);
-      throw e;
-    }
-  },
-
   async deleteCommunityPost(id: string) {
     try {
       await databases.deleteDocument(appwriteConfig.databaseId, 'community_posts', id);
@@ -313,20 +298,10 @@ export const databaseService = {
   },
 
   async updateChannel(id: string, updates: any) {
-    const appwriteUpdates: any = {};
-    if (updates.displayName !== undefined) appwriteUpdates.displayName = updates.displayName;
-    if (updates.photoURL !== undefined) appwriteUpdates.photoURL = updates.photoURL;
-    if (updates.bannerUrl !== undefined) appwriteUpdates.bannerUrl = updates.bannerUrl;
-    if (updates.bio !== undefined) appwriteUpdates.bio = updates.bio;
-    if (updates.pseudonym !== undefined) appwriteUpdates.pseudonym = updates.pseudonym;
-    
-    const doc = await databases.updateDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.channelsId,
-      id,
-      appwriteUpdates
-    );
-    return this.mapChannel(doc);
+    try {
+      const doc = await databases.updateDocument(appwriteConfig.databaseId, appwriteConfig.channelsId, id, updates);
+      return this.mapChannel(doc);
+    } catch(e) { console.error(e); throw e; }
   },
 
   async deleteChannel(id: string) {
@@ -337,13 +312,6 @@ export const databaseService = {
     try {
       const doc = await databases.updateDocument(appwriteConfig.databaseId, appwriteConfig.usersId, id, updates);
       return this.mapUser(doc);
-    } catch(e) { console.error(e); throw e; }
-  },
-
-  async updateChannel(id: string, updates: any) {
-    try {
-      const doc = await databases.updateDocument(appwriteConfig.databaseId, appwriteConfig.channelsId, id, updates);
-      return this.mapChannel(doc);
     } catch(e) { console.error(e); throw e; }
   },
   
@@ -362,12 +330,6 @@ export const databaseService = {
     } catch(e) { return null; }
   },
 
-  async createNotification(data: any) {
-    try {
-      await databases.createDocument(appwriteConfig.databaseId, 'notifications', ID.unique(), data);
-    } catch(e) {}
-  },
-  
   async createMusicRegistryEntity(data: any) {
     try {
       await databases.createDocument(appwriteConfig.databaseId, 'music_registry', ID.unique(), data);
@@ -376,8 +338,8 @@ export const databaseService = {
   
   async updatePlaylist(id: string, updates: any) {
     try {
-      await databases.updateDocument(appwriteConfig.databaseId, 'playlists', id, updates);
-    } catch(e) {}
+      return await databases.updateDocument(appwriteConfig.databaseId, 'playlists', id, updates);
+    } catch(e) { throw e; }
   },
   
   async getUsers() {
@@ -395,23 +357,6 @@ export const databaseService = {
       // User doc not found
       throw e;
     }
-  },
-
-  async updateUser(id: string, updates: any) {
-    const appwriteUpdates: any = {};
-    if (updates.displayName !== undefined) appwriteUpdates.displayName = updates.displayName;
-    if (updates.photoURL !== undefined) appwriteUpdates.photoURL = updates.photoURL;
-    if (updates.primaryChannelId !== undefined) appwriteUpdates.primaryChannelId = updates.primaryChannelId;
-    if (updates.bio !== undefined) appwriteUpdates.bio = updates.bio;
-    if (updates.isSubscriptionPublic !== undefined) appwriteUpdates.isSubscriptionPublic = updates.isSubscriptionPublic;
-    
-    const doc = await databases.updateDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.usersId,
-      id,
-      appwriteUpdates
-    );
-    return this.mapUser(doc);
   },
 
   async deleteUser(id: string) {
@@ -463,13 +408,85 @@ export const databaseService = {
     // no-op
   },
 
-  // MOCK NOTIFICATIONS & META
-  async getNotifications() { return []; },
-  async markNotificationAsRead() {},
-  async markAllNotificationsAsRead() {},
-  async getHiddenChannels() { return []; },
-  async hideChannel() {},
-  async unhideChannel() {},
+  async getAdminSettings() {
+    return {
+      moderators: [],
+      categories: ['Все', 'Музыка', 'Игры', 'Обучение', 'Спорт', 'Развлечения']
+    };
+  },
+
+  // NOTIFICATIONS
+  async getNotifications(userId: string) {
+    try {
+      const resp = await databases.listDocuments(appwriteConfig.databaseId, 'notifications', [Query.equal('userId', userId), Query.orderDesc('$createdAt'), Query.limit(50)]);
+      return resp.documents.map(d => ({
+        id: d.$id,
+        userId: d.userId,
+        type: d.type,
+        fromUserId: d.fromUserId,
+        fromUserName: d.fromUserName,
+        fromUserAvatar: d.fromUserAvatar,
+        videoId: d.videoId,
+        read: !!d.read,
+        createdAt: d.$createdAt
+      }));
+    } catch(e) { return []; }
+  },
+  async markNotificationAsRead(id: string) {
+    await databases.updateDocument(appwriteConfig.databaseId, 'notifications', id, { read: true });
+  },
+  async markAllNotificationsAsRead(userId: string) {
+    const unread = await databases.listDocuments(appwriteConfig.databaseId, 'notifications', [Query.equal('userId', userId), Query.equal('read', false), Query.limit(100)]);
+    for (const doc of unread.documents) {
+      await this.markNotificationAsRead(doc.$id);
+    }
+  },
+  async createNotification(data: any) {
+    return await databases.createDocument(appwriteConfig.databaseId, 'notifications', ID.unique(), data);
+  },
+
+  // COMMENTS UPDATES
+  async updateComment(id: string, updates: any) {
+    return await databases.updateDocument(appwriteConfig.databaseId, appwriteConfig.commentsId, id, updates);
+  },
+
+  // COMMUNITY POSTS
+  async createCommunityPost(data: any) {
+    return await databases.createDocument(appwriteConfig.databaseId, 'community_posts', ID.unique(), data);
+  },
+  async updateCommunityPost(id: string, updates: any) {
+    return await databases.updateDocument(appwriteConfig.databaseId, 'community_posts', id, updates);
+  },
+
+  // PLAYLISTS
+  async createPlaylist(data: any) {
+    return await databases.createDocument(appwriteConfig.databaseId, 'playlists', ID.unique(), data);
+  },
+  
+  async getSubscriptionsWithUsers(channelId: string) {
+    // Mock for now, Appwrite doesn't support joins
+    return [];
+  },
+
+  async hideChannel(userId: string, channelId: string) {
+    try {
+      await databases.createDocument(appwriteConfig.databaseId, 'hidden_channels', ID.unique(), { userId, channelId });
+    } catch(e) {}
+  },
+  async unhideChannel(userId: string, channelId: string) {
+    try {
+      const resp = await databases.listDocuments(appwriteConfig.databaseId, 'hidden_channels', [Query.equal('userId', userId), Query.equal('channelId', channelId)]);
+      for (const doc of resp.documents) {
+        await databases.deleteDocument(appwriteConfig.databaseId, 'hidden_channels', doc.$id);
+      }
+    } catch(e) {}
+  },
+  async getHiddenChannels(userId: string) {
+    try {
+      const resp = await databases.listDocuments(appwriteConfig.databaseId, 'hidden_channels', [Query.equal('userId', userId)]);
+      return resp.documents.map(d => ({ channelId: d.channelId }));
+    } catch(e) { return []; }
+  },
 
   async getFavorites(userId: string) {
     try {
@@ -571,6 +588,7 @@ export const databaseService = {
       authorPhotoUrl: v.authorPhotoUrl || '',
       views: v.views || 0,
       likes: v.likes || 0,
+      dislikes: v.dislikes || 0,
       ices: v.ices || 0,
       duration: v.duration || '0:00',
       hashtags: v.hashtags || [],
@@ -581,7 +599,7 @@ export const databaseService = {
     };
   },
 
-  mapChannel(c: any) {
+  mapChannel(c: any): Channel {
     return {
       id: c.$id,
       ownerId: c.ownerId,
@@ -591,19 +609,16 @@ export const databaseService = {
       isPrimary: !!c.isPrimary,
       subscribers: c.subscribers || 0,
       ices: c.ices || 0,
-      competitors: [],
-      pinnedAchievements: [],
-      isBanned: false,
+      competitors: c.competitors || [],
+      pinnedAchievements: c.pinnedAchievements || [],
+      isBanned: !!c.isBanned,
       bio: c.bio || '',
       pseudonym: c.pseudonym || '',
-      searchAliases: [],
-      socialLinks: {},
-      homeLayout: ['videos', 'shorts', 'music', 'photos'],
       createdAt: c.$createdAt
     };
   },
 
-  mapComment(c: any) {
+  mapComment(c: any): Comment {
     return {
       id: c.$id,
       videoId: c.videoId,
@@ -612,24 +627,21 @@ export const databaseService = {
       authorPhotoUrl: c.authorPhotoUrl || '',
       text: c.text || '',
       createdAt: c.$createdAt,
-      parentId: c.parentId || null,
+      parentId: c.parentId || undefined,
       authorHearted: !!c.authorHearted
     };
   },
 
-  mapUser(u: any) {
+  mapUser(u: any): User {
     return {
-      uid: u.$id, // or u.uid
+      uid: u.$id || u.uid,
       displayName: u.displayName || 'User',
       email: u.email || '',
       photoURL: u.photoURL || '',
       primaryChannelId: u.primaryChannelId,
       bio: u.bio || '',
-      socialLinks: {},
-      isSubscriptionPublic: u.isSubscriptionPublic !== false,
       subscribers: u.subscribers || 0,
-      ices: u.ices || 0,
-      createdAt: u.$createdAt
+      joinedAt: u.$createdAt
     };
   }
 };

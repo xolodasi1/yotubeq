@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import ShortCard from '../components/ShortCard';
-import { VideoType } from '../types';
+import { Video, UserProfile as User } from '../types';
 import { Toaster, toast } from 'sonner';
 import { Loader2, Smartphone, TrendingUp, Clock, Sparkles, Filter, Snowflake, Users, Music as MusicIcon, Camera, Heart } from 'lucide-react';
 import { databaseService } from '../lib/databaseService';
@@ -17,7 +17,7 @@ export default function Home() {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
   const [activeCategory, setActiveCategory] = useState('Все');
-  const [videos, setVideos] = useState<VideoType[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dynamicCategories, setDynamicCategories] = useState<string[]>(BASE_CATEGORIES);
@@ -43,7 +43,7 @@ export default function Home() {
           hiddenChannelIds = hiddenData.map(d => d.channelId);
         }
 
-        let mappedVideos = await databaseService.getVideos({ orderBy: 'created_at', orderDirection: 'desc' });
+        let mappedVideos = await databaseService.getVideos({ orderBy: 'created_at', orderDirection: 'desc' }) as Video[];
         
         if (hiddenChannelIds.length > 0) {
           mappedVideos = mappedVideos.filter(video => !hiddenChannelIds.includes(video.authorId));
@@ -90,8 +90,8 @@ export default function Home() {
           return { ...video, recommendationScore: score } as any;
         });
         
-        setVideos(mappedVideos as any);
-        setUsers(usersData);
+        setVideos(mappedVideos as Video[]);
+        setUsers(usersData as User[]);
       } catch (error: any) {
         if (isMounted) console.error("Error fetching data:", error);
       } finally {
