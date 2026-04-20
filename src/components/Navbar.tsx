@@ -86,8 +86,8 @@ export default function Navbar() {
     try {
       (account as any).createOAuth2Session(
         'google', // provider
-        window.location.origin, // success
-        window.location.origin  // fail
+        'https://icetube-app.vercel.app', // success
+        'https://icetube-app.vercel.app'  // fail
       );
     } catch (error: any) {
       console.error("Login error:", error);
